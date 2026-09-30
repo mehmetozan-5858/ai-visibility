@@ -1,0 +1,3 @@
+import {addProspect,listProspects} from "../../../lib/prospects";
+export async function GET(){try{return Response.json({prospects:await listProspects()})}catch(e){return Response.json({error:"Adaylar okunamadı."},{status:503})}}
+export async function POST(req){try{const b=await req.json();if(!b?.name?.trim())return Response.json({error:"İşletme adı zorunlu."},{status:400});const p=await addProspect({name:b.name.trim(),domain:(b.domain||"").trim(),sector:(b.sector||"").trim(),city:(b.city||"").trim(),source:(b.source||"manual").trim()});return Response.json({prospect:p},{status:201})}catch(e){return Response.json({error:"Aday kaydedilemedi."},{status:500})}}
