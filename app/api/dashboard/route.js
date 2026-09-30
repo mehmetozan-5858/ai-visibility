@@ -1,3 +1,3 @@
-import {clients,executiveSummary} from "../../../lib/store";
+import {getDashboard} from "../../../lib/repository";
 import {providerStatus} from "../../../lib/providers";
-export async function GET(){return Response.json({summary:executiveSummary({clientsCount:clients.filter(x=>x.status!=="demo").length}),providers:providerStatus(),mode:"demo"})}
+export async function GET(){return Response.json({summary:await getDashboard(),providers:providerStatus(),mode:"demo"})}
