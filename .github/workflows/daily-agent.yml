@@ -1,0 +1,16 @@
+name: Daily Agent Cycle
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "15 17 * * *"
+permissions:
+  contents: read
+jobs:
+  daily-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node scripts/daily-scan.mjs
