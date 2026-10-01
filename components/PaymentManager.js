@@ -1,8 +1,8 @@
 "use client";
 import {useEffect,useState} from "react";
-export default function PaymentManager({clientId}){
+export default function PaymentManager({token}){
   const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""});
-  useEffect(()=>{fetch("/api/payment?clientId="+encodeURIComponent(clientId),{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||"Ödeme bilgisi alınamadı.");return j}).then(setD).catch(e=>setErr(e.message))},[clientId]);
+  useEffect(()=>{fetch("/api/payment?token="+encodeURIComponent(token),{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||"Ödeme bilgisi alınamadı.");return j}).then(setD).catch(e=>setErr(e.message))},[token]);
   if(err)return <section className="panel"><p className="client-message">{err}</p></section>;
   if(!d)return <section className="panel"><p>Ödeme bilgileri hazırlanıyor…</p></section>;
   const ref=d.payment?.referenceCode||("AIV-"+d.client.id.slice(0,8)).toUpperCase();
@@ -21,7 +21,7 @@ export default function PaymentManager({clientId}){
     if(!d.payment?.id)return;
     setReporting(true);setErr("");
     try{
-      const r=await fetch("/api/payment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment.id})});
+      const r=await fetch("/api/payment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment.id,token})});
       const j=await r.json();if(!r.ok)throw new Error(j.error||"Bildirim alınamadı.");
       setReported(true);setD({...d,payment:j.payment});
     }catch(e){setErr(e.message)}finally{setReporting(false)}
@@ -29,7 +29,7 @@ export default function PaymentManager({clientId}){
   async function startCardPayment(e){
     e.preventDefault();setCardBusy(true);setErr("");
     try{
-      const r=await fetch("/api/paytr/token",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment?.id,...cardForm})});
+      const r=await fetch("/api/paytr/token",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment?.id,token,...cardForm})});
       const j=await r.json();if(!r.ok)throw new Error([j.error,j.detail].filter(Boolean).join(" · "));
       setIframeUrl(j.iframeUrl);
     }catch(e){setErr(e.message)}finally{setCardBusy(false)}
