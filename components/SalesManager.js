@@ -33,6 +33,10 @@ export default function SalesManager(){
     </ul>
     <b>İlk temas taslağı</b><p>{o.outreachDraft}</p>
     <small>Bu metin otomatik gönderilmez; insan onayı gerekir.</small>
+    <div style={{display:"flex",gap:9,flexWrap:"wrap",marginTop:16}}>
+      <button onClick={()=>{window.location.href="/api/sales-agent/pdf?clientId="+encodeURIComponent(o.client.id)}}>▤ PDF teklif oluştur</button>
+      <button onClick={()=>{window.location.href="/odeme?clientId="+encodeURIComponent(o.client.id)}}>₺ Ödeme / Paket seç</button>
+    </div>
   </div>;
 
   return <section className="panel">
