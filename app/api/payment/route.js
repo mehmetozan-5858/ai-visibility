@@ -17,3 +17,5 @@ export async function GET(req){
     });
   }catch(e){return Response.json({error:"Odeme bilgileri okunamadi.",detail:String(e?.message||e).slice(0,220)},{status:500})}
 }
+
+// env-refresh: redeploy after payment variables were configured
