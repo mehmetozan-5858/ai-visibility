@@ -5,7 +5,7 @@ export async function GET(){
   const providers=providerStatus();
   return Response.json({
     app:"AI Visibility",
-    version:"0.6.0",
+    version:"0.9.0",
     database:databaseStatus(),
     providers,
     billing:{configured:Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),provider:"PayTR"},
