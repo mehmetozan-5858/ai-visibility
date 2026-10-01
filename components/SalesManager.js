@@ -16,7 +16,7 @@ export default function SalesManager(){
       const r=await fetch("/api/sales-agent",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clientId:id})});
       const d=await r.json();
       if(!r.ok)throw new Error([d.error,d.detail].filter(Boolean).join(" · ")||"Teklif hazırlanamadı.");
-      setOffer({client:d.client,...d.offer});
+      setOffer({client:d.client,...d.offer,paymentUrl:d.paymentUrl});
     }catch(e){setMsg(e.message)}
     finally{setBusy("")}
   }
@@ -35,7 +35,7 @@ export default function SalesManager(){
     <small>Bu metin otomatik gönderilmez; insan onayı gerekir.</small>
     <div style={{display:"flex",gap:9,flexWrap:"wrap",marginTop:16}}>
       <button onClick={()=>{window.location.href="/api/sales-agent/pdf?clientId="+encodeURIComponent(o.client.id)}}>▤ PDF teklif oluştur</button>
-      <button onClick={()=>{window.location.href="/odeme?clientId="+encodeURIComponent(o.client.id)}}>₺ Ödeme / Paket seç</button>
+      <button onClick={()=>{if(o.paymentUrl)window.location.href=o.paymentUrl}} disabled={!o.paymentUrl}>₺ Güvenli ödeme bağlantısı</button>
     </div>
   </div>;
 
