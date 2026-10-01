@@ -1,4 +1,6 @@
+"use client";
 import Link from "next/link";
+import {usePathname} from "next/navigation";
 export const items=[["/","⌂","Ana Sayfa"],["/musteriler","♙","Müşteriler"],["/taramalar","⌕","Taramalar"],["/raporlar","▥","Raporlar"],["/ajanlar","⌘","Ajanlar"],["/ayarlar","⚙","Ayarlar"]];
-export function Nav(){return <nav className="bottom-nav">{items.map(([href,icon,label])=><Link href={href} key={href}><b>{icon}</b><span>{label}</span></Link>)}</nav>}
+export function Nav(){const pathname=usePathname();return <nav className="bottom-nav">{items.map(([href,icon,label])=>{const active=href==="/"?pathname==="/":pathname.startsWith(href);return <Link href={href} key={href} className={active?"active":""} aria-current={active?"page":undefined}><b>{icon}</b><span>{label}</span></Link>})}</nav>}
 export function Shell({title,subtitle,children}){return <main><header className="top"><Link href="/" className="brand"><span className="logo">A</span><div><strong>AI VISIBILITY</strong><small>GEO / AEO YÖNETİM PANELİ</small></div></Link><span className="badge">● GÜVENLİ DEMO</span></header>{title&&<section className="page-head"><div><h1>{title}</h1><p>{subtitle}</p></div></section>}{children}<Nav/></main>}
