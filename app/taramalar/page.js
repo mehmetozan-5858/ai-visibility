@@ -1,1 +1,3 @@
-import {Shell} from "../../components/ui"; export default function Page(){return <Shell title="Taramalar" subtitle="AI motorlarında marka görünürlüğünü ölçün."><section className="panel"><div className="section-title"><h2>Tarama merkezi</h2><button>⌕ Tarama başlat</button></div><div className="provider-grid">{["ChatGPT","Gemini","Perplexity","Google / Web"].map(x=><div className="provider" key={x}><b>{x}</b><span>Bağlantı bekliyor</span></div>)}</div><div className="empty">Canlı sağlayıcı anahtarları bağlandığında sorgular ve sonuçlar burada çalışacak.</div></section></Shell>}
+import {Shell} from "../../components/ui";
+import ScanManager from "../../components/ScanManager";
+export default function Page(){return <Shell title="Taramalar" subtitle="AI motorlarında marka görünürlüğünü ölçün."><ScanManager/></Shell>}
