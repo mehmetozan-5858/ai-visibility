@@ -9,7 +9,8 @@ export default function SettingsManager(){
    <div><b>Veritabanı</b><span className={s.database?.configured?"ready":"waiting"}>{s.database?.configured?"● Bağlı":"○ Bağlantı gerekli"}</span></div>
    <div><b>AI sağlayıcıları</b><span className={connected.length?"ready":"waiting"}>{connected.length?connected.map(x=>x.name).join(", "):"Bağlantı gerekli"}</span></div>
    {(s.providers||[]).map(p=><div key={p.name}><b>{p.name}</b><span className={p.status==="connected"?"ready":"waiting"}>{p.status==="connected"?"● Aktif":"○ API anahtarı yok"}</span></div>)}
-   <div><b>Ödeme sistemi</b><span className={s.billing?.configured?"ready":"waiting"}>{s.billing?.configured?"● Hazır":"○ Kapalı"}</span></div>
+   <div><b>Yönetici girişi</b><span className={s.auth?.configured?"ready":"waiting"}>{s.auth?.configured?"● Korumalı":"○ ADMIN_PASSWORD + AUTH_SECRET gerekli"}</span></div>
+   <div><b>Ödeme sistemi</b><span className={s.billing?.configured?"ready":"waiting"}>{s.billing?.configured?"● Hazır":"○ Kart ödeme kapalı"}</span></div>
    <div><b>Dış iletişim</b><span>İnsan onayı gerekli</span></div>
  </section>;
 }
