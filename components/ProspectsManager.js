@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 
 export default function ProspectsManager(){
- const [rows,setRows]=useState([]),[open,setOpen]=useState(false),[msg,setMsg]=useState(""),[discovering,setDiscovering]=useState(false),[scanning,setScanning]=useState("");
+ const [rows,setRows]=useState([]),[open,setOpen]=useState(false),[msg,setMsg]=useState(""),[discovering,setDiscovering]=useState(false),[scanning,setScanning]=useState(""),[converting,setConverting]=useState("");
 
  async function load(){
    const r=await fetch("/api/prospects",{cache:"no-store"});
@@ -34,6 +34,20 @@ export default function ProspectsManager(){
      await load();
    }catch(e){setMsg(e.message)}
    finally{setScanning("")}
+ }
+
+ async function convertAndScan(id){
+   setConverting(id);setMsg("");
+   try{
+     const r=await fetch(`/api/prospects/${id}/convert`,{method:"POST"});
+     const d=await r.json();
+     if(!r.ok)throw new Error(d.error||"Müşteriye dönüştürme başarısız.");
+     setMsg(d.live
+       ? `Müşteri hazır · ${d.provider} taraması tamamlandı · skor ${d.scan?.score??"—"}/100`
+       : (d.note||"Müşteri oluşturuldu ve tarama kuyruğa alındı."));
+     await load();
+   }catch(e){setMsg(e.message)}
+   finally{setConverting("")}
  }
 
  async function submit(e){
@@ -71,7 +85,7 @@ export default function ProspectsManager(){
      <div className="client-avatar">⌕</div>
      <div><b>{x.name}</b><small>{[x.sector,x.city,x.domain].filter(Boolean).join(" · ")}</small></div>
      <span>{x.score==null?(x.scanStatus==="awaiting-provider"?"Kuyrukta":"Tarama bekliyor"):x.score+"/100"}</span>
-     <button onClick={()=>scan(x.id)} disabled={scanning===x.id||x.scanStatus==="awaiting-provider"}>{scanning===x.id?"Ekleniyor…":x.scanStatus==="awaiting-provider"?"Kuyrukta":"AI Tara"}</button>
+     <button onClick={()=>convertAndScan(x.id)} disabled={converting===x.id}>{converting===x.id?"Hazırlanıyor…":x.status==="converted"?"↻ Tekrar Tara":"＋ Müşteriye dönüştür + Tara"}</button>
    </article>)}</div>}
  </section>;
 }
