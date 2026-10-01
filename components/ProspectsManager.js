@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 
 export default function ProspectsManager(){
- const [rows,setRows]=useState([]),[open,setOpen]=useState(false),[msg,setMsg]=useState(""),[discovering,setDiscovering]=useState(false),[scanning,setScanning]=useState(""),[converting,setConverting]=useState("");
+ const [rows,setRows]=useState([]),[open,setOpen]=useState(false),[msg,setMsg]=useState(""),[discovering,setDiscovering]=useState(false),[scanning,setScanning]=useState(""),[converting,setConverting]=useState(""),[city,setCity]=useState("Sivas");
 
  async function load(){
    const r=await fetch("/api/prospects",{cache:"no-store"});
@@ -17,7 +17,7 @@ export default function ProspectsManager(){
  async function discover(){
    setDiscovering(true);setMsg("");
    try{
-     const r=await fetch("/api/prospects/discover",{method:"POST"});
+     const r=await fetch("/api/prospects/discover",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({city})});
      const d=await r.json();
      if(!r.ok)throw new Error(d.error||"Keşif başarısız.");
      setMsg(`${d.newCount??d.count} yeni aday bulundu · ${(d.sectors||[]).slice(0,6).join(" · ")}`);
@@ -45,7 +45,7 @@ export default function ProspectsManager(){
      const d=await r.json();
      if(!r.ok)throw new Error(d.error||"Müşteriye dönüştürme başarısız.");
      setMsg(d.live
-       ? `Müşteri hazır · ${d.provider} taraması tamamlandı · skor ${d.scan?.score??"—"}/100`
+       ? `Müşteri hazır · ${(d.providers||[]).map(x=>`${x.name} ${x.score}/100`).join(" · ")} · Genel ${d.scan?.score??"—"}/100`
        : (d.note||"Müşteri oluşturuldu ve tarama kuyruğa alındı."));
      await load();
    }catch(e){setMsg(e.message)}
@@ -64,8 +64,11 @@ export default function ProspectsManager(){
  return <section className="panel">
    <div className="section-title">
      <div><h2>Potansiyel Müşteriler</h2><small>Satış öncesi aday havuzu · {rows.length} aday</small></div>
-     <div style={{display:"flex",gap:7}}>
-       <button onClick={discover} disabled={discovering}>{discovering?"Bulunuyor…":"⌕ Adayları bul"}</button>
+     <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+       <select value={city} onChange={e=>setCity(e.target.value)} aria-label="Keşif şehri">
+         {["Sivas","İstanbul","Ankara","İzmir","Bursa","Antalya","Kocaeli","Konya","Gaziantep","Kayseri","Adana","Mersin","Eskişehir","Samsun","Trabzon"].map(x=><option key={x}>{x}</option>)}
+       </select>
+       <button onClick={discover} disabled={discovering}>{discovering?"Bulunuyor…":`⌕ ${city} adaylarını bul`}</button>
        <button onClick={()=>setOpen(!open)}>{open?"Kapat":"＋ Aday ekle"}</button>
      </div>
    </div>
