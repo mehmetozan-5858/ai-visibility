@@ -1,13 +1,56 @@
+"use client";
+import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
-const stats=[["user","Aktif müşteri","0","Müşterileri gör","/musteriler"],["cash","Aylık gelir","$0","Gelir raporu","/raporlar"],["search","Bugünkü tarama","0","Raporları gör","/taramalar"],["check","Onay bekleyen","0","Onayları gör","/ajanlar"]];
+
 const agents=[["research","Araştırma Ajanı","Pazar, rakip ve lead araştırması"],["visibility","Görünürlük Ajanı","GEO / AEO tarama kuyruğu"],["content","İçerik Ajanı","İyileştirme taslakları"],["sales","Satış Ajanı","Dış iletişim insan onaylı"]];
+
 export default function MobileDashboard(){
+  const [summary,setSummary]=useState({activeClients:0,mrr:0,scansToday:0,approvals:0});
+  const [providers,setProviders]=useState([]);
+  const [scans,setScans]=useState([]);
+
+  useEffect(()=>{
+    Promise.all([
+      fetch("/api/dashboard",{cache:"no-store"}).then(r=>r.json()),
+      fetch("/api/scans",{cache:"no-store"}).then(r=>r.json())
+    ]).then(([d,s])=>{
+      setSummary(d.summary||{activeClients:0,mrr:0,scansToday:0,approvals:0});
+      setProviders(d.providers||[]);
+      setScans(s.scans||[]);
+    }).catch(()=>{});
+  },[]);
+
+  const completed=useMemo(()=>scans.filter(x=>x.status==="completed"&&Number.isFinite(Number(x.score))),[scans]);
+  const avgScore=completed.length?Math.round(completed.reduce((a,x)=>a+Number(x.score),0)/completed.length):0;
+  const providerCounts=useMemo(()=>{
+    const counts={};
+    for(const s of completed){
+      for(const r of Array.isArray(s.results)?s.results:[]){
+        if(r?.provider)counts[r.provider]=(counts[r.provider]||0)+1;
+      }
+    }
+    return counts;
+  },[completed]);
+
+  const stats=[
+    ["user","Aktif müşteri",String(summary.activeClients||0),"Müşterileri gör","/musteriler"],
+    ["cash","Aylık gelir","$"+String(summary.mrr||0),"Gelir raporu","/raporlar"],
+    ["search","Bugünkü tarama",String(summary.scansToday||0),"Raporları gör","/taramalar"],
+    ["check","Onay bekleyen",String(summary.approvals||0),"Onayları gör","/ajanlar"]
+  ];
+
+  const recentProviders=[
+    ["G","Gemini",providerCounts.Gemini||0],
+    ["◎","ChatGPT",providerCounts.ChatGPT||0],
+    ["✦","Perplexity",providerCounts.Perplexity||0]
+  ];
+
 return <div className="mv">
 <header className="mv-top"><div className="mv-menu">☰</div><Link href="/" className="mv-brand"><span>A</span><div><b>AI VISIBILITY</b><small>GEO / AEO ABONELİK YÖNETİM PANELİ</small></div></Link><div className="mv-safe">● GÜVENLİ DEMO</div><div className="mv-avatar">●</div></header>
 <section className="mv-hero"><div className="mv-copy"><h1>Markanızı<br/>her yerde <em>görünür yapın</em></h1><p>Yapay zeka, arama motorları ve dijital platformlarda markanızın görünürlüğünü artırın.</p></div><div className="mv-globe"><div className="earth">AI</div><span className="g">G</span><span className="c">◎</span><span className="b">B</span><span className="p">✦</span></div></section>
-<section className="mv-stats">{stats.map(([i,n,v,cta,h],k)=><Link href={h} className={"mv-stat s"+k} key={n}><i>{i==="user"?"♟":i==="cash"?"▰":i==="search"?"⌕":"✓"}</i><span>{n}</span><strong>{v}</strong><b>↑ %0</b><small>{cta} →</small></Link>)}</section>
-<section className="mv-duo"><article className="mv-card mv-score"><h2>AI Görünürlük Skorunuz <small>ⓘ</small></h2><div className="mv-scorebody"><div className="mv-ring"><strong>72</strong><span>/100</span></div><div className="mv-bench"><span>Sektör ortalaması</span><strong>48<small>/100</small></strong><div><i/></div><b>↑ %24</b><small>Geçen aya göre artış</small></div></div><a href="/taramalar" className="mv-button">Detaylı analiz yap →</a></article>
-<article className="mv-card mv-recent"><div className="mv-title"><h2>Son Taramalar</h2><Link href="/taramalar">→</Link></div>{[["G","Google","12 sonuç","↑ 3"],["◎","ChatGPT","8 sonuç","↑ 2"],["B","Bing","6 sonuç","↑ 4"],["✦","Perplexity","5 sonuç","↑ 1"]].map(x=><div className="mv-scan" key={x[1]}><i>{x[0]}</i><span><b>{x[1]}</b><small>{x[2]}</small></span><em>{x[3]}</em><strong>⌁</strong></div>)}</article></section>
-<section className="mv-card mv-agents"><div className="mv-title"><h2>Ajan Merkezi</h2><Link href="/ajanlar">Tüm ajanları gör →</Link></div><div className="mv-agentgrid">{agents.map(([i,n,d])=><Link href="/ajanlar" className="mv-agent" key={n}><div className={"mv-agentpic "+i}/><b>{n}</b><p>{d}</p><small>● Aktif <em>→</em></small></Link>)}</div></section>
+<section className="mv-stats">{stats.map(([i,n,v,cta,h],k)=><a href={h} className={"mv-stat s"+k} key={n}><i>{i==="user"?"♟":i==="cash"?"▰":i==="search"?"⌕":"✓"}</i><span>{n}</span><strong>{v}</strong><b>↑ %0</b><small>{cta} →</small></a>)}</section>
+<section className="mv-duo"><article className="mv-card mv-score"><h2>AI Görünürlük Skorunuz <small>ⓘ</small></h2><div className="mv-scorebody"><div className="mv-ring"><strong>{avgScore}</strong><span>/100</span></div><div className="mv-bench"><span>Canlı sağlayıcı</span><strong>{providers.filter(x=>x.status==="connected").length}<small>/3</small></strong><div><i style={{width:(providers.filter(x=>x.status==="connected").length/3*100)+"%"}}/></div><b>{completed.length} tamamlanan tarama</b><small>Gerçek veriden hesaplandı</small></div></div><a href="/taramalar" className="mv-button">Detaylı analiz yap →</a></article>
+<article className="mv-card mv-recent"><div className="mv-title"><h2>Son Taramalar</h2><a href="/taramalar">→</a></div>{recentProviders.map(x=><div className="mv-scan" key={x[1]}><i>{x[0]}</i><span><b>{x[1]}</b><small>{x[2]} sonuç</small></span><em>{x[2]?"●":"—"}</em><strong>⌁</strong></div>)}</article></section>
+<section className="mv-card mv-agents"><div className="mv-title"><h2>Ajan Merkezi</h2><a href="/ajanlar">Tüm ajanları gör →</a></div><div className="mv-agentgrid">{agents.map(([i,n,d])=><a href="/ajanlar" className="mv-agent" key={n}><div className={"mv-agentpic "+i}/><b>{n}</b><p>{d}</p><small>● Aktif <em>→</em></small></a>)}</div></section>
 <section className="mv-card mv-actions"><div className="mv-title"><h2>Hızlı İşlemler</h2><span>Tüm işlemler →</span></div><div className="mv-actiongrid"><a href="/musteriler"><b>♟＋</b><span>Yeni Müşteri</span></a><a href="/taramalar"><b>⌕</b><span>Tarama Başlat</span></a><a href="/raporlar"><b>▤</b><span>Rapor Oluştur</span></a><a href="/ayarlar"><b>⚙</b><span>Ayarlar</span></a></div></section>
 <nav className="mv-nav">{[["/","⌂","Ana Sayfa"],["/musteriler","♙","Müşteriler"],["/taramalar","⌕","Taramalar"],["/raporlar","▥","Raporlar"],["/ajanlar","⌘","Ajanlar"],["/ayarlar","⚙","Ayarlar"]].map(x=><a href={x[0]} key={x[0]} className={x[0]==="/"?"active":""} aria-current={x[0]==="/"?"page":undefined}><b>{x[1]}</b><span>{x[2]}</span></a>)}</nav></div>}
