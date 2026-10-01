@@ -27,6 +27,42 @@ export default function ScanManager(){
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }
 
+  async function quickTest(){
+    setCreating(true);setMsg("");
+    try{
+      let id=clients[0]?.id||"";
+      if(!id){
+        const cr=await fetch("/api/clients",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({
+          name:"AI Visibility Test",
+          domain:"ai-visibility-ai-visibility2.vercel.app",
+          plan:"Starter",
+          competitors:[]
+        })});
+        const cd=await cr.json();
+        if(!cr.ok)throw new Error(cd.error||"Test müşterisi oluşturulamadı.");
+        id=cd.client?.id||"";
+        if(!id)throw new Error("Test müşterisi kimliği alınamadı.");
+        setClientId(id);
+        await load();
+      }else{
+        setClientId(id);
+      }
+
+      setBusy(true);
+      const sr=await fetch("/api/scans",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({
+        clientId:id,
+        queries:["AI Visibility markası yapay zeka sonuçlarında nasıl görünür?","Bu marka için GEO/AEO iyileştirme önerileri nelerdir?"]
+      })});
+      const sd=await sr.json();
+      if(!sr.ok)throw new Error(sd.error||"Test taraması başlatılamadı.");
+      setMsg(sd.live
+        ? `Hızlı test tamamlandı · ${sd.provider} · skor ${sd.scan?.score??"—"}/100`
+        : (sd.note||"Test taraması kuyruğa alındı."));
+      await load();
+    }catch(e){setMsg(e.message)}
+    finally{setBusy(false);setCreating(false)}
+  }
+
   async function createQuickClient(e){
     e.preventDefault(); if(!quickName.trim()||!quickDomain.trim())return;
     setCreating(true);setMsg("");
@@ -46,6 +82,11 @@ export default function ScanManager(){
     <div className="section-title"><div><h2>Tarama merkezi</h2><small>{connected.length} canlı sağlayıcı bağlı</small></div></div>
     <div className="provider-grid">{["ChatGPT","Gemini","Perplexity"].map(name=>{const p=providers.find(x=>x.name===name);const ok=p?.status==="connected";return <div className={"provider "+(ok?"provider-on":"")} key={name}><b>{name}</b><span>{ok?"● Bağlı":"○ Bağlantı gerekli"}</span></div>})}<div className="provider"><b>Google / Web</b><span>Web taraması sonraki aşama</span></div></div>
 
+    {clients.length===0&&<div className="scan-form">
+      <h3>Hızlı test</h3>
+      <p>Elle müşteri girmeden test müşterisi oluşturup ChatGPT taramasını otomatik başlatır.</p>
+      <button type="button" onClick={quickTest} disabled={creating||busy}>{creating||busy?"Test çalışıyor…":"⚡ Hızlı test müşterisi oluştur + tara"}</button>
+    </div>}
     {clients.length===0&&<form className="scan-form" onSubmit={createQuickClient}>
       <h3>İlk müşteriyi ekleyin</h3>
       <label>Marka / işletme adı<input value={quickName} onChange={e=>setQuickName(e.target.value)} placeholder="Örn. Acme" required/></label>
