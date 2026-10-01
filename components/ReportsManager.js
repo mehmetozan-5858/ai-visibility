@@ -21,17 +21,64 @@ export default function ReportsManager(){
   }
 
   function esc(v=""){return String(v).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-  function download(){
-    const selectedName=filter==="all"?"Tüm müşteriler":clients.find(c=>c.id===filter)?.name||"Müşteri";
-    const cards=completed.map(x=>{
-      const result=Array.isArray(x.results)?x.results[0]||{}:{};
-      const findings=Array.isArray(result.findings)?result.findings:[];
-      const recommendations=Array.isArray(result.recommendations)?result.recommendations:[];
-      return `<section class="scan"><h2>${esc(x.clientName||selectedName)} — ${esc(x.score)}/100</h2><p><b>Durum:</b> Tamamlandı</p><p><b>Sağlayıcı:</b> ${esc(result.provider||"Gemini")}</p><p><b>Tarih:</b> ${esc(new Date(x.completedAt||x.createdAt).toLocaleString("tr-TR"))}</p>${result.summary?`<h3>Özet</h3><p>${esc(result.summary)}</p>`:""}${findings.length?`<h3>Bulgular</h3><ul>${findings.map(v=>`<li>${esc(v)}</li>`).join("")}</ul>`:""}${recommendations.length?`<h3>Öneriler</h3><ul>${recommendations.map(v=>`<li>${esc(v)}</li>`).join("")}</ul>`:""}</section>`;
-    }).join("");
-    const html=`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AI Visibility Raporu</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f5f7fb;color:#17202a;margin:0;padding:24px;line-height:1.55}.wrap{max-width:820px;margin:auto}.hero,.scan{background:white;border:1px solid #dce5ec;border-radius:18px;padding:22px;margin-bottom:16px}.hero h1{margin:0 0 10px}.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.kpis div{background:#eef5fa;border-radius:12px;padding:14px}.kpis span{display:block;color:#657786;font-size:13px}.kpis strong{font-size:24px}.scan h2{margin-top:0}.scan h3{margin-bottom:6px}ul{padding-left:20px}@media(max-width:600px){body{padding:12px}.kpis{grid-template-columns:1fr}}</style></head><body><div class="wrap"><section class="hero"><h1>AI Visibility Raporu</h1><p><b>Müşteri:</b> ${esc(selectedName)}</p><p><b>Oluşturulma:</b> ${esc(new Date().toLocaleString("tr-TR"))}</p><div class="kpis"><div><span>Tarama</span><strong>${rows.length}</strong></div><div><span>Tamamlanan</span><strong>${completed.length}</strong></div><div><span>Ortalama skor</span><strong>${avg==null?"—":avg+"/100"}</strong></div></div></section>${cards||"<section class='scan'><p>Tamamlanmış tarama bulunamadı.</p></section>"}</div></body></html>`;
-    const blob=new Blob([html],{type:"text/html;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");
-    a.href=url;a.download="ai-visibility-rapor.html";a.click();URL.revokeObjectURL(url);
+  async function download(){
+    const chosenClient=filter==="all"?null:clients.find(c=>c.id===filter);
+    const completedRows=rows.filter(x=>x.status==="completed");
+    const pdfMakeModule=await import("pdfmake/build/pdfmake");
+    const fontsModule=await import("pdfmake/build/vfs_fonts");
+    const pdfMake=pdfMakeModule.default||pdfMakeModule;
+    const vfsSource=fontsModule.default||fontsModule;
+    if(vfsSource?.pdfMake?.vfs) pdfMake.vfs=vfsSource.pdfMake.vfs;
+    else if(vfsSource?.vfs) pdfMake.vfs=vfsSource.vfs;
+
+    const sections=[];
+    for(const scan of completedRows){
+      const result=Array.isArray(scan.results)?(scan.results[0]||{}):{};
+      sections.push(
+        {text:scan.clientName||"Müşteri",style:"scanTitle",margin:[0,14,0,4]},
+        {text:`Tarih: ${new Date(scan.completedAt||scan.createdAt).toLocaleString("tr-TR")}  |  Skor: ${scan.score??"—"}/100`,style:"meta"},
+        result.summary?{text:result.summary,margin:[0,6,0,6]}:null,
+        Array.isArray(result.findings)&&result.findings.length?{text:"Bulgular",style:"subhead"}:null,
+        Array.isArray(result.findings)&&result.findings.length?{ul:result.findings,margin:[0,0,0,6]}:null,
+        Array.isArray(result.recommendations)&&result.recommendations.length?{text:"Öneriler",style:"subhead"}:null,
+        Array.isArray(result.recommendations)&&result.recommendations.length?{ul:result.recommendations,margin:[0,0,0,8]}:null
+      );
+    }
+
+    const doc={
+      pageSize:"A4",
+      pageMargins:[40,46,40,46],
+      info:{title:"AI Visibility Raporu",author:"AI Visibility"},
+      content:[
+        {text:"AI VISIBILITY",style:"brand"},
+        {text:"Görünürlük Raporu",style:"title"},
+        {text:chosenClient?chosenClient.name:"Tüm Müşteriler",style:"client"},
+        {columns:[
+          {width:"*",stack:[{text:"Toplam tarama",style:"label"},{text:String(rows.length),style:"kpi"}]},
+          {width:"*",stack:[{text:"Tamamlanan",style:"label"},{text:String(completedRows.length),style:"kpi"}]},
+          {width:"*",stack:[{text:"Ortalama skor",style:"label"},{text:avg==null?"—":avg+"/100",style:"kpi"}]}
+        ],columnGap:12,margin:[0,18,0,18]},
+        {text:"Tamamlanan taramalar",style:"section"},
+        ...sections.filter(Boolean),
+        {text:"Bu rapor AI Visibility sistemi tarafından oluşturulmuştur.",style:"footer",margin:[0,24,0,0]}
+      ],
+      styles:{
+        brand:{fontSize:10,bold:true,color:"#1889d7",characterSpacing:1.5},
+        title:{fontSize:24,bold:true,margin:[0,6,0,4]},
+        client:{fontSize:14,color:"#4b6270"},
+        label:{fontSize:9,color:"#718896"},
+        kpi:{fontSize:20,bold:true,margin:[0,3,0,0]},
+        section:{fontSize:15,bold:true,margin:[0,8,0,8]},
+        scanTitle:{fontSize:13,bold:true},
+        subhead:{fontSize:10,bold:true,margin:[0,4,0,3]},
+        meta:{fontSize:9,color:"#718896"},
+        footer:{fontSize:8,color:"#8da2af",italics:true}
+      },
+      defaultStyle:{fontSize:10,lineHeight:1.25}
+    };
+
+    const safe=(chosenClient?.name||"tum-musteriler").toLocaleLowerCase("tr-TR").replace(/[^a-z0-9ığüşöç]+/gi,"-");
+    pdfMake.createPdf(doc).download(`ai-visibility-${safe}.pdf`);
   }
   return <section className="grid reports-grid">
     <article className="panel"><h2>Görünürlük özeti</h2><div className="report-kpis"><div><span>Tarama</span><strong>{rows.length}</strong></div><div><span>Tamamlanan</span><strong>{completed.length}</strong></div><div><span>Ortalama skor</span><strong>{avg==null?"—":avg+"/100"}</strong></div></div><div className="chart-placeholder">{completed.length?"Son tamamlanan taramalar rapora dahil edildi.":"Rapor oluşturmak için en az bir tamamlanmış tarama gerekiyor."}</div></article>
