@@ -1,1 +1,3 @@
-import {Shell} from "../../components/ui"; export default function Page(){return <Shell title="Ayarlar" subtitle="Bağlantılar, güvenlik ve otomasyon tercihleri."><section className="panel settings"><div><b>Veritabanı</b><span>Demo modu</span></div><div><b>AI sağlayıcıları</b><span>Bağlantı bekliyor</span></div><div><b>Ödeme sistemi</b><span>Kapalı</span></div><div><b>Dış iletişim</b><span>İnsan onayı gerekli</span></div></section></Shell>}
+import {Shell} from "../../components/ui";
+import SettingsManager from "../../components/SettingsManager";
+export default function Page(){return <Shell title="Ayarlar" subtitle="Bağlantılar, güvenlik ve otomasyon tercihleri."><SettingsManager/></Shell>}
