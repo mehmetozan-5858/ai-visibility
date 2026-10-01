@@ -22,7 +22,9 @@ export default function ScanManager(){
       const r=await fetch("/api/scans",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clientId,queries})});
       const d=await r.json();
       if(!r.ok)throw new Error([d.error,d.stage&&`Aşama: ${d.stage}`,d.detail].filter(Boolean).join(" · ")||"Tarama başlatılamadı.");
-      setMsg(d.live?`Tarama tamamlandı · ${d.provider} · skor ${d.scan.score}/100`:(d.note||"Tarama kuyruğa alındı."));
+      setMsg(d.live
+        ? `Üçlü tarama tamamlandı · ${(d.providers||[]).map(x=>`${x.name} ${x.score}/100`).join(" · ")} · Genel ${d.scan.score}/100`
+        : (d.note||"Tarama kuyruğa alındı."));
       await load();
     }catch(e){setMsg(e.message);await load()}finally{setBusy(false)}
   }
@@ -56,7 +58,7 @@ export default function ScanManager(){
       const sd=await sr.json();
       if(!sr.ok)throw new Error(sd.error||"Test taraması başlatılamadı.");
       setMsg(sd.live
-        ? `Hızlı test tamamlandı · ${sd.provider} · skor ${sd.scan?.score??"—"}/100`
+        ? `Hızlı test tamamlandı · ${(sd.providers||[]).map(x=>`${x.name} ${x.score}/100`).join(" · ")} · Genel ${sd.scan?.score??"—"}/100`
         : (sd.note||"Test taraması kuyruğa alındı."));
       await load();
     }catch(e){setMsg(e.message)}
@@ -96,7 +98,7 @@ export default function ScanManager(){
     <form className="scan-form" onSubmit={start}>
       <label>Müşteri<select value={clientId} onChange={e=>setClientId(e.target.value)} required><option value="">Müşteri seçin</option>{clients.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label>
       <label>Sorgular <small>(isteğe bağlı, her satıra bir sorgu)</small><textarea value={query} onChange={e=>setQuery(e.target.value)} placeholder="Bu marka ne kadar görünür?&#10;En iyi alternatifler hangileri?"/></label>
-      <button disabled={busy||!clientId} title={!clientId?"Önce müşteri seçin veya oluşturun":""}>{busy?"Taranıyor…":!clientId?"Önce müşteri seçin":"⌕ Tarama Başlat"}</button>
+      <button disabled={busy||!clientId} title={!clientId?"Önce müşteri seçin veya oluşturun":""}>{busy?"Taranıyor…":!clientId?"Önce müşteri seçin":"⌕ Tümünü Tara"}</button>
     </form>
     {msg&&<p className="client-message">{msg}</p>}
 
