@@ -97,3 +97,10 @@
 .content-ideas>div{padding:10px 12px;border:1px solid #173c50;border-radius:10px;background:#081f2a}
 .content-ideas strong,.content-ideas small{display:block}
 .content-ideas small{margin-top:4px;color:#7f98a8}
+
+.report-preview{margin-top:14px;padding:14px;border:1px solid #173c50;border-radius:14px;background:#071923}
+.report-preview strong,.report-preview span{display:inline-block}
+.report-preview span{float:right;font-weight:800}
+.report-preview p{color:#9fb5c1;line-height:1.45}
+.report-preview b{display:block;margin:8px 0 5px}
+.report-preview ul{margin:0;padding-left:19px;color:#9fb5c1}
