@@ -5,6 +5,7 @@ const A=[
  ["Araştırma Ajanı","Pazar, rakip ve lead araştırması","/musteriler"],
  ["Görünürlük Ajanı","GEO/AEO taramalarını yönetir","/taramalar"],
  ["İçerik Ajanı","Tarama sonuçlarından iyileştirme önerileri üretir","/raporlar"],
+ ["Uygulama Ajanı","Eksikleri hazır içerik, schema ve görev paketine dönüştürür","/raporlar"],
  ["Satış Ajanı","Düşük skorlu müşterilerden teklif fırsatı üretir","/ajanlar"],
  ["CEO Ajanı","Yönetici özetlerini raporlar","/raporlar"]
 ];
