@@ -58,10 +58,14 @@ export default function ReportsManager(){
       <b>Hemen hazırlananlar</b><div className="content-ideas">{(implementation.readyNow||[]).map((x,i)=><div key={i}><strong>{x.title}</strong><small>{x.type}</small><p>{x.deliverable}</p></div>)}</div>
       <b>Hazır SSS</b><ul>{(implementation.faq||[]).map((x,i)=><li key={i}><strong>{x.q}</strong><br/>{x.a}</li>)}</ul>
       <b>Meta başlık</b><p>{implementation.meta?.title}</p><b>Meta açıklama</b><p>{implementation.meta?.description}</p>
-      <b>Schema.org taslağı</b><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",fontSize:11,padding:10,border:"1px solid #173c50",borderRadius:10}}>{JSON.stringify(implementation.schema?.jsonLd||{},null,2)}</pre>
+      <b>Müşteriden gerekli bilgiler</b>
+      <div className="content-ideas">{(implementation.approvalRequired||[]).map((x,i)=><div key={i}><strong>{x.field}</strong><small>{x.reason}</small></div>)}</div>
+      <details className="report-preview compact" style={{marginTop:12}}>
+        <summary><span><strong>Teknik detayları göster</strong><small>Schema.org / JSON-LD kodu</small></span><b>›</b></summary>
+        <div className="report-detail"><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere",fontSize:11,padding:10,border:"1px solid #173c50",borderRadius:10}}>{JSON.stringify(implementation.schema?.jsonLd||{},null,2)}</pre></div>
+      </details>
       <b>Lokasyon sayfası</b><p>{implementation.locationPage?.title}</p><ul>{(implementation.locationPage?.outline||[]).map((x,i)=><li key={i}>{x}</li>)}</ul>
       <b>Erişim gereken işler</b><ul>{(implementation.accessRequired||[]).map((x,i)=><li key={i}>{x.system}: {x.action}</li>)}</ul>
-      <b>Müşteri onayı gereken bilgiler</b><ul>{(implementation.approvalRequired||[]).map((x,i)=><li key={i}>{x.field}: {x.reason}</li>)}</ul>
       <b>Sonraki adımlar</b><ul>{(implementation.nextSteps||[]).map((x,i)=><li key={i}>{x}</li>)}</ul>
     </div>}</article>
   </section>;
