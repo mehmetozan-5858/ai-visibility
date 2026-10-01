@@ -30,8 +30,14 @@ export async function GET(req){
     for(const r of results)line((r.provider||"AI")+": "+(r.score??"-")+"/100",10,bold,rgb(.08,.35,.48),3);
     y-=6;line("Onerilen paket",13,bold,rgb(.05,.12,.16),5);line(o.name,11,bold,rgb(.08,.24,.31),4);
     line("Kurulum: "+o.setup,10);line("Aylik hizmet: "+o.monthly,10,reg,rgb(.12,.18,.22),8);
-    ["ChatGPT + Gemini + Perplexity gorunurluk takibi","GEO/AEO teknik ve icerik iyilestirme plani","Aylik karsilastirmali gorunurluk raporu","Icerik onerileri ve oncelikli aksiyon listesi"].forEach(bullet);
-    y-=8;line("Not",10,bold,rgb(.08,.24,.31),3);para("Bu teklif on bilgilendirme amaclidir. Nihai kapsam ve fiyat, musteri onayi ve is kapsamindan sonra kesinlestirilir.",8);
+    ["ChatGPT + Gemini + Perplexity gorunurluk takibi","GEO/AEO teknik ve icerik iyilestirme plani","SSS, meta metinleri, schema ve lokasyon sayfasi taslaklari","Web sitesi ve Google Isletme Profili icin uygulama gorevleri","Aylik karsilastirmali gorunurluk raporu"].forEach(bullet);
+    y-=8;
+    line("Calisma sekli",13,bold,rgb(.05,.12,.16),5);
+    ["1. Mevcut durum 3 yapay zeka motorunda olculur.","2. Eksikler uygulanabilir gorevlere donusturulur.","3. Musteri onayi ve gerekli erisimlerden sonra uygulama yapilir.","4. Sonraki taramada skor ve gorunurluk degisimi tekrar olculur."].forEach(x=>para(x,9));
+    y-=5;
+    line("Musteriden gerekenler",12,bold,rgb(.05,.12,.16),4);
+    ["Gerekli web sitesi erisimi veya teknik ekip koordinasyonu","Google Isletme Profili yetkisi gereken islemlerde yonetici erisimi","Adres, telefon, calisma saati, fiyat ve menu gibi gercek bilgilerin onayi"].forEach(bullet);
+    y-=8;line("Not",10,bold,rgb(.08,.24,.31),3);para("Bu teklif on bilgilendirme amaclidir. Nihai kapsam ve fiyat, musteri onayi ve is kapsamindan sonra kesinlestirilir. Dis sistemlerde degisiklikler yetki ve onay olmadan yapilmaz.",8);
     const bytes=await pdf.save(),filename="ai-visibility-teklif-"+tr(c.name).toLowerCase().replace(/[^a-z0-9]+/g,"-")+".pdf";
     return new Response(bytes,{headers:{"content-type":"application/pdf","content-disposition":`attachment; filename="${filename}"`,"cache-control":"no-store"}});
   }catch(e){return Response.json({error:"Teklif PDF olusturulamadi.",detail:String(e?.message||e).slice(0,240)},{status:500})}
