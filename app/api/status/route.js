@@ -5,7 +5,7 @@ export async function GET(){
   const providers=providerStatus();
   return Response.json({
     app:"AI Visibility",
-    version:"0.9.1",
+    version:"0.9.2",
     database:databaseStatus(),
     providers,
     billing:{configured:Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),provider:"PayTR"},
@@ -18,3 +18,5 @@ export async function GET(){
 // production-refresh-final-polish
 
 // release-0.9.1
+
+// release-0.9.2
