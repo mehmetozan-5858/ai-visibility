@@ -18,7 +18,7 @@ export default function ProspectsManager(){
      const r=await fetch("/api/prospects/discover",{method:"POST"});
      const d=await r.json();
      if(!r.ok)throw new Error(d.error||"Keşif başarısız.");
-     setMsg(d.count+" araştırma adayı havuza işlendi.");
+     setMsg(`${d.newCount??d.count} yeni aday bulundu · ${(d.sectors||[]).slice(0,6).join(" · ")}`);
      await load();
    }catch(e){setMsg(e.message)}
    finally{setDiscovering(false)}
