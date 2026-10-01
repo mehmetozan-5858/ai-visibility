@@ -100,6 +100,6 @@ export default function ScanManager(){
     </form>
     {msg&&<p className="client-message">{msg}</p>}
 
-    <div className="scan-history"><h2>Son taramalar</h2>{scans.length===0?<div className="empty">Henüz tarama yok.</div>:scans.map(s=><article className="scan-history-row" key={s.id}><div><b>{s.clientName||"Müşteri"}</b><small>{new Date(s.createdAt).toLocaleString("tr-TR")}</small></div><span>{s.status==="completed"?"Tamamlandı":s.status}</span><strong>{s.score==null?"—":s.score+"/100"}</strong></article>)}</div>
+    <div className="scan-history"><h2>Son taramalar</h2>{scans.length===0?<div className="empty">Henüz tarama yok.</div>:scans.map(s=><article className="scan-history-row" key={s.id}><div><b>{s.clientName||"Müşteri"}</b><small>{new Date(s.createdAt).toLocaleString("tr-TR")}</small></div><span>{s.status==="completed"?"Tamamlandı":s.status==="failed"?"Hata":s.status}</span><strong>{s.score==null?"—":s.score+"/100"}</strong></article>)}</div>
   </section>;
 }
