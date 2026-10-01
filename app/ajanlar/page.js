@@ -1,1 +1,3 @@
-import {Shell} from "../../components/ui"; const a=[["Araştırma Ajanı","Pazar, rakip ve lead araştırması"],["Görünürlük Ajanı","GEO/AEO taramalarını yönetir"],["İçerik Ajanı","İyileştirme önerileri hazırlar"],["Satış Ajanı","Onaylı satış taslakları hazırlar"],["CEO Ajanı","Gün sonu yönetici özetini üretir"]]; export default function Page(){return <Shell title="Ajanlar" subtitle="Otomasyon ekibinizin durumunu ve görevlerini izleyin."><section className="agent-list">{a.map(([n,d])=><article className="panel agent-row" key={n}><div><h2>{n}</h2><p>{d}</p></div><span className="ready">● Hazır</span></article>)}</section></Shell>}
+import {Shell} from "../../components/ui";
+import AgentsManager from "../../components/AgentsManager";
+export default function Page(){return <Shell title="Ajanlar" subtitle="Otomasyon ekibinizin durumunu ve görevlerini izleyin."><AgentsManager/></Shell>}
