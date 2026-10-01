@@ -1,8 +1,14 @@
 "use client";
 import {useEffect,useState} from "react";
 export default function SettingsManager(){
- const [s,setS]=useState(null);
- useEffect(()=>{fetch("/api/status",{cache:"no-store"}).then(r=>r.json()).then(setS)},[]);
+ const [s,setS]=useState(null),[err,setErr]=useState("");
+ useEffect(()=>{
+   fetch("/api/status",{cache:"no-store"})
+     .then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"Sistem durumu okunamadı.");return d})
+     .then(setS)
+     .catch(e=>setErr(e.message||"Sistem durumu okunamadı."));
+ },[]);
+ if(err)return <section className="panel settings"><div><b>Sistem durumu</b><span className="waiting">× {err}</span></div></section>;
  if(!s)return <section className="panel settings"><div><b>Sistem durumu</b><span>Kontrol ediliyor…</span></div></section>;
  const connected=s.providers?.filter(x=>x.status==="connected")||[];
  return <section className="panel settings">
