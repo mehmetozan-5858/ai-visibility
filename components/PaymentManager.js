@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 export default function PaymentManager({clientId}){
-  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false);
+  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""});
   useEffect(()=>{fetch("/api/payment?clientId="+encodeURIComponent(clientId),{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||"Ödeme bilgisi alınamadı.");return j}).then(setD).catch(e=>setErr(e.message))},[clientId]);
   if(err)return <section className="panel"><p className="client-message">{err}</p></section>;
   if(!d)return <section className="panel"><p>Ödeme bilgileri hazırlanıyor…</p></section>;
@@ -26,11 +26,20 @@ export default function PaymentManager({clientId}){
       setReported(true);setD({...d,payment:j.payment});
     }catch(e){setErr(e.message)}finally{setReporting(false)}
   }
+  async function startCardPayment(e){
+    e.preventDefault();setCardBusy(true);setErr("");
+    try{
+      const r=await fetch("/api/paytr/token",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment?.id,...cardForm})});
+      const j=await r.json();if(!r.ok)throw new Error([j.error,j.detail].filter(Boolean).join(" · "));
+      setIframeUrl(j.iframeUrl);
+    }catch(e){setErr(e.message)}finally{setCardBusy(false)}
+  }
   return <section className="grid reports-grid">
     <article className="panel">
       <h2>Paket seçimi</h2><p><b>{d.client.name}</b> için önerilen paket</p>
       <div className="content-plan"><h3>{d.plan.name}</h3><ul>
         <li>Kurulum: {d.plan.setup}</li><li>Aylık: {d.plan.monthly}</li>
+        <li><strong>Önerilen ilk ödeme: {Number(d.plan.firstPayment||0).toLocaleString("tr-TR")} TL</strong></li>
         <li>ChatGPT + Gemini + Perplexity görünürlük takibi</li><li>GEO/AEO iyileştirme planı</li><li>Aylık görünürlük raporu</li>
       </ul></div>
     </article>
@@ -49,7 +58,16 @@ export default function PaymentManager({clientId}){
         </button>
       </div>:<div className="empty">Havale/EFT ekranı hazır. Gerçek banka adı, hesap sahibi ve IBAN Vercel ortam değişkenlerine eklendiğinde burada otomatik görünecek.</div>}
       <h2 style={{marginTop:20}}>Kartla ödeme</h2>
-      <div className="empty">{d.cardReady?"Kart altyapısı yapılandırıldı; ödeme akışı bağlanacak.":"Sonraki aşamada iyzico/PayTR gibi bir sağlayıcı bağlayacağız."}</div>
+      {d.cardReady?<div className="content-plan">
+        {!iframeUrl?<form onSubmit={startCardPayment} className="scan-form" style={{margin:0}}>
+          <label>Ad soyad<input value={cardForm.name} onChange={e=>setCardForm({...cardForm,name:e.target.value})} required/></label>
+          <label>E-posta<input type="email" value={cardForm.email} onChange={e=>setCardForm({...cardForm,email:e.target.value})} required/></label>
+          <label>Telefon<input value={cardForm.phone} onChange={e=>setCardForm({...cardForm,phone:e.target.value})} required/></label>
+          <label>Adres<textarea value={cardForm.address} onChange={e=>setCardForm({...cardForm,address:e.target.value})} required/></label>
+          <button disabled={cardBusy}>{cardBusy?"Güvenli ödeme açılıyor…":"Kartla güvenli ödemeye geç"}</button>
+          <small>Kart bilgileriniz AI Visibility sunucusuna gönderilmez; PayTR güvenli ödeme formunda girilir.</small>
+        </form>:<div><iframe title="PayTR Güvenli Ödeme" src={iframeUrl} style={{width:"100%",minHeight:720,border:0,borderRadius:12,background:"#fff"}}/><button type="button" onClick={()=>setIframeUrl("")} style={{marginTop:10}}>Ödeme formunu kapat</button></div>}
+      </div>:<div className="empty">Kart ödeme modülü hazır. PayTR mağaza bilgileri eklendiğinde bu alan otomatik aktif olacak.</div>}
     </article>
   </section>;
 }
