@@ -1,6 +1,6 @@
 import {addClient,completeScan,createScan,findClientByIdentity} from "../../../../../lib/repository";
 import {getProspect,markProspectConverted} from "../../../../../lib/prospects";
-import {runProviderCheck} from "../../../../../lib/providers";
+import {runProviderChecks} from "../../../../../lib/providers";
 
 export async function POST(req,{params}){
   try{
@@ -30,28 +30,32 @@ export async function POST(req,{params}){
       },{status:202});
     }
 
-    const result=await runProviderCheck({
+    const providerRun=await runProviderChecks({
       name:prospect.name,
       domain:prospect.domain||"",
       sector:prospect.sector||"",
       city:prospect.city||""
     });
 
-    if(!result){
+    if(!providerRun.results.length){
       await markProspectConverted(id);
       return Response.json({
         client,scan:{...scan,status:"awaiting-provider"},live:false,
-        note:"Müşteri oluşturuldu. AI sağlayıcısı hazır olduğunda tarama tamamlanacak."
+        providerErrors:providerRun.errors,
+        note:"Müşteri oluşturuldu. Bağlı AI sağlayıcılarından yanıt alınamadı."
       },{status:202});
     }
 
-    const completed=await completeScan(scan.id,result);
-    await markProspectConverted(id,result.score,result.reason||"");
+    const completed=await completeScan(scan.id,providerRun.results);
+    const avg=completed?.score??0;
+    const reason=providerRun.results.map(x=>x.reason).filter(Boolean).join(" | ");
+    await markProspectConverted(id,avg,reason);
     return Response.json({
       client,
       scan:{...completed,clientName:client.name},
       live:true,
-      provider:result.provider
+      providers:providerRun.results.map(x=>({name:x.provider,score:x.score})),
+      providerErrors:providerRun.errors
     },{status:200});
   }catch(e){
     return Response.json({
