@@ -7,17 +7,22 @@ export async function GET(){
 }
 
 export async function POST(req){
+  let stage="request";
   try{
     const body=await req.json();
-    if(!body?.clientId)return Response.json({error:"Bir müşteri seçmelisiniz."},{status:400});
-    const client=await getClient(body.clientId);
-    if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
+    if(!body?.clientId)return Response.json({error:"Bir müşteri seçmelisiniz.",stage},{status:400});
 
+    stage="client";
+    const client=await getClient(body.clientId);
+    if(!client)return Response.json({error:"Müşteri bulunamadı.",stage},{status:404});
+
+    stage="scan-create";
     const scan=await createScan(body.clientId,body.queries||[]);
     if(!scan.persisted){
-      return Response.json({scan,live:false,note:"Veritabanı bağlı olmadığı için tarama kalıcı kaydedilemedi."},{status:202});
+      return Response.json({scan,live:false,stage,note:"Veritabanı bağlı olmadığı için tarama kalıcı kaydedilemedi."},{status:202});
     }
 
+    stage="ai-provider";
     const result=await runProviderCheck({
       name:client.name,
       domain:client.domain,
@@ -30,14 +35,20 @@ export async function POST(req){
       return Response.json({
         scan:{...scan,status:"awaiting-provider"},
         live:false,
-        note:"Tarama kaydedildi. En az bir canlı AI sağlayıcı anahtarı gerekli."
+        stage,
+        note:"Tarama kaydedildi ancak canlı AI sağlayıcısı yanıt vermedi."
       },{status:202});
     }
 
+    stage="scan-complete";
     const completed=await completeScan(scan.id,result);
-    return Response.json({scan:{...completed,clientName:client.name},live:true,provider:result.provider},{status:200});
+    return Response.json({scan:{...completed,clientName:client.name},live:true,provider:result.provider,stage:"done"},{status:200});
   }catch(e){
     const message=e?.code==="23503"?"Geçerli bir müşteri seçilmelidir.":"Tarama tamamlanamadı.";
-    return Response.json({error:message,detail:process.env.NODE_ENV==="development"?e.message:undefined},{status:e?.code==="23503"?400:500});
+    return Response.json({
+      error:message,
+      stage,
+      detail:(e?.message||"Bilinmeyen hata").slice(0,500)
+    },{status:e?.code==="23503"?400:500});
   }
 }
