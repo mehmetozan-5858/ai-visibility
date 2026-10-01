@@ -21,10 +21,10 @@ export default function ScanManager(){
       const queries=query.split("\n").map(x=>x.trim()).filter(Boolean);
       const r=await fetch("/api/scans",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clientId,queries})});
       const d=await r.json();
-      if(!r.ok)throw new Error(d.error||"Tarama başlatılamadı.");
+      if(!r.ok)throw new Error([d.error,d.stage&&`Aşama: ${d.stage}`,d.detail].filter(Boolean).join(" · ")||"Tarama başlatılamadı.");
       setMsg(d.live?`Tarama tamamlandı · ${d.provider} · skor ${d.scan.score}/100`:(d.note||"Tarama kuyruğa alındı."));
       await load();
-    }catch(e){setMsg(e.message)}finally{setBusy(false)}
+    }catch(e){setMsg(e.message);await load()}finally{setBusy(false)}
   }
 
   async function quickTest(){
