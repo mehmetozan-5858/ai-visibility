@@ -8,6 +8,8 @@ export default function ProspectsManager(){
    const r=await fetch("/api/prospects",{cache:"no-store"});
    const d=await r.json();
    setRows(d.prospects||[]);
+   setConverting("");
+   setScanning("");
  }
 
  useEffect(()=>{load()},[]);
