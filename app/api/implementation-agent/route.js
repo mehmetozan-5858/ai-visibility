@@ -1,4 +1,4 @@
-import {getClient,getLatestCompletedScan} from "../../../lib/repository";
+import {getClient,getLatestCompletedScan,saveImplementationWorkItems} from "../../../lib/repository";
 import {runImplementationPlan} from "../../../lib/providers";
 
 export async function POST(req){
@@ -14,7 +14,8 @@ export async function POST(req){
       score:scan.score,
       results:Array.isArray(scan.results)?scan.results:[]
     });
-    return Response.json({client:{id:client.id,name:client.name,domain:client.domain},scanId:scan.id,plan});
+    const workItems=await saveImplementationWorkItems(client.id,plan);
+    return Response.json({client:{id:client.id,name:client.name,domain:client.domain},scanId:scan.id,plan,workItems});
   }catch(e){
     return Response.json({error:"Uygulama paketi hazırlanamadı.",detail:String(e?.message||e).slice(0,300)},{status:500});
   }
