@@ -1,5 +1,5 @@
 import {completeScan,createScan,failScan,getClient,listScans} from "../../../lib/repository";
-import {runProviderCheck} from "../../../lib/providers";
+import {runProviderChecks} from "../../../lib/providers";
 
 export async function GET(){
   try{return Response.json({scans:await listScans(),mode:process.env.DATABASE_URL||process.env.STORAGE_URL?"database":"demo-only"});}
@@ -23,7 +23,7 @@ export async function POST(req){
     }
 
     stage="ai-provider";
-    const result=await runProviderCheck({
+    const providerRun=await runProviderChecks({
       name:client.name,
       domain:client.domain,
       sector:client.plan||"",
@@ -31,18 +31,25 @@ export async function POST(req){
       queries:Array.isArray(body.queries)?body.queries:[]
     });
 
-    if(!result){
+    if(!providerRun.results.length){
       return Response.json({
         scan:{...scan,status:"awaiting-provider"},
         live:false,
         stage,
-        note:"Tarama kaydedildi ancak canlı AI sağlayıcısı yanıt vermedi."
+        providerErrors:providerRun.errors,
+        note:"Tarama kaydedildi ancak bağlı AI sağlayıcılarından yanıt alınamadı."
       },{status:202});
     }
 
     stage="scan-complete";
-    const completed=await completeScan(scan.id,result);
-    return Response.json({scan:{...completed,clientName:client.name},live:true,provider:result.provider,stage:"done"},{status:200});
+    const completed=await completeScan(scan.id,providerRun.results);
+    return Response.json({
+      scan:{...completed,clientName:client.name},
+      live:true,
+      providers:providerRun.results.map(x=>({name:x.provider,score:x.score})),
+      providerErrors:providerRun.errors,
+      stage:"done"
+    },{status:200});
   }catch(e){
     const detail=(e?.message||"Bilinmeyen hata").slice(0,500);
     if(scanId){
