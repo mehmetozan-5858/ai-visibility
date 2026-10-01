@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import {getPaymentById} from "../../../../lib/repository";
+import {verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 export const runtime="nodejs";
 
 function configured(){return Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT)}
@@ -9,8 +10,11 @@ export async function POST(req){
   try{
     if(!configured())return Response.json({error:"PayTR henüz yapılandırılmadı."},{status:503});
     const body=await req.json();
+    const access=await verifyPaymentAccessToken(body?.token||"");
+    if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
     const payment=await getPaymentById(body?.paymentId);
     if(!payment)return Response.json({error:"Ödeme kaydı bulunamadı."},{status:404});
+    if(payment.clientId!==access.clientId)return Response.json({error:"Bu bağlantı bu ödeme için geçerli değil."},{status:403});
     if(payment.status==="paid")return Response.json({error:"Bu ödeme zaten tamamlandı."},{status:409});
 
     const user_name=clean(body?.name,60),email=clean(body?.email,100),user_phone=clean(body?.phone,20),user_address=clean(body?.address,400);
@@ -35,8 +39,8 @@ export async function POST(req){
       merchant_id,user_ip,merchant_oid,email,payment_amount,paytr_token,user_basket,
       debug_on:process.env.PAYTR_DEBUG==="0"?"0":"1",
       no_installment,max_installment,user_name,user_address,user_phone,
-      merchant_ok_url:origin+"/odeme/basarili?clientId="+encodeURIComponent(payment.clientId),
-      merchant_fail_url:origin+"/odeme/basarisiz?clientId="+encodeURIComponent(payment.clientId),
+      merchant_ok_url:origin+"/odeme/basarili",
+      merchant_fail_url:origin+"/odeme/basarisiz",
       timeout_limit:"30",currency,test_mode,lang:"tr"
     });
     const r=await fetch("https://www.paytr.com/odeme/api/get-token",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:form,cache:"no-store"});
