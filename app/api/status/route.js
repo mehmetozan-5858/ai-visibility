@@ -13,4 +13,4 @@ export async function GET(){
     safeDemo:!getDatabaseUrl()||!providers.some(x=>x.status==="connected")
   });
 }
-// production-refresh-auth
+// production-refresh-secure-checkout
