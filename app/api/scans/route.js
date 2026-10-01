@@ -46,6 +46,7 @@ export async function POST(req){
     return Response.json({
       scan:{...completed,clientName:client.name},
       live:true,
+      provider:providerRun.results.map(x=>x.provider).join(" + "),
       providers:providerRun.results.map(x=>({name:x.provider,score:x.score})),
       providerErrors:providerRun.errors,
       stage:"done"
