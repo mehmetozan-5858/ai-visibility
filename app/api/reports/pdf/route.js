@@ -94,18 +94,31 @@ export async function GET(req){
       line("Saglayici sonuclari",14,bold,rgb(.05,.12,.16),7);
       line(results.map(r=>(r.provider||"AI")+": "+(r.score??"-")+"/100").join("    "),10,bold,rgb(.08,.35,.48),12);
 
-      for(const result of results){
-        need(85);
-        line((result.provider||"AI")+" analizi",12,bold,rgb(.04,.19,.28),4);
-        if(result.summary)paragraph(result.summary,9);
-        if(Array.isArray(result.findings)&&result.findings.length){
-          line("Temel bulgular",9,bold,rgb(.08,.24,.31),2);bullets(result.findings,3);
-        }
-        if(Array.isArray(result.recommendations)&&result.recommendations.length){
-          line("Oncelikli aksiyonlar",9,bold,rgb(.08,.24,.31),2);bullets(result.recommendations,3);
-        }
-        y-=6;
+      const findings=[...new Set(results.flatMap(r=>Array.isArray(r.findings)?r.findings:[]).filter(Boolean))].slice(0,3);
+      const recs=[...new Set(results.flatMap(r=>Array.isArray(r.recommendations)?r.recommendations:[]).filter(Boolean))].slice(0,4);
+
+      line("Yonetici ozeti",14,bold,rgb(.05,.12,.16),7);
+      paragraph("Bu rapor, markanin ChatGPT, Gemini ve Perplexity uzerindeki mevcut yapay zeka gorunurlugunu birlikte degerlendirir. Amac yalnizca eksikleri gostermek degil, uygulanabilir bir iyilestirme plani olusturmaktir.",9);
+
+      if(findings.length){
+        line("En onemli bulgular",12,bold,rgb(.05,.12,.16),5);
+        bullets(findings,3);
       }
+
+      if(recs.length){
+        line("Bizim uygulayacagimiz oncelikli isler",12,bold,rgb(.05,.12,.16),5);
+        bullets(recs,4);
+      }
+
+      line("Musteriden gerekenler",12,bold,rgb(.05,.12,.16),5);
+      bullets([
+        "Web sitesi yonetim erisimi veya teknik ekip ile iletisim izni",
+        "Google Isletme Profili icin gerekli yonetici yetkisi",
+        "Adres, telefon, calisma saatleri, fiyat ve menu gibi gercek isletme bilgilerinin onayi"
+      ],3);
+
+      line("Sonraki adim",12,bold,rgb(.05,.12,.16),5);
+      paragraph("Onaydan sonra uygulama gorevleri siraya alinir, gerekli duzenlemeler yapilir ve sonraki taramada skor degisimi ChatGPT, Gemini ve Perplexity uzerinde tekrar olculur.",9);
     }
 
     need(28);
