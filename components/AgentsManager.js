@@ -5,7 +5,7 @@ const A=[
  ["Araştırma Ajanı","Pazar, rakip ve lead araştırması","/musteriler"],
  ["Görünürlük Ajanı","GEO/AEO taramalarını yönetir","/taramalar"],
  ["İçerik Ajanı","Tarama sonuçlarından iyileştirme önerileri üretir","/raporlar"],
- ["Satış Ajanı","Onaylı satış akışını yönetir","/musteriler"],
+ ["Satış Ajanı","Düşük skorlu müşterilerden teklif fırsatı üretir","/ajanlar"],
  ["CEO Ajanı","Yönetici özetlerini raporlar","/raporlar"]
 ];
 export default function AgentsManager(){
