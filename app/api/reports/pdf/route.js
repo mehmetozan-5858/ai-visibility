@@ -6,18 +6,29 @@ export const runtime="nodejs";
 const tr=v=>String(v??"")
   .replaceAll("ğ","g").replaceAll("Ğ","G")
   .replaceAll("ş","s").replaceAll("Ş","S")
-  .replaceAll("ı","i").replaceAll("İ","I");
+  .replaceAll("ı","i").replaceAll("İ","I")
+  .replaceAll("ç","c").replaceAll("Ç","C")
+  .replaceAll("ö","o").replaceAll("Ö","O")
+  .replaceAll("ü","u").replaceAll("Ü","U");
 
-function wrap(text,max=82){
+function wrap(text,max=86){
   const words=tr(text).split(/\s+/).filter(Boolean);
-  const lines=[]; let line="";
+  const lines=[];let line="";
   for(const w of words){
     const next=line?line+" "+w:w;
-    if(next.length>max){ if(line)lines.push(line); line=w; }
-    else line=next;
+    if(next.length>max){if(line)lines.push(line);line=w}else line=next;
   }
   if(line)lines.push(line);
   return lines;
+}
+
+function latestPerClient(rows=[]){
+  const map=new Map();
+  for(const row of rows){
+    if(row.status!=="completed"||!Number.isFinite(Number(row.score)))continue;
+    if(!map.has(row.clientId))map.set(row.clientId,row);
+  }
+  return [...map.values()];
 }
 
 export async function GET(req){
@@ -25,10 +36,14 @@ export async function GET(req){
     const url=new URL(req.url);
     const clientId=url.searchParams.get("clientId")||"";
     const [allScans,clients]=await Promise.all([listScans(100),listClients()]);
-    const rows=clientId?allScans.filter(x=>x.clientId===clientId):allScans;
-    const completed=rows.filter(x=>x.status==="completed"&&Number.isFinite(Number(x.score)));
-    const avg=completed.length?Math.round(completed.reduce((a,x)=>a+Number(x.score),0)/completed.length):null;
     const client=clientId?clients.find(x=>x.id===clientId):null;
+
+    let completed;
+    if(clientId){
+      completed=allScans.filter(x=>x.clientId===clientId&&x.status==="completed"&&Number.isFinite(Number(x.score))).slice(0,1);
+    }else{
+      completed=latestPerClient(allScans);
+    }
 
     const pdf=await PDFDocument.create();
     const regular=await pdf.embedFont(StandardFonts.Helvetica);
@@ -39,63 +54,70 @@ export async function GET(req){
     const newPage=()=>{page=pdf.addPage([W,H]);y=H-M;};
     const need=h=>{if(y-h<M)newPage();};
     const line=(text,size=10,font=regular,color=rgb(.12,.18,.22),gap=4)=>{
-      need(size+gap);
-      page.drawText(tr(text),{x:M,y:y-size,size,font,color});
-      y-=size+gap;
+      need(size+gap);page.drawText(tr(text),{x:M,y:y-size,size,font,color});y-=size+gap;
     };
-    const paragraph=(text,size=10,font=regular,color=rgb(.2,.28,.33),max=82)=>{
-      for(const l of wrap(text,max))line(l,size,font,color,3);
-      y-=3;
+    const paragraph=(text,size=9,font=regular,color=rgb(.2,.28,.33),max=86)=>{
+      for(const l of wrap(text,max))line(l,size,font,color,2);y-=2;
     };
-    const bullets=(arr=[])=>{
-      for(const item of arr.slice(0,8)){
-        for(const [i,l] of wrap(item,74).entries()) line((i===0?"- ":"  ")+l,9,regular,rgb(.22,.3,.34),2);
+    const bullets=(arr=[],maxItems=4)=>{
+      for(const item of arr.slice(0,maxItems)){
+        for(const [i,l] of wrap(item,78).entries())line((i===0?"- ":"  ")+l,8.5,regular,rgb(.22,.3,.34),1.5);
       }
-      y-=3;
+      y-=2;
     };
 
-    line("AI VISIBILITY",10,bold,rgb(.08,.45,.78),5);
-    line("Gorunurluk Raporu",24,bold,rgb(.05,.12,.16),7);
-    line(client?client.name:"Tum Musteriler",14,regular,rgb(.35,.44,.5),10);
-    line("Toplam tarama: "+rows.length+"    Tamamlanan: "+completed.length+"    Ortalama skor: "+(avg==null?"-":avg+"/100"),11,bold,rgb(.08,.24,.31),14);
-    line("Tamamlanan taramalar",15,bold,rgb(.05,.12,.16),9);
+    line("AI VISIBILITY",10,bold,rgb(.08,.45,.78),4);
+    line(client?"AI Gorunurluk Raporu":"AI Gorunurluk Portfoy Ozeti",22,bold,rgb(.05,.12,.16),6);
+    line(client?client.name:"Son taramasi bulunan musteriler",13,regular,rgb(.35,.44,.5),12);
 
     if(!completed.length){
       paragraph("Tamamlanmis tarama bulunamadi.");
-    }
-
-    for(const scan of completed){
-      need(90);
-      line(scan.clientName||"Musteri",13,bold,rgb(.04,.19,.28),4);
+    } else if(!clientId){
+      const avg=Math.round(completed.reduce((a,x)=>a+Number(x.score),0)/completed.length);
+      line("Musteri: "+completed.length+"    Ortalama skor: "+avg+"/100",11,bold,rgb(.08,.24,.31),12);
+      line("Son gorunurluk sonuclari",14,bold,rgb(.05,.12,.16),7);
+      for(const scan of completed){
+        need(34);
+        line((scan.clientName||"Musteri")+"    "+scan.score+"/100",10,bold,rgb(.04,.19,.28),2);
+        const results=Array.isArray(scan.results)?scan.results:[];
+        if(results.length)line(results.map(r=>(r.provider||"AI")+" "+(r.score??"-")+"/100").join("   "),8.5,regular,rgb(.38,.47,.52),5);
+      }
+      y-=6;
+      paragraph("Detayli musteri raporu icin uygulamada tek bir musteri secin ve PDF raporunu yeniden indirin.",8,regular,rgb(.45,.52,.56));
+    } else {
+      const scan=completed[0];
+      line("Genel AI gorunurluk skoru: "+scan.score+"/100",14,bold,rgb(.04,.25,.36),8);
       const dt=new Date(scan.completedAt||scan.createdAt);
-      line("Tarih: "+dt.toLocaleString("tr-TR")+"   Skor: "+scan.score+"/100",9,regular,rgb(.42,.5,.55),6);
+      line("Son tarama: "+dt.toLocaleString("tr-TR"),9,regular,rgb(.42,.5,.55),12);
+
       const results=Array.isArray(scan.results)?scan.results:[];
+      line("Saglayici sonuclari",14,bold,rgb(.05,.12,.16),7);
+      line(results.map(r=>(r.provider||"AI")+": "+(r.score??"-")+"/100").join("    "),10,bold,rgb(.08,.35,.48),12);
+
       for(const result of results){
-        need(55);
-        line((result.provider||"AI")+" - "+(result.score??"-")+"/100",10,bold,rgb(.08,.35,.48),4);
+        need(85);
+        line((result.provider||"AI")+" analizi",12,bold,rgb(.04,.19,.28),4);
         if(result.summary)paragraph(result.summary,9);
         if(Array.isArray(result.findings)&&result.findings.length){
-          line("Bulgular",9,bold,rgb(.08,.24,.31),2); bullets(result.findings.slice(0,4));
+          line("Temel bulgular",9,bold,rgb(.08,.24,.31),2);bullets(result.findings,3);
         }
         if(Array.isArray(result.recommendations)&&result.recommendations.length){
-          line("Oneriler",9,bold,rgb(.08,.24,.31),2); bullets(result.recommendations.slice(0,4));
+          line("Oncelikli aksiyonlar",9,bold,rgb(.08,.24,.31),2);bullets(result.recommendations,3);
         }
+        y-=6;
       }
-      y-=8;
     }
 
-    need(30);
-    line("AI Visibility tarafindan olusturuldu.",8,regular,rgb(.52,.59,.63),0);
+    need(28);
+    line("AI Visibility - ChatGPT, Gemini ve Perplexity gorunurluk analizi",8,regular,rgb(.52,.59,.63),0);
 
     const bytes=await pdf.save();
-    const filename="ai-visibility-"+tr(client?.name||"tum-musteriler").toLowerCase().replace(/[^a-z0-9]+/g,"-")+".pdf";
-    return new Response(bytes,{
-      headers:{
-        "content-type":"application/pdf",
-        "content-disposition":`attachment; filename="${filename}"`,
-        "cache-control":"no-store"
-      }
-    });
+    const filename="ai-visibility-"+tr(client?.name||"portfoy-ozeti").toLowerCase().replace(/[^a-z0-9]+/g,"-")+".pdf";
+    return new Response(bytes,{headers:{
+      "content-type":"application/pdf",
+      "content-disposition":`attachment; filename="${filename}"`,
+      "cache-control":"no-store"
+    }});
   }catch(e){
     return Response.json({error:"PDF raporu olusturulamadi.",detail:String(e?.message||e).slice(0,300)},{status:500});
   }
