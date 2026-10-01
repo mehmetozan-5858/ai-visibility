@@ -1,16 +1,34 @@
-import {seedProspects} from "../../../../lib/prospects";
-const STARTER=[
-{name:"DentSivas Özel Diş Polikliniği ve İmplant Merkezi",domain:"",sector:"Diş Kliniği",city:"Sivas",source:"research"},
-{name:"Sivas Aydent Ağız ve Diş Sağlığı Polikliniği",domain:"",sector:"Diş Kliniği",city:"Sivas",source:"research"},
-{name:"Dent Bağdat Ağız ve Diş Sağlığı Polikliniği",domain:"",sector:"Diş Kliniği",city:"Sivas",source:"research"},
-{name:"Asya Ağız Ve Diş Sağlığı Polikliniği",domain:"",sector:"Diş Kliniği",city:"Sivas",source:"research"},
-{name:"MyBeauty Güzellik Merkezi",domain:"",sector:"Güzellik Salonu",city:"Sivas",source:"research"},
-{name:"Estedermal Sivas Güzellik Salonu",domain:"",sector:"Güzellik Salonu",city:"Sivas",source:"research"},
-{name:"EOSS BEAUTY SİVAS",domain:"",sector:"Güzellik Salonu",city:"Sivas",source:"research"},
-{name:"KURT HOME",domain:"",sector:"Mobilya Mağazası",city:"Sivas",source:"research"},
-{name:"Lusse Home Mobilya Mağazası Sivas",domain:"",sector:"Mobilya Mağazası",city:"Sivas",source:"research"},
-{name:"Sivas Sultan Otel",domain:"",sector:"Otel",city:"Sivas",source:"research"},
-{name:"Özkaya Otel",domain:"",sector:"Otel",city:"Sivas",source:"research"},
-{name:"Beyaz İnci Otel",domain:"",sector:"Otel",city:"Sivas",source:"research"}
-];
-export async function POST(){try{const prospects=await seedProspects(STARTER);return Response.json({prospects,count:prospects.length,mode:process.env.DATABASE_URL?"database":"demo-only"})}catch(e){return Response.json({error:"Aday keşfi kaydedilemedi."},{status:500})}}
+import {seedProspects,getProspectNames} from "../../../../lib/prospects";
+import {discoverBusinesses} from "../../../../lib/providers";
+
+export async function POST(req){
+  try{
+    let city="Sivas";
+    try{
+      const body=await req.json();
+      if(body?.city)city=String(body.city).trim()||"Sivas";
+    }catch{}
+
+    const existingNames=await getProspectNames();
+    const found=await discoverBusinesses({city,existingNames});
+    if(!found.length){
+      return Response.json({error:"Yeni ve doğrulanabilir aday bulunamadı. Daha sonra tekrar deneyin."},{status:404});
+    }
+    const prospects=await seedProspects(found);
+    const newOnes=prospects.filter(x=>!existingNames.some(n=>n.toLocaleLowerCase("tr-TR")===x.name.toLocaleLowerCase("tr-TR")));
+    return Response.json({
+      prospects,
+      count:prospects.length,
+      newCount:newOnes.length,
+      sectors:[...new Set(prospects.map(x=>x.sector).filter(Boolean))],
+      city,
+      mode:process.env.DATABASE_URL?"database":"demo-only",
+      discovery:"perplexity-web"
+    });
+  }catch(e){
+    return Response.json({
+      error:"Canlı aday keşfi yapılamadı.",
+      detail:String(e?.message||e).slice(0,300)
+    },{status:500});
+  }
+}
