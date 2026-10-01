@@ -12,3 +12,9 @@
 .mv-actiongrid>a{height:78px;border-radius:10px;gap:8px;font-size:8px}.mv-actiongrid b{font-size:22px}
 .mv-nav{height:calc(62px + env(safe-area-inset-bottom))}.mv-nav b{font-size:17px}.mv-nav span{font-size:8px}
 }
+
+/* Active navigation state */
+.mv-nav a{cursor:pointer;pointer-events:auto;transition:.18s ease}
+.mv-nav a:hover,.mv-nav a:focus-visible,.mv-nav a.active{color:#f4fbff}
+.mv-nav a.active b{color:#35dfb2;filter:drop-shadow(0 0 8px #35dfb288)}
+.mv-nav a.active span{font-weight:800;color:#74c9ff}
