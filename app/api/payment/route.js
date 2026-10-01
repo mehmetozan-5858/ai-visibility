@@ -1,4 +1,5 @@
-import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment} from "../../../lib/repository";
+import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById} from "../../../lib/repository";
+import {verifyPaymentAccessToken} from "../../../lib/admin-auth";
 function money(envName,fallback){const n=Number(process.env[envName]);return Number.isFinite(n)&&n>0?Math.round(n):fallback}
 function planFor(score){
   if(score<=30){
@@ -14,8 +15,11 @@ function planFor(score){
 }
 export async function GET(req){
   try{
-    const id=new URL(req.url).searchParams.get("clientId"),candidates=await getSalesCandidates(50),client=candidates.find(x=>x.id===id)||null;
-    if(!client)return Response.json({error:"Musteri bulunamadi."},{status:404});
+    const token=new URL(req.url).searchParams.get("token")||"";
+    const access=await verifyPaymentAccessToken(token);
+    if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
+    const candidates=await getSalesCandidates(50),client=candidates.find(x=>x.id===access.clientId)||null;
+    if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
     const plan=planFor(Number(client.score)||0);
     const payment=await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
     return Response.json({
@@ -35,7 +39,11 @@ export async function GET(req){
 export async function POST(req){
   try{
     const body=await req.json();
-    if(!body?.paymentId)return Response.json({error:"Ödeme kaydı bulunamadı."},{status:400});
+    if(!body?.paymentId||!body?.token)return Response.json({error:"Ödeme kaydı veya güvenli bağlantı eksik."},{status:400});
+    const access=await verifyPaymentAccessToken(body.token);
+    if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
+    const current=await getPaymentById(body.paymentId);
+    if(!current||current.clientId!==access.clientId)return Response.json({error:"Bu ödeme bağlantısı bu kayıt için geçerli değil."},{status:403});
     const payment=await reportPayment(body.paymentId);
     if(!payment)return Response.json({error:"Ödeme bildirimi alınamadı veya daha önce bildirildi."},{status:409});
     return Response.json({payment,message:"Ödeme bildiriminiz alındı. Banka kontrolünden sonra paket aktif edilecektir."});
