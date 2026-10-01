@@ -22,9 +22,13 @@ export default function ScanManager(){
       const r=await fetch("/api/scans",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({clientId,queries})});
       const d=await r.json();
       if(!r.ok)throw new Error([d.error,d.stage&&`Aşama: ${d.stage}`,d.detail].filter(Boolean).join(" · ")||"Tarama başlatılamadı.");
-      setMsg(d.live
-        ? `Üçlü tarama tamamlandı · ${(d.providers||[]).map(x=>`${x.name} ${x.score}/100`).join(" · ")} · Genel ${d.scan.score}/100`
-        : (d.note||"Tarama kuyruğa alındı."));
+      if(d.live){
+        const ok=d.providers||[];
+        const bad=d.providerErrors||[];
+        const okText=ok.map(x=>`${x.name} ${x.score}/100`).join(" · ");
+        const badText=bad.map(x=>`${x.provider}: ${x.error}`).join(" · ");
+        setMsg(`${ok.length}/3 sağlayıcı tamamlandı · ${okText} · Genel ${d.scan.score}/100${badText?` · Hata: ${badText}`:""}`);
+      }else setMsg(d.note||"Tarama kuyruğa alındı.");
       await load();
     }catch(e){setMsg(e.message);await load()}finally{setBusy(false)}
   }
@@ -57,9 +61,13 @@ export default function ScanManager(){
       })});
       const sd=await sr.json();
       if(!sr.ok)throw new Error(sd.error||"Test taraması başlatılamadı.");
-      setMsg(sd.live
-        ? `Hızlı test tamamlandı · ${(sd.providers||[]).map(x=>`${x.name} ${x.score}/100`).join(" · ")} · Genel ${sd.scan?.score??"—"}/100`
-        : (sd.note||"Test taraması kuyruğa alındı."));
+      if(sd.live){
+        const ok=sd.providers||[];
+        const bad=sd.providerErrors||[];
+        const okText=ok.map(x=>`${x.name} ${x.score}/100`).join(" · ");
+        const badText=bad.map(x=>`${x.provider}: ${x.error}`).join(" · ");
+        setMsg(`Hızlı test · ${ok.length}/3 tamamlandı · ${okText} · Genel ${sd.scan?.score??"—"}/100${badText?` · Hata: ${badText}`:""}`);
+      }else setMsg(sd.note||"Test taraması kuyruğa alındı.");
       await load();
     }catch(e){setMsg(e.message)}
     finally{setBusy(false);setCreating(false)}
