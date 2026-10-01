@@ -69,13 +69,17 @@ export async function GET(req){
       line(scan.clientName||"Musteri",13,bold,rgb(.04,.19,.28),4);
       const dt=new Date(scan.completedAt||scan.createdAt);
       line("Tarih: "+dt.toLocaleString("tr-TR")+"   Skor: "+scan.score+"/100",9,regular,rgb(.42,.5,.55),6);
-      const result=Array.isArray(scan.results)?scan.results[0]||{}:{};
-      if(result.summary)paragraph(result.summary,10);
-      if(Array.isArray(result.findings)&&result.findings.length){
-        line("Bulgular",10,bold,rgb(.08,.24,.31),3); bullets(result.findings);
-      }
-      if(Array.isArray(result.recommendations)&&result.recommendations.length){
-        line("Oneriler",10,bold,rgb(.08,.24,.31),3); bullets(result.recommendations);
+      const results=Array.isArray(scan.results)?scan.results:[];
+      for(const result of results){
+        need(55);
+        line((result.provider||"AI")+" - "+(result.score??"-")+"/100",10,bold,rgb(.08,.35,.48),4);
+        if(result.summary)paragraph(result.summary,9);
+        if(Array.isArray(result.findings)&&result.findings.length){
+          line("Bulgular",9,bold,rgb(.08,.24,.31),2); bullets(result.findings.slice(0,4));
+        }
+        if(Array.isArray(result.recommendations)&&result.recommendations.length){
+          line("Oneriler",9,bold,rgb(.08,.24,.31),2); bullets(result.recommendations.slice(0,4));
+        }
       }
       y-=8;
     }
