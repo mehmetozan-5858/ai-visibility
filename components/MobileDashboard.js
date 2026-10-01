@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
+import LogoutButton from "./LogoutButton";
 
 const agents=[["research","Araştırma Ajanı","Pazar, rakip ve lead araştırması"],["visibility","Görünürlük Ajanı","GEO / AEO tarama kuyruğu"],["content","İçerik Ajanı","İyileştirme taslakları"],["sales","Satış Ajanı","Dış iletişim insan onaylı"]];
 
@@ -37,7 +38,7 @@ export default function MobileDashboard(){
 
   const stats=[
     ["user","Aktif müşteri",String(summary.activeClients||0),"Müşterileri gör","/musteriler"],
-    ["cash","Aylık gelir","$"+String(summary.mrr||0),"Gelir raporu","/raporlar"],
+    ["cash","Aylık gelir",Number(summary.mrr||0).toLocaleString("tr-TR")+" TL","Gelir raporu","/raporlar"],
     ["search","Bugünkü tarama",String(summary.scansToday||0),"Raporları gör","/taramalar"],
     ["check","Onay bekleyen",String(summary.approvals||0),"Onayları gör","/ajanlar"]
   ];
@@ -49,7 +50,7 @@ export default function MobileDashboard(){
   ];
 
 return <div className="mv">
-<header className="mv-top"><div className="mv-menu">☰</div><Link href="/" className="mv-brand"><span>A</span><div><b>AI VISIBILITY</b><small>GEO / AEO ABONELİK YÖNETİM PANELİ</small></div></Link><div className="mv-safe">{authReady?"● CANLI / KORUMALI":"○ KORUMA BEKLİYOR"}</div><div className="mv-avatar">●</div></header>
+<header className="mv-top"><div className="mv-menu">☰</div><Link href="/" className="mv-brand"><span>A</span><div><b>AI VISIBILITY</b><small>GEO / AEO ABONELİK YÖNETİM PANELİ</small></div></Link><div className="mv-safe">{authReady?"● CANLI / KORUMALI":"○ KORUMA BEKLİYOR"}</div><div className="mv-avatar"><LogoutButton compact/></div></header>
 <section className="mv-hero"><div className="mv-copy"><h1>Markanızı<br/>her yerde <em>görünür yapın</em></h1><p>Yapay zeka, arama motorları ve dijital platformlarda markanızın görünürlüğünü artırın.</p></div><div className="mv-globe"><div className="earth">AI</div><span className="g">G</span><span className="c">◎</span><span className="b">B</span><span className="p">✦</span></div></section>
 <section className="mv-stats">{stats.map(([i,n,v,cta,h],k)=><a href={h} className={"mv-stat s"+k} key={n}><i>{i==="user"?"♟":i==="cash"?"▰":i==="search"?"⌕":"✓"}</i><span>{n}</span><strong>{v}</strong><b>↑ %0</b><small>{cta} →</small></a>)}</section>
 <section className="mv-duo"><article className="mv-card mv-score"><h2>AI Görünürlük Skorunuz <small>ⓘ</small></h2><div className="mv-scorebody"><div className="mv-ring"><strong>{avgScore}</strong><span>/100</span></div><div className="mv-bench"><span>Canlı sağlayıcı</span><strong>{providers.filter(x=>x.status==="connected").length}<small>/3</small></strong><div><i style={{width:(providers.filter(x=>x.status==="connected").length/3*100)+"%"}}/></div><b>{completed.length} tamamlanan tarama</b><small>Gerçek veriden hesaplandı</small></div></div><a href="/taramalar" className="mv-button">Detaylı analiz yap →</a></article>
