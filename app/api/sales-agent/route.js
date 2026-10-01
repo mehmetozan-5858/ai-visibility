@@ -1,4 +1,5 @@
 import {getSalesCandidates,upsertSalesOpportunity} from "../../../lib/repository";
+import {createPaymentAccessToken} from "../../../lib/admin-auth";
 
 export async function GET(){
   try{
@@ -58,7 +59,8 @@ export async function POST(req){
     const offer=buildOffer(c);
     const priority=offer.priority==="yüksek"?"high":offer.priority==="orta"?"medium":"low";
     await upsertSalesOpportunity(c.id,{priority});
-    return Response.json({client:c,offer});
+    const paymentToken=await createPaymentAccessToken(c.id);
+    return Response.json({client:c,offer,paymentUrl:"/odeme?token="+encodeURIComponent(paymentToken)});
   }catch(e){
     return Response.json({error:"Satış teklifi hazırlanamadı.",detail:String(e?.message||e).slice(0,250)},{status:500});
   }
