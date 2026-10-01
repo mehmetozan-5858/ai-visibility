@@ -8,7 +8,7 @@ export async function GET(){
     version:"0.6.0",
     database:databaseStatus(),
     providers,
-    billing:{configured:Boolean(process.env.BILLING_SECRET_KEY)},
+    billing:{configured:Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),provider:"PayTR"},
     auth:{configured:authConfigured()},
     safeDemo:!getDatabaseUrl()||!providers.some(x=>x.status==="connected")
   });
