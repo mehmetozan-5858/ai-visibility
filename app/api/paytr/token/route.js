@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import {getPaymentById} from "../../../../lib/repository";
+import {getPaymentById,recordPaymentConsent} from "../../../../lib/repository";
 import {verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 export const runtime="nodejs";
 
@@ -10,12 +10,14 @@ export async function POST(req){
   try{
     if(!configured())return Response.json({error:"PayTR henüz yapılandırılmadı."},{status:503});
     const body=await req.json();
+    if(body?.consent!==true)return Response.json({error:"Hizmet başlangıcı ve sözleşme onayı gereklidir."},{status:400});
     const access=await verifyPaymentAccessToken(body?.token||"");
     if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
     const payment=await getPaymentById(body?.paymentId);
     if(!payment)return Response.json({error:"Ödeme kaydı bulunamadı."},{status:404});
     if(payment.clientId!==access.clientId)return Response.json({error:"Bu bağlantı bu ödeme için geçerli değil."},{status:403});
     if(payment.status==="paid")return Response.json({error:"Bu ödeme zaten tamamlandı."},{status:409});
+    await recordPaymentConsent(payment.id,"2026-10-02");
 
     const user_name=clean(body?.name,60),email=clean(body?.email,100),user_phone=clean(body?.phone,20),user_address=clean(body?.address,400);
     if(!user_name||!email||!email.includes("@")||!user_phone||!user_address)return Response.json({error:"Ad soyad, e-posta, telefon ve adres zorunlu."},{status:400});
