@@ -7,7 +7,7 @@ export const metadata={
 export default function Page(){
   return (
     <PublicPage title="Mesafeli Hizmet Satış Sözleşmesi">
-      <p>Bu sayfa, AI Visibility üzerinden sunulan dijital analiz, raporlama ve iyileştirme hizmetlerine ilişkin genel bilgilendirme ve sözleşme taslağıdır.</p>
+      <p>Bu sayfa, AI Visibility üzerinden sunulan dijital analiz, raporlama ve iyileştirme hizmetlerine ilişkin genel bilgilendirme ve hizmet sözleşmesi metnidir.</p>
 
       <h2>Hizmetin konusu</h2>
       <p>Müşterinin markası veya işletmesi için yapay zeka görünürlük analizi, GEO/AEO iyileştirme önerileri, raporlama ve kapsam dahilinde uygulama desteği sunulmasıdır.</p>
@@ -24,7 +24,7 @@ export default function Page(){
       <h2>İletişim</h2>
       <p>Hizmet ve sözleşme ile ilgili talepler iletişim sayfasındaki e-posta adresi üzerinden iletilebilir.</p>
 
-      <p>Bu metin genel bir taslaktır. Ticari statü ve hizmet modeli kesinleştiğinde profesyonel hukuki inceleme ile güncellenmelidir.</p>
+      <p>Bu metin, platform üzerinden sunulan hizmetler için geçerli genel bilgilendirme metnidir. Mevzuat veya hizmet kapsamı değiştikçe güncellenebilir.</p>
     </PublicPage>
   );
 }
