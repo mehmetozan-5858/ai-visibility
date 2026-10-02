@@ -17,6 +17,10 @@ export default function ProspectsManager(){
  useEffect(()=>{load()},[]);
 
  const selected=useMemo(()=>searchResults.find(x=>x.id===selectedId)||rows.find(x=>x.id===selectedId)||null,[searchResults,rows,selectedId]);
+ const visibleRows=useMemo(()=>rows.filter(x=>
+   String(x.city||"").toLocaleLowerCase("tr-TR")===city.toLocaleLowerCase("tr-TR") &&
+   String(x.sector||"").toLocaleLowerCase("tr-TR")===sector.toLocaleLowerCase("tr-TR")
+ ),[rows,city,sector]);
 
  async function discover(){
    setDiscovering(true);setMsg("");setSelectedId("");setSearchResults([]);
@@ -97,9 +101,9 @@ export default function ProspectsManager(){
      </button>
    </div>}
 
-   <div style={{marginTop:18}}><b>Aday havuzu</b><small style={{display:"block"}}>{rows.length} kayıtlı aday</small></div>
-   {rows.length===0?<div className="empty">Henüz aday yok. Şehir ve sektör seçip ilk aramayı başlat.</div>:
-   <div className="client-list">{rows.slice(0,20).map(x=><article className="client-row prospect-row" key={x.id}>
+   <div style={{marginTop:18}}><b>{city} · {sector} adayları</b><small style={{display:"block"}}>{visibleRows.length} eşleşen kayıt</small></div>
+   {visibleRows.length===0?<div className="empty">Bu şehir ve sektörde henüz kayıt yok. Yukarıdan “Adayları bul” ile arama başlat.</div>:
+   <div className="client-list">{visibleRows.slice(0,20).map(x=><article className="client-row prospect-row" key={x.id}>
      <div className="client-avatar">⌕</div>
      <div><b>{x.name}</b><small>{[x.sector,x.city,x.domain].filter(Boolean).join(" · ")}</small></div>
      <span>{x.score==null?(x.scanStatus==="awaiting-provider"?"Kuyrukta":"Tarama bekliyor"):x.score+"/100"}</span>
