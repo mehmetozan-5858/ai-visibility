@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 export default function PaymentManager({token}){
-  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""});
+  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[consent,setConsent]=useState(false),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""});
   useEffect(()=>{fetch("/api/payment?token="+encodeURIComponent(token),{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||"Ödeme bilgisi alınamadı.");return j}).then(setD).catch(e=>setErr(e.message))},[token]);
   if(err)return <section className="panel"><p className="client-message">{err}</p></section>;
   if(!d)return <section className="panel"><p>Ödeme bilgileri hazırlanıyor…</p></section>;
@@ -21,7 +21,7 @@ export default function PaymentManager({token}){
     if(!d.payment?.id)return;
     setReporting(true);setErr("");
     try{
-      const r=await fetch("/api/payment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment.id,token})});
+      const r=await fetch("/api/payment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment.id,token,consent})});
       const j=await r.json();if(!r.ok)throw new Error(j.error||"Bildirim alınamadı.");
       setReported(true);setD({...d,payment:j.payment});
     }catch(e){setErr(e.message)}finally{setReporting(false)}
@@ -29,7 +29,7 @@ export default function PaymentManager({token}){
   async function startCardPayment(e){
     e.preventDefault();setCardBusy(true);setErr("");
     try{
-      const r=await fetch("/api/paytr/token",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment?.id,token,...cardForm})});
+      const r=await fetch("/api/paytr/token",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment?.id,token,consent,...cardForm})});
       const j=await r.json();if(!r.ok)throw new Error([j.error,j.detail].filter(Boolean).join(" · "));
       setIframeUrl(j.iframeUrl);
     }catch(e){setErr(e.message)}finally{setCardBusy(false)}
@@ -44,6 +44,13 @@ export default function PaymentManager({token}){
       </ul></div>
     </article>
     <article className="panel">
+      <div className="content-plan" style={{marginBottom:18}}>
+        <label style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+          <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{width:18,height:18,marginTop:2}}/>
+          <span>Mesafeli Hizmet Sözleşmesi ile İptal / İade Politikasını okudum. Hizmetin 14 günlük cayma süresi dolmadan başlamasını açıkça onaylıyorum ve hizmetin ifasına başlanmasının cayma hakkımı etkileyebileceği konusunda bilgilendirildim.</span>
+        </label>
+        <small><a href="/mesafeli-hizmet-sozlesmesi" target="_blank">Hizmet Sözleşmesi</a> · <a href="/iptal-iade" target="_blank">İptal / İade Politikası</a></small>
+      </div>
       <h2>Havale / EFT</h2>
       {d.transferReady?<div className="content-plan">
         <b>Banka</b><p>{d.bank.bankName}</p><b>Hesap sahibi</b><p>{d.bank.accountHolder}</p>
@@ -53,7 +60,7 @@ export default function PaymentManager({token}){
         <small>Güvenlik için IBAN ekranda maskelidir. Kopyaladığınızda gerçek IBAN panoya alınır; banka uygulamasına yapıştırabilirsiniz.</small>
         <b>Açıklama kodu</b><p>{ref}</p>
         <small>Ödeme açıklamasına bu kodu yazın. Banka kontrolü yapılmadan paket aktif edilmez.</small>
-        <button type="button" onClick={reportPaid} disabled={reporting||reported||d.payment?.status==="customer-reported"||d.payment?.status==="paid"} style={{marginTop:14}}>
+        <button type="button" onClick={reportPaid} disabled={!consent||reporting||reported||d.payment?.status==="customer-reported"||d.payment?.status==="paid"} style={{marginTop:14}}>
           {d.payment?.status==="paid"?"✓ Ödeme onaylandı":reported||d.payment?.status==="customer-reported"?"✓ Ödeme bildirildi":reporting?"Bildiriliyor…":"Ödemeyi yaptım"}
         </button>
       </div>:<div className="empty">Havale/EFT ekranı hazır. Gerçek banka adı, hesap sahibi ve IBAN Vercel ortam değişkenlerine eklendiğinde burada otomatik görünecek.</div>}
@@ -64,7 +71,7 @@ export default function PaymentManager({token}){
           <label>E-posta<input type="email" value={cardForm.email} onChange={e=>setCardForm({...cardForm,email:e.target.value})} required/></label>
           <label>Telefon<input value={cardForm.phone} onChange={e=>setCardForm({...cardForm,phone:e.target.value})} required/></label>
           <label>Adres<textarea value={cardForm.address} onChange={e=>setCardForm({...cardForm,address:e.target.value})} required/></label>
-          <button disabled={cardBusy}>{cardBusy?"Güvenli ödeme açılıyor…":"Kartla güvenli ödemeye geç"}</button>
+          <button disabled={cardBusy||!consent}>{cardBusy?"Güvenli ödeme açılıyor…":!consent?"Önce sözleşme onayını verin":"Kartla güvenli ödemeye geç"}</button>
           <small>Kart bilgileriniz AI Visibility sunucusuna gönderilmez; PayTR güvenli ödeme formunda girilir.</small>
         </form>:<div><iframe title="PayTR Güvenli Ödeme" src={iframeUrl} style={{width:"100%",minHeight:720,border:0,borderRadius:12,background:"#fff"}}/><button type="button" onClick={()=>setIframeUrl("")} style={{marginTop:10}}>Ödeme formunu kapat</button></div>}
       </div>:<div className="empty">Kart ödeme modülü hazır. PayTR mağaza bilgileri eklendiğinde bu alan otomatik aktif olacak.</div>}
