@@ -1,4 +1,4 @@
-import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById} from "../../../lib/repository";
+import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById,recordPaymentConsent} from "../../../lib/repository";
 import {verifyPaymentAccessToken} from "../../../lib/admin-auth";
 function money(envName,fallback){const n=Number(process.env[envName]);return Number.isFinite(n)&&n>0?Math.round(n):fallback}
 function planFor(score){
@@ -40,10 +40,12 @@ export async function POST(req){
   try{
     const body=await req.json();
     if(!body?.paymentId||!body?.token)return Response.json({error:"Ödeme kaydı veya güvenli bağlantı eksik."},{status:400});
+    if(body?.consent!==true)return Response.json({error:"Hizmet başlangıcı ve sözleşme onayı gereklidir."},{status:400});
     const access=await verifyPaymentAccessToken(body.token);
     if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
     const current=await getPaymentById(body.paymentId);
     if(!current||current.clientId!==access.clientId)return Response.json({error:"Bu ödeme bağlantısı bu kayıt için geçerli değil."},{status:403});
+    await recordPaymentConsent(body.paymentId,"2026-10-02");
     const payment=await reportPayment(body.paymentId);
     if(!payment)return Response.json({error:"Ödeme bildirimi alınamadı veya daha önce bildirildi."},{status:409});
     return Response.json({payment,message:"Ödeme bildiriminiz alındı. Banka kontrolünden sonra paket aktif edilecektir."});
