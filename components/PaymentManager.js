@@ -1,7 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 export default function PaymentManager({token}){
-  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[consent,setConsent]=useState(false),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""});
+  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[consent,setConsent]=useState(false),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""}),[setupBusy,setSetupBusy]=useState(false),[setupForm,setSetupForm]=useState({email:"",password:""});
   useEffect(()=>{fetch("/api/payment?token="+encodeURIComponent(token),{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||"Ödeme bilgisi alınamadı.");return j}).then(setD).catch(e=>setErr(e.message))},[token]);
   if(err)return <section className="panel"><p className="client-message">{err}</p></section>;
   if(!d)return <section className="panel"><p>Ödeme bilgileri hazırlanıyor…</p></section>;
@@ -34,7 +34,26 @@ export default function PaymentManager({token}){
       setIframeUrl(j.iframeUrl);
     }catch(e){setErr(e.message)}finally{setCardBusy(false)}
   }
-  return <section className="grid reports-grid">
+  async function setupCustomer(e){
+    e.preventDefault();setSetupBusy(true);setErr("");
+    try{
+      const r=await fetch("/api/client-auth/setup",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token,email:setupForm.email,password:setupForm.password})});
+      const j=await r.json();if(!r.ok)throw new Error(j.error||"Müşteri hesabı oluşturulamadı.");
+      window.location.href="/musteri-panel";
+    }catch(e){setErr(e.message)}finally{setSetupBusy(false)}
+  }
+  return <>
+  {d.payment?.status==="paid"&&<section className="panel" style={{marginBottom:16}}>
+    <h2>✓ Ödemeniz onaylandı</h2>
+    <p>Şimdi müşteri hesabınızı oluşturun. Bundan sonra AI Visibility sonuçlarınıza kendi şifrenizle erişeceksiniz.</p>
+    <form className="scan-form" onSubmit={setupCustomer} style={{marginTop:12}}>
+      <label>E-posta<input type="email" value={setupForm.email} onChange={e=>setSetupForm({...setupForm,email:e.target.value})} autoComplete="email" required/></label>
+      <label>Şifre<input type="password" value={setupForm.password} onChange={e=>setSetupForm({...setupForm,password:e.target.value})} minLength={10} autoComplete="new-password" required/></label>
+      <small>Şifre en az 10 karakter olmalıdır.</small>
+      <button disabled={setupBusy}>{setupBusy?"Hesap oluşturuluyor…":"Müşteri hesabımı oluştur"}</button>
+    </form>
+  </section>}
+  <section className="grid reports-grid">
     <article className="panel">
       <h2>Paket seçimi</h2><p><b>{d.client.name}</b> için önerilen paket</p>
       <div className="content-plan"><h3>{d.plan.name}</h3><ul>
@@ -76,5 +95,5 @@ export default function PaymentManager({token}){
         </form>:<div><iframe title="PayTR Güvenli Ödeme" src={iframeUrl} style={{width:"100%",minHeight:720,border:0,borderRadius:12,background:"#fff"}}/><button type="button" onClick={()=>setIframeUrl("")} style={{marginTop:10}}>Ödeme formunu kapat</button></div>}
       </div>:<div className="empty">Kart ödeme modülü hazır. PayTR mağaza bilgileri eklendiğinde bu alan otomatik aktif olacak.</div>}
     </article>
-  </section>;
+  </section></>;
 }
