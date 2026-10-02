@@ -1,6 +1,7 @@
 import {databaseStatus,getDatabaseUrl} from "../../../lib/db";
 import {providerStatus} from "../../../lib/providers";
 import {authConfigured} from "../../../lib/admin-auth";
+import {recoveryStatus} from "../../../lib/recovery-sender";
 export async function GET(){
   const providers=providerStatus();
   return Response.json({
@@ -9,7 +10,7 @@ export async function GET(){
     database:databaseStatus(),
     providers,
     billing:{configured:Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),provider:"PayTR"},
-    auth:{configured:authConfigured()},
+    auth:{configured:authConfigured(),recovery:recoveryStatus()},
     safeDemo:!getDatabaseUrl()||!providers.some(x=>x.status==="connected")
   });
 }
