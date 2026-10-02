@@ -18,7 +18,7 @@ const LOCATIONS={
   "Suudi Arabistan":["Riyad","Cidde","Dammam"],
   "Katar":["Doha"]
 };
-const SECTORS=["Restoran / Kafe","Özel Sağlık / Klinik","Diş Kliniği","Güzellik / Bakım","Emlak","Otomotiv","Eğitim / Kurs","Mobilya / Ev Dekorasyon","Spor / Fitness","Hukuk / Muhasebe","Turizm / Otel","Ev Hizmetleri"];
+const SECTORS=["Restoran / Kafe","Özel Sağlık / Klinik","Diş Kliniği","Güzellik / Bakım","Emlak","Otomotiv","Eğitim / Kurs","Mobilya / Ev Dekorasyon","Spor / Fitness","Hukuk / Muhasebe","Turizm / Otel","Ev Hizmetleri","Tekstil / Giyim"];
 
 export default function ProspectsManager(){
  const [rows,setRows]=useState([]),[msg,setMsg]=useState(""),[discovering,setDiscovering]=useState(false),[converting,setConverting]=useState("");
