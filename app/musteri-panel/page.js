@@ -1,7 +1,7 @@
-import {Shell} from "../../components/ui";
+import CustomerShell from "../../components/CustomerShell";
 import CustomerPortal from "../../components/CustomerPortal";
 export default function Page(){
-  return <Shell title="Müşteri Paneli" subtitle="AI görünürlüğünüz, çalışmalarınız, rapor süreciniz ve ödemeleriniz.">
+  return <CustomerShell title="Müşteri Paneli" subtitle="AI görünürlüğünüz, çalışmalarınız, rapor süreciniz ve ödemeleriniz.">
     <CustomerPortal/>
-  </Shell>;
+  </CustomerShell>;
 }
