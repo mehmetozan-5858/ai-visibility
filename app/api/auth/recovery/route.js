@@ -1,5 +1,5 @@
 import {recoveryStatus,generateCode,sendRecoveryCode} from "../../../../lib/recovery-sender";
-import {createResetRequest,verifyResetCode,finishReset} from "../../../../lib/admin-password";
+import {createResetRequest,verifyResetCode,finishReset,canRequestReset} from "../../../../lib/admin-password";
 
 export const runtime="nodejs";
 
@@ -15,6 +15,7 @@ export async function POST(req){
       const channel=body?.channel;
       const status=recoveryStatus();
       if(!status[channel]?.configured)return Response.json({error:"Bu kurtarma yöntemi henüz yapılandırılmadı."},{status:503});
+      if(!(await canRequestReset(channel)))return Response.json({error:"Yeni kod istemeden önce 60 saniye bekleyin."},{status:429});
       const code=generateCode();
       await sendRecoveryCode(channel,code);
       const reset=await createResetRequest(channel,code);
