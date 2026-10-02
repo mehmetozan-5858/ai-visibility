@@ -15,6 +15,7 @@ export default function LoginForm(){
     <div><h1 style={{marginBottom:6}}>AI Visibility</h1><p>Yönetim paneline giriş</p></div>
     <label>Yönetici şifresi<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required/></label>
     <button disabled={busy}>{busy?"Kontrol ediliyor…":"Giriş yap"}</button>
+    <a href="/sifremi-unuttum" style={{textAlign:"center",display:"block",marginTop:10}}>Şifremi unuttum</a>
     {msg&&<p className="client-message">{msg}</p>}
   </form>;
 }
