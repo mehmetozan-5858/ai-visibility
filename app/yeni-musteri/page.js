@@ -1,4 +1,5 @@
 import Link from "next/link";
+import NewCustomerLeadForm from "../../components/NewCustomerLeadForm";
 
 export const metadata={title:"Yeni Müşteri | AI Visibility"};
 
@@ -9,17 +10,19 @@ export default function NewCustomerPage(){
       <Link href="/musteri-giris" style={{textDecoration:"none"}}>Müşteri Girişi</Link>
     </header>
 
-    <section className="page-head"><div><h1>Yeni müşteriyim</h1><p>AI Visibility hesabı ödeme onayından sonra güvenli şekilde açılır. Böylece ödeme yapmamış kişiler gerçek müşteri paneline erişemez.</p></div></section>
+    <section className="page-head"><div><h1>Yeni müşteriyim</h1><p>Önce işletmenizi tanıyalım. Başvurunuzdan sonra AI görünürlük analizi ve size uygun teklif süreci hazırlanır; gerçek müşteri hesabı ödeme onayından sonra açılır.</p></div></section>
+
+    <NewCustomerLeadForm/>
 
     <section className="panel" style={{marginBottom:16}}>
       <h2>Nasıl çalışır?</h2>
       <ol style={{lineHeight:1.8,paddingLeft:22}}>
-        <li>İşletmeniz için AI görünürlük analizi ve uygun paket hazırlanır.</li>
+        <li>İşletme bilgilerinizi gönderirsiniz.</li>
+        <li>AI görünürlük ön değerlendirmesi ve uygun paket hazırlanır.</li>
         <li>Size özel güvenli ödeme bağlantısı oluşturulur.</li>
         <li>Havale/EFT ödemeniz yönetici tarafından doğrulanır.</li>
         <li>E-posta adresinize 6 haneli doğrulama kodu gönderilir.</li>
-        <li>Kodu doğrulayıp şifrenizi oluşturursunuz.</li>
-        <li>Bundan sonra müşteri paneline e-posta ve şifrenizle giriş yaparsınız.</li>
+        <li>Kodu doğrulayıp şifrenizi oluşturur ve müşteri paneline girersiniz.</li>
       </ol>
     </section>
 
@@ -30,13 +33,9 @@ export default function NewCustomerPage(){
     </section>
 
     <section className="panel">
-      <h2>Hesap açmak için</h2>
-      <p>Önce hizmet ve paket sürecini başlatın. Ödeme bağlantınız oluşturulduğunda hesap açma işlemi aynı bağlantı üzerinden tamamlanır.</p>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:16}}>
-        <Link href="/hizmetler">Hizmetleri incele</Link>
-        <Link href="/iletisim">İletişime geç</Link>
-        <Link href="/musteri-giris">Zaten müşteriyim</Link>
-      </div>
+      <h2>Zaten müşteriyim</h2>
+      <p>Ödemeniz onaylandı ve hesabınızı oluşturduysanız e-posta ve şifrenizle giriş yapabilirsiniz.</p>
+      <Link href="/musteri-giris">Müşteri girişine git</Link>
     </section>
   </main>;
 }
