@@ -1,0 +1,34 @@
+"use client";
+import {useEffect,useState} from "react";
+
+const labels={new:"Yeni",contacted:"İletişim kuruldu",qualified:"Nitelikli",proposal:"Teklif",won:"Müşteri oldu",lost:"Kapandı"};
+
+export default function LeadsManager(){
+  const [items,setItems]=useState([]),[busy,setBusy]=useState(""),[msg,setMsg]=useState("");
+  async function load(){
+    const r=await fetch("/api/leads",{cache:"no-store"});
+    const d=await r.json();
+    if(r.ok)setItems(d.leads||[]);else setMsg(d.error||"Lead listesi alınamadı.");
+  }
+  useEffect(()=>{load()},[]);
+  async function update(id,status){
+    setBusy(id);setMsg("");
+    try{
+      const r=await fetch("/api/leads",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id,status})});
+      const d=await r.json();if(!r.ok)throw new Error(d.error||"Güncellenemedi.");
+      await load();
+    }catch(e){setMsg(e.message)}finally{setBusy("")}
+  }
+  return <section className="panel">
+    <div className="section-title"><div><h2>Yeni Müşteri Başvuruları</h2><small>Web sitesinden gelen ön değerlendirme talepleri</small></div></div>
+    {msg&&<p className="client-message">{msg}</p>}
+    {!items.length?<div className="empty">Henüz yeni müşteri başvurusu yok.</div>:<div className="client-list">{items.map(x=><article className="client-row" key={x.id}>
+      <div className="client-avatar">{String(x.businessName||"?").slice(0,1).toUpperCase()}</div>
+      <div><b>{x.businessName}</b><small>{x.name} · {x.email}{x.phone?" · "+x.phone:""}</small><small>{[x.country,x.city,x.sector].filter(Boolean).join(" · ")}{x.website?" · "+x.website:""}</small></div>
+      <span>{labels[x.status]||x.status}</span>
+      <select value={x.status} disabled={busy===x.id} onChange={e=>update(x.id,e.target.value)} style={{background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:10,padding:"9px"}}>
+        {Object.entries(labels).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+      </select>
+    </article>)}</div>}
+  </section>;
+}
