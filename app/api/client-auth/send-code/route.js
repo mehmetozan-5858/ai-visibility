@@ -15,7 +15,9 @@ export async function POST(req){
   }catch(e){
     const m=String(e?.message||"");
     if(m==="invalid-email")return Response.json({error:"Geçerli bir e-posta adresi girin."},{status:400});
+    if(m==="verification-rate-limit")return Response.json({error:"Yeni kod istemeden önce 60 saniye bekleyin."},{status:429});
     if(m==="email-provider-not-configured")return Response.json({error:"E-posta gönderimi henüz yapılandırılmadı."},{status:503});
+    if(m.startsWith("email-send-failed"))return Response.json({error:"Doğrulama e-postası gönderilemedi."},{status:503});
     return Response.json({error:"Kod gönderilemedi."},{status:500});
   }
 }
