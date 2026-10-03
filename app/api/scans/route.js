@@ -1,4 +1,5 @@
 import {completeScan,createScan,failScan,getClient,listScans} from "../../../lib/repository";
+import {getClientProfile} from "../../../lib/client-profile";
 import {runProviderChecks} from "../../../lib/providers";
 
 export async function GET(){
@@ -15,6 +16,7 @@ export async function POST(req){
     stage="client";
     const client=await getClient(body.clientId);
     if(!client)return Response.json({error:"Müşteri bulunamadı.",stage},{status:404});
+    const profile=await getClientProfile(body.clientId).catch(()=>null);
 
     stage="scan-create";
     const scan=await createScan(body.clientId,body.queries||[]); scanId=scan?.id||"";
@@ -26,8 +28,9 @@ export async function POST(req){
     const providerRun=await runProviderChecks({
       name:client.name,
       domain:client.domain,
-      sector:client.plan||"",
-      city:"",
+      sector:profile?.sector||"",
+      city:profile?.city||"",
+      country:profile?.country||"",
       queries:Array.isArray(body.queries)?body.queries:[]
     });
 
@@ -49,6 +52,7 @@ export async function POST(req){
       provider:providerRun.results.map(x=>x.provider).join(" + "),
       providers:providerRun.results.map(x=>({name:x.provider,score:x.score})),
       providerErrors:providerRun.errors,
+      context:{sector:profile?.sector||"",city:profile?.city||"",country:profile?.country||""},
       stage:"done"
     },{status:200});
   }catch(e){
