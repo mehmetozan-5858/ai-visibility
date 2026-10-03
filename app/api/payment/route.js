@@ -1,4 +1,4 @@
-import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById,recordPaymentConsent} from "../../../lib/repository";
+import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById,recordPaymentConsent,getClientAccount} from "../../../lib/repository";
 import {verifyPaymentAccessToken} from "../../../lib/admin-auth";
 function money(envName,fallback){const n=Number(process.env[envName]);return Number.isFinite(n)&&n>0?Math.round(n):fallback}
 function planFor(score){
@@ -21,7 +21,9 @@ export async function GET(req){
     const candidates=await getSalesCandidates(50),client=candidates.find(x=>x.id===access.clientId)||null;
     if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
     const plan=planFor(Number(client.score)||0);
-    const payment=await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
+    const account=await getClientAccount(client.id);
+    const paidPayment=(account?.payments||[]).find(x=>x.status==="paid")||null;
+    const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
     return Response.json({
       client,
       plan,
