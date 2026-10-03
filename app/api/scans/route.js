@@ -1,6 +1,7 @@
 import {completeScan,createScan,failScan,getClient,listScans} from "../../../lib/repository";
 import {getClientProfile} from "../../../lib/client-profile";
 import {runProviderChecks} from "../../../lib/providers";
+import {syncFindingsFromScan} from "../../../lib/findings";
 
 export async function GET(){
   try{return Response.json({scans:await listScans(),mode:process.env.DATABASE_URL||process.env.STORAGE_URL?"database":"demo-only"});}
@@ -46,12 +47,15 @@ export async function POST(req){
 
     stage="scan-complete";
     const completed=await completeScan(scan.id,providerRun.results);
+    stage="findings-sync";
+    const findings=await syncFindingsFromScan(body.clientId,completed).catch(()=>[]);
     return Response.json({
       scan:{...completed,clientName:client.name},
       live:true,
       provider:providerRun.results.map(x=>x.provider).join(" + "),
       providers:providerRun.results.map(x=>({name:x.provider,score:x.score})),
       providerErrors:providerRun.errors,
+      findingsCreated:findings.length,
       context:{sector:profile?.sector||"",city:profile?.city||"",country:profile?.country||""},
       stage:"done"
     },{status:200});
