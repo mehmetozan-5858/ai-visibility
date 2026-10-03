@@ -25,6 +25,7 @@ export async function POST(req){
     return Response.json({error:"Geçersiz işlem."},{status:400});
   }catch(e){
     const m=String(e?.message||"");
+    if(m==="verification-rate-limit")return Response.json({error:"Yeni kod istemeden önce 60 saniye bekleyin."},{status:429});
     if(m.startsWith("email-send-failed")||m==="email-provider-not-configured")return Response.json({error:"Doğrulama e-postası gönderilemedi."},{status:503});
     return Response.json({error:"Şifre sıfırlama işlemi tamamlanamadı."},{status:500});
   }
