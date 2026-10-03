@@ -5,7 +5,7 @@ export async function proxy(req){
   if(!authConfigured())return NextResponse.next();
   const {pathname}=req.nextUrl;
   const publicPages=["/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/demo","/yeni-musteri"];
-  const publicPath=pathname==="/login"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/");
+  const publicPath=pathname==="/login"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname==="/api/leads"||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/");
   if(publicPath)return NextResponse.next();
 
   if(pathname==="/musteri-panel"||pathname.startsWith("/api/client-portal")){
