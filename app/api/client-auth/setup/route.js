@@ -1,6 +1,7 @@
 import {createOrUpdateClientCredential} from "../../../../lib/client-credentials";
 import {createClientToken,verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
+import {isEmailVerified} from "../../../../lib/email-verification";
 
 export async function POST(req){
   try{
@@ -11,6 +12,8 @@ export async function POST(req){
     if(!account)return Response.json({error:"Müşteri hesabı bulunamadı."},{status:404});
     const paid=(account.payments||[]).some(x=>x.status==="paid");
     if(!paid)return Response.json({error:"Müşteri hesabı yalnızca ödeme onaylandıktan sonra oluşturulabilir."},{status:403});
+    const verified=await isEmailVerified(access.clientId,body?.email);
+    if(!verified)return Response.json({error:"Önce e-posta adresinizi doğrulama koduyla doğrulayın."},{status:403});
     const credential=await createOrUpdateClientCredential(access.clientId,body?.email,body?.password);
     const session=await createClientToken(access.clientId);
     const res=Response.json({ok:true,clientId:access.clientId,email:credential.email});
