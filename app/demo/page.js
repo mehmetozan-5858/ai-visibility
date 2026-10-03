@@ -6,7 +6,7 @@ const tabs=[
   ["overview","Genel Bakış"],
   ["visibility","AI Görünürlük"],
   ["actions","Öneriler"],
-  ["report","Rapor Örneği"],
+  ["report","★ Rapor"],
   ["plans","Paketler"]
 ];
 
@@ -58,10 +58,21 @@ export default function DemoPage(){
       </div>
     </section>}
 
-    {tab==="report"&&<section className="panel">
-      <h2>Rapor Örneği</h2><p>Gerçek müşteride rapor; mevcut skor, bulunan sorunlar, öncelikler, yapılan çalışmalar ve önce/sonra değişimini tek yerde toplar.</p>
-      <div className="content-plan" style={{marginTop:14}}><b>Örnek yönetici özeti</b><p style={{marginBottom:0}}>AI görünürlüğü 30 günde +9 puan arttı. En büyük kazanım yapılandırılmış veri ve hizmet açıklamalarından geldi. Sıradaki öncelik yerel kaynakların güçlendirilmesi.</p></div>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12,marginTop:14}}><div className="content-plan"><small>Önce</small><h2>59</h2></div><div className="content-plan"><small>Şimdi</small><h2>68</h2></div><div className="content-plan"><small>Değişim</small><h2>+9</h2></div></div>
+    {tab==="report"&&<section className="panel" style={{position:"relative",overflow:"hidden",minHeight:390}}>
+      <div style={{filter:"blur(7px)",opacity:.38,pointerEvents:"none",userSelect:"none"}} aria-hidden="true">
+        <h2>AI Visibility Pro Raporu</h2><p>Mevcut skor, bulunan sorunlar, öncelikler, yapılan çalışmalar ve önce/sonra değişimi.</p>
+        <div className="content-plan" style={{marginTop:14}}><b>Yönetici özeti</b><p>AI görünürlüğü 30 günde +9 puan arttı. En büyük kazanım yapılandırılmış veri ve hizmet açıklamalarından geldi. Sıradaki öncelik yerel kaynakların güçlendirilmesi.</p></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:12,marginTop:14}}><div className="content-plan"><small>Önce</small><h2>59</h2></div><div className="content-plan"><small>Şimdi</small><h2>68</h2></div><div className="content-plan"><small>Değişim</small><h2>+9</h2></div></div>
+        <div className="client-list" style={{marginTop:14}}><article className="client-row"><div><b>Kritik bulgular</b><small>Detaylı sorun ve çözüm listesi</small></div><span>12</span></article><article className="client-row"><div><b>Öncelikli aksiyonlar</b><small>Etki ve uygulama sırasına göre</small></div><span>8</span></article></div>
+      </div>
+      <div style={{position:"absolute",inset:0,display:"grid",placeItems:"center",padding:24,background:"linear-gradient(180deg,rgba(4,14,24,.18),rgba(4,14,24,.78))"}}>
+        <div className="content-plan" style={{maxWidth:520,textAlign:"center",padding:24}}>
+          <div style={{fontSize:34,marginBottom:8}}>★ 🔒</div>
+          <h2 style={{marginBottom:8}}>Pro Raporu</h2>
+          <p>Tam rapor Pro müşterilere özeldir. Pro olduğunda tüm bulguları, öncelikleri, aksiyon planını, önce/sonra karşılaştırmasını ve tam raporu görebilirsin.</p>
+          <Link href="/yeni-musteri" style={{display:"inline-block",marginTop:12,fontWeight:800}}>Pro ile tüm raporu aç →</Link>
+        </div>
+      </div>
     </section>}
 
     {tab==="plans"&&<section className="panel">
