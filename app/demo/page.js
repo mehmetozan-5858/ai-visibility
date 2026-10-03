@@ -6,7 +6,10 @@ export default function DemoPage(){
   return <main style={{maxWidth:980,margin:"0 auto",padding:"28px 20px 60px"}}>
     <header className="top" style={{marginBottom:24}}>
       <Link href="/demo" className="brand"><span className="logo">A</span><div><strong>AI VISIBILITY</strong><small>DEMO MÜŞTERİ GÖRÜNÜMÜ</small></div></Link>
-      <Link href="/musteri-giris" style={{textDecoration:"none"}}>Müşteri Girişi</Link>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <Link href="/yeni-musteri" style={{textDecoration:"none",fontWeight:700}}>Yeni müşteriyim</Link>
+        <Link href="/musteri-giris" style={{textDecoration:"none"}}>Müşteri Girişi</Link>
+      </div>
     </header>
 
     <section className="page-head"><div><h1>Müşteri Paneli Demo</h1><p>Bu sayfa yalnızca tanıtım amaçlıdır. Aşağıdaki tüm bilgiler örnek veridir; gerçek müşteri, ödeme veya yönetici verisi içermez.</p></div></section>
@@ -55,6 +58,7 @@ export default function DemoPage(){
       <h2>Ödeme ve hesap güvenliği</h2>
       <p>Gerçek müşteri hesabında yalnızca o işletmeye ait taramalar, çalışmalar, raporlar ve ödeme kayıtları gösterilir.</p>
       <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:16}}>
+        <Link href="/yeni-musteri">Yeni müşteriyim / Hesabımı oluştur</Link>
         <Link href="/hizmetler">Hizmetleri incele</Link>
         <Link href="/musteri-giris">Mevcut müşteri girişi</Link>
       </div>
