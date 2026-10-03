@@ -1,99 +1,32 @@
 "use client";
 import {useEffect,useState} from "react";
 export default function PaymentManager({token}){
-  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[consent,setConsent]=useState(false),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""}),[setupBusy,setSetupBusy]=useState(false),[setupForm,setSetupForm]=useState({email:"",password:""});
+  const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[consent,setConsent]=useState(false),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""}),[setupBusy,setSetupBusy]=useState(false),[setupForm,setSetupForm]=useState({email:"",password:""}),[code,setCode]=useState(""),[codeSent,setCodeSent]=useState(false),[emailVerified,setEmailVerified]=useState(false),[verifyBusy,setVerifyBusy]=useState(false),[verifyMsg,setVerifyMsg]=useState("");
   useEffect(()=>{fetch("/api/payment?token="+encodeURIComponent(token),{cache:"no-store"}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||"Ödeme bilgisi alınamadı.");return j}).then(setD).catch(e=>setErr(e.message))},[token]);
   if(err)return <section className="panel"><p className="client-message">{err}</p></section>;
   if(!d)return <section className="panel"><p>Ödeme bilgileri hazırlanıyor…</p></section>;
   const ref=d.payment?.referenceCode||("AIV-"+d.client.id.slice(0,8)).toUpperCase();
   const rawIban=String(d.bank?.iban||"").replace(/\s+/g,"");
   const maskedIban=rawIban?("TR** **** **** **** **** **"+rawIban.slice(-4)):"";
-  async function copyIban(){
-    try{
-      await navigator.clipboard.writeText(rawIban);
-      setCopied(true);
-      setTimeout(()=>setCopied(false),1800);
-    }catch{
-      setErr("IBAN kopyalanamadı. Tarayıcı pano izni vermedi.");
-    }
-  }
-  async function reportPaid(){
-    if(!d.payment?.id)return;
-    setReporting(true);setErr("");
-    try{
-      const r=await fetch("/api/payment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment.id,token,consent})});
-      const j=await r.json();if(!r.ok)throw new Error(j.error||"Bildirim alınamadı.");
-      setReported(true);setD({...d,payment:j.payment});
-    }catch(e){setErr(e.message)}finally{setReporting(false)}
-  }
-  async function startCardPayment(e){
-    e.preventDefault();setCardBusy(true);setErr("");
-    try{
-      const r=await fetch("/api/paytr/token",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment?.id,token,consent,...cardForm})});
-      const j=await r.json();if(!r.ok)throw new Error([j.error,j.detail].filter(Boolean).join(" · "));
-      setIframeUrl(j.iframeUrl);
-    }catch(e){setErr(e.message)}finally{setCardBusy(false)}
-  }
-  async function setupCustomer(e){
-    e.preventDefault();setSetupBusy(true);setErr("");
-    try{
-      const r=await fetch("/api/client-auth/setup",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token,email:setupForm.email,password:setupForm.password})});
-      const j=await r.json();if(!r.ok)throw new Error(j.error||"Müşteri hesabı oluşturulamadı.");
-      window.location.href="/musteri-panel";
-    }catch(e){setErr(e.message)}finally{setSetupBusy(false)}
-  }
+  async function copyIban(){try{await navigator.clipboard.writeText(rawIban);setCopied(true);setTimeout(()=>setCopied(false),1800)}catch{setErr("IBAN kopyalanamadı. Tarayıcı pano izni vermedi.")}}
+  async function reportPaid(){if(!d.payment?.id)return;setReporting(true);setErr("");try{const r=await fetch("/api/payment",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment.id,token,consent})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Bildirim alınamadı.");setReported(true);setD({...d,payment:j.payment})}catch(e){setErr(e.message)}finally{setReporting(false)}}
+  async function sendCode(){setVerifyBusy(true);setVerifyMsg("");try{const r=await fetch("/api/client-auth/send-code",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token,email:setupForm.email})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Kod gönderilemedi.");setCodeSent(true);setEmailVerified(false);setVerifyMsg("6 haneli kod e-posta adresinize gönderildi.")}catch(e){setVerifyMsg(e.message)}finally{setVerifyBusy(false)}}
+  async function verifyCode(){setVerifyBusy(true);setVerifyMsg("");try{const r=await fetch("/api/client-auth/verify-code",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token,email:setupForm.email,code})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Kod doğrulanamadı.");setEmailVerified(true);setVerifyMsg("✓ E-posta doğrulandı.")}catch(e){setEmailVerified(false);setVerifyMsg(e.message)}finally{setVerifyBusy(false)}}
+  async function setupCustomer(e){e.preventDefault();setSetupBusy(true);setErr("");try{const r=await fetch("/api/client-auth/setup",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({token,email:setupForm.email,password:setupForm.password})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Müşteri hesabı oluşturulamadı.");window.location.href="/musteri-panel"}catch(e){setErr(e.message)}finally{setSetupBusy(false)}}
+  async function startCardPayment(e){e.preventDefault();setCardBusy(true);setErr("");try{const r=await fetch("/api/paytr/token",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({paymentId:d.payment?.id,token,consent,...cardForm})});const j=await r.json();if(!r.ok)throw new Error([j.error,j.detail].filter(Boolean).join(" · "));setIframeUrl(j.iframeUrl)}catch(e){setErr(e.message)}finally{setCardBusy(false)}}
   return <>
   {d.payment?.status==="paid"&&<section className="panel" style={{marginBottom:16}}>
     <h2>✓ Ödemeniz onaylandı</h2>
-    <p>Şimdi müşteri hesabınızı oluşturun. Bundan sonra AI Visibility sonuçlarınıza kendi şifrenizle erişeceksiniz.</p>
+    <p>Önce e-posta adresinizi doğrulayın, ardından şifrenizi oluşturun.</p>
     <form className="scan-form" onSubmit={setupCustomer} style={{marginTop:12}}>
-      <label>E-posta<input type="email" value={setupForm.email} onChange={e=>setSetupForm({...setupForm,email:e.target.value})} autoComplete="email" required/></label>
-      <label>Şifre<input type="password" value={setupForm.password} onChange={e=>setSetupForm({...setupForm,password:e.target.value})} minLength={10} autoComplete="new-password" required/></label>
+      <label>E-posta<input type="email" value={setupForm.email} onChange={e=>{setSetupForm({...setupForm,email:e.target.value});setEmailVerified(false);setCodeSent(false);setCode("")}} autoComplete="email" required/></label>
+      <button type="button" onClick={sendCode} disabled={verifyBusy||!setupForm.email}>{verifyBusy?"Gönderiliyor…":codeSent?"Kodu tekrar gönder":"Doğrulama kodu gönder"}</button>
+      {codeSent&&<><label>6 haneli kod<input inputMode="numeric" pattern="[0-9]{6}" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} required/></label><button type="button" onClick={verifyCode} disabled={verifyBusy||code.length!==6||emailVerified}>{emailVerified?"✓ E-posta doğrulandı":verifyBusy?"Doğrulanıyor…":"Kodu doğrula"}</button></>}
+      {verifyMsg&&<small>{verifyMsg}</small>}
+      <label>Şifre<input type="password" value={setupForm.password} onChange={e=>setSetupForm({...setupForm,password:e.target.value})} minLength={10} autoComplete="new-password" required disabled={!emailVerified}/></label>
       <small>Şifre en az 10 karakter olmalıdır.</small>
-      <button disabled={setupBusy}>{setupBusy?"Hesap oluşturuluyor…":"Müşteri hesabımı oluştur"}</button>
+      <button disabled={setupBusy||!emailVerified}>{setupBusy?"Hesap oluşturuluyor…":"Müşteri hesabımı oluştur"}</button>
     </form>
   </section>}
-  <section className="grid reports-grid">
-    <article className="panel">
-      <h2>Paket seçimi</h2><p><b>{d.client.name}</b> için önerilen paket</p>
-      <div className="content-plan"><h3>{d.plan.name}</h3><ul>
-        <li>Kurulum: {d.plan.setup}</li><li>Aylık: {d.plan.monthly}</li>
-        <li><strong>Önerilen ilk ödeme: {Number(d.plan.firstPayment||0).toLocaleString("tr-TR")} TL</strong></li>
-        <li>ChatGPT + Gemini + Perplexity görünürlük takibi</li><li>GEO/AEO iyileştirme planı</li><li>Aylık görünürlük raporu</li>
-      </ul></div>
-    </article>
-    <article className="panel">
-      <div className="content-plan" style={{marginBottom:18}}>
-        <label style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-          <input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{width:18,height:18,marginTop:2}}/>
-          <span>Mesafeli Hizmet Sözleşmesi ile İptal / İade Politikasını okudum. Hizmetin 14 günlük cayma süresi dolmadan başlamasını açıkça onaylıyorum ve hizmetin ifasına başlanmasının cayma hakkımı etkileyebileceği konusunda bilgilendirildim.</span>
-        </label>
-        <small><a href="/mesafeli-hizmet-sozlesmesi" target="_blank">Hizmet Sözleşmesi</a> · <a href="/iptal-iade" target="_blank">İptal / İade Politikası</a></small>
-      </div>
-      <h2>Havale / EFT</h2>
-      {d.transferReady?<div className="content-plan">
-        <b>Banka</b><p>{d.bank.bankName}</p><b>Hesap sahibi</b><p>{d.bank.accountHolder}</p>
-        <b>IBAN</b>
-        <p style={{wordBreak:"break-all",letterSpacing:".03em"}}>{maskedIban}</p>
-        <button type="button" onClick={copyIban}>{copied?"✓ IBAN kopyalandı":"⧉ IBAN'ı kopyala"}</button>
-        <small>Güvenlik için IBAN ekranda maskelidir. Kopyaladığınızda gerçek IBAN panoya alınır; banka uygulamasına yapıştırabilirsiniz.</small>
-        <b>Açıklama kodu</b><p>{ref}</p>
-        <small>Ödeme açıklamasına bu kodu yazın. Banka kontrolü yapılmadan paket aktif edilmez.</small>
-        <button type="button" onClick={reportPaid} disabled={!consent||reporting||reported||d.payment?.status==="customer-reported"||d.payment?.status==="paid"} style={{marginTop:14}}>
-          {d.payment?.status==="paid"?"✓ Ödeme onaylandı":reported||d.payment?.status==="customer-reported"?"✓ Ödeme bildirildi":reporting?"Bildiriliyor…":"Ödemeyi yaptım"}
-        </button>
-      </div>:<div className="empty">Havale/EFT ekranı hazır. Gerçek banka adı, hesap sahibi ve IBAN Vercel ortam değişkenlerine eklendiğinde burada otomatik görünecek.</div>}
-      <h2 style={{marginTop:20}}>Kartla ödeme</h2>
-      {d.cardReady?<div className="content-plan">
-        {!iframeUrl?<form onSubmit={startCardPayment} className="scan-form" style={{margin:0}}>
-          <label>Ad soyad<input value={cardForm.name} onChange={e=>setCardForm({...cardForm,name:e.target.value})} required/></label>
-          <label>E-posta<input type="email" value={cardForm.email} onChange={e=>setCardForm({...cardForm,email:e.target.value})} required/></label>
-          <label>Telefon<input value={cardForm.phone} onChange={e=>setCardForm({...cardForm,phone:e.target.value})} required/></label>
-          <label>Adres<textarea value={cardForm.address} onChange={e=>setCardForm({...cardForm,address:e.target.value})} required/></label>
-          <button disabled={cardBusy||!consent}>{cardBusy?"Güvenli ödeme açılıyor…":!consent?"Önce sözleşme onayını verin":"Kartla güvenli ödemeye geç"}</button>
-          <small>Kart bilgileriniz AI Visibility sunucusuna gönderilmez; PayTR güvenli ödeme formunda girilir.</small>
-        </form>:<div><iframe title="PayTR Güvenli Ödeme" src={iframeUrl} style={{width:"100%",minHeight:720,border:0,borderRadius:12,background:"#fff"}}/><button type="button" onClick={()=>setIframeUrl("")} style={{marginTop:10}}>Ödeme formunu kapat</button></div>}
-      </div>:<div className="empty">Kart ödeme modülü hazır. PayTR mağaza bilgileri eklendiğinde bu alan otomatik aktif olacak.</div>}
-    </article>
-  </section></>;
+  <section className="grid reports-grid"><article className="panel"><h2>Paket seçimi</h2><p><b>{d.client.name}</b> için önerilen paket</p><div className="content-plan"><h3>{d.plan.name}</h3><ul><li>Kurulum: {d.plan.setup}</li><li>Aylık: {d.plan.monthly}</li><li><strong>Önerilen ilk ödeme: {Number(d.plan.firstPayment||0).toLocaleString("tr-TR")} TL</strong></li><li>ChatGPT + Gemini + Perplexity görünürlük takibi</li><li>GEO/AEO iyileştirme planı</li><li>Aylık görünürlük raporu</li></ul></div></article><article className="panel"><div className="content-plan" style={{marginBottom:18}}><label style={{display:"flex",gap:10,alignItems:"flex-start"}}><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} style={{width:18,height:18,marginTop:2}}/><span>Mesafeli Hizmet Sözleşmesi ile İptal / İade Politikasını okudum. Hizmetin 14 günlük cayma süresi dolmadan başlamasını açıkça onaylıyorum ve hizmetin ifasına başlanmasının cayma hakkımı etkileyebileceği konusunda bilgilendirildim.</span></label><small><a href="/mesafeli-hizmet-sozlesmesi" target="_blank">Hizmet Sözleşmesi</a> · <a href="/iptal-iade" target="_blank">İptal / İade Politikası</a></small></div><h2>Havale / EFT</h2>{d.transferReady?<div className="content-plan"><b>Banka</b><p>{d.bank.bankName}</p><b>Hesap sahibi</b><p>{d.bank.accountHolder}</p><b>IBAN</b><p style={{wordBreak:"break-all",letterSpacing:".03em"}}>{maskedIban}</p><button type="button" onClick={copyIban}>{copied?"✓ IBAN kopyalandı":"⧉ IBAN'ı kopyala"}</button><small>Güvenlik için IBAN ekranda maskelidir. Kopyaladığınızda gerçek IBAN panoya alınır; banka uygulamasına yapıştırabilirsiniz.</small><b>Açıklama kodu</b><p>{ref}</p><small>Ödeme açıklamasına bu kodu yazın. Banka kontrolü yapılmadan paket aktif edilmez.</small><button type="button" onClick={reportPaid} disabled={!consent||reporting||reported||d.payment?.status==="customer-reported"||d.payment?.status==="paid"} style={{marginTop:14}}>{d.payment?.status==="paid"?"✓ Ödeme onaylandı":reported||d.payment?.status==="customer-reported"?"✓ Ödeme bildirildi":reporting?"Bildiriliyor…":"Ödemeyi yaptım"}</button></div>:<div className="empty">Havale/EFT ekranı hazır. Gerçek banka adı, hesap sahibi ve IBAN Vercel ortam değişkenlerine eklendiğinde burada otomatik görünecek.</div>}<h2 style={{marginTop:20}}>Kartla ödeme</h2>{d.cardReady?<div className="content-plan">{!iframeUrl?<form onSubmit={startCardPayment} className="scan-form" style={{margin:0}}><label>Ad soyad<input value={cardForm.name} onChange={e=>setCardForm({...cardForm,name:e.target.value})} required/></label><label>E-posta<input type="email" value={cardForm.email} onChange={e=>setCardForm({...cardForm,email:e.target.value})} required/></label><label>Telefon<input value={cardForm.phone} onChange={e=>setCardForm({...cardForm,phone:e.target.value})} required/></label><label>Adres<textarea value={cardForm.address} onChange={e=>setCardForm({...cardForm,address:e.target.value})} required/></label><button disabled={cardBusy||!consent}>{cardBusy?"Güvenli ödeme açılıyor…":!consent?"Önce sözleşme onayını verin":"Kartla güvenli ödemeye geç"}</button><small>Kart bilgileriniz AI Visibility sunucusuna gönderilmez; PayTR güvenli ödeme formunda girilir.</small></form>:<div><iframe title="PayTR Güvenli Ödeme" src={iframeUrl} style={{width:"100%",minHeight:720,border:0,borderRadius:12,background:"#fff"}}/><button type="button" onClick={()=>setIframeUrl("")} style={{marginTop:10}}>Ödeme formunu kapat</button></div>}</div>:<div className="empty">Kart ödeme modülü hazır. PayTR mağaza bilgileri eklendiğinde bu alan otomatik aktif olacak.</div>}</article></section></>;
 }
