@@ -2,13 +2,17 @@ import {completeScan,createScan,failScan,getClient,listScans} from "../../../lib
 import {getClientProfile} from "../../../lib/client-profile";
 import {runProviderChecks} from "../../../lib/providers";
 import {syncFindingsFromScan} from "../../../lib/findings";
+import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
 
-export async function GET(){
+export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   try{return Response.json({scans:await listScans(),mode:process.env.DATABASE_URL||process.env.STORAGE_URL?"database":"demo-only"});}
   catch(e){return Response.json({error:"Taramalar okunamadı."},{status:503});}
 }
 
 export async function POST(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  const originError=enforceSameOrigin(req);if(originError)return originError;
   let stage="request",scanId="";
   try{
     const body=await req.json();
@@ -65,10 +69,6 @@ export async function POST(req){
       try{await failScan(scanId,`${stage}: ${detail}`)}catch{}
     }
     const message=e?.code==="23503"?"Geçerli bir müşteri seçilmelidir.":"Tarama tamamlanamadı.";
-    return Response.json({
-      error:message,
-      stage,
-      detail
-    },{status:e?.code==="23503"?400:500});
+    return Response.json({error:message,stage,detail},{status:e?.code==="23503"?400:500});
   }
 }
