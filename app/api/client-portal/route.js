@@ -1,14 +1,16 @@
 import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../lib/admin-auth";
 import {getClientAccount} from "../../../lib/repository";
+import {resolveRequestLanguage} from "../../../lib/localized-ai";
 
-export async function GET(){
+export async function GET(req){
+  const language=resolveRequestLanguage(req,{}),en=language==="en";
   try{
     const store=await cookies();
     const session=await verifyClientToken(store.get("ai_client")?.value||"");
-    if(!session)return Response.json({error:"Müşteri oturumu geçersiz."},{status:401});
+    if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
     const account=await getClientAccount(session.clientId);
-    if(!account)return Response.json({error:"Müşteri hesabı bulunamadı."},{status:404});
-    return Response.json({account});
-  }catch{return Response.json({error:"Müşteri paneli yüklenemedi."},{status:500})}
+    if(!account)return Response.json({error:en?"Customer account not found.":"Müşteri hesabı bulunamadı."},{status:404});
+    return Response.json({account,language});
+  }catch{return Response.json({error:en?"The customer portal could not be loaded.":"Müşteri paneli yüklenemedi."},{status:500})}
 }
