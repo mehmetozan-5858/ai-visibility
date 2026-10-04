@@ -1,7 +1,7 @@
 import {Shell} from "../../components/ui";
-import ClientAccountManager from "../../components/ClientAccountManager";
+import BusinessWorkspace from "../../components/BusinessWorkspace";
 export default function Page(){
-  return <Shell title="İşletme Hesabı" subtitle="Her işletmenin temas, rapor, uygulama, ödeme ve önce/sonra kanıt geçmişi.">
-    <ClientAccountManager/>
+  return <Shell title="İşletme Hesabı" subtitle="İşletme geçmişi, Commerce Ready hazırlığı ve Business Impact görünümü.">
+    <BusinessWorkspace/>
   </Shell>;
 }
