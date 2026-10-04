@@ -7,13 +7,16 @@ import CRMManager from "./CRMManager";
 import WorkManager from "./WorkManager";
 import PaymentsManager from "./PaymentsManager";
 import SalesManager from "./SalesManager";
+import CreatorAgentDesks from "./CreatorAgentDesks";
 
 const tabs=[
   ["command","Sales Command Center"],
   ["leads","Leadler"],
   ["crm","CRM"],
   ["work","İş / Onay"],
-  ["sales","Satış Ajanı"]
+  ["sales","Satış Ajanı"],
+  ["creator-intel","Creator Intelligence"],
+  ["creator-solutions","Creator Çözüm Masaları"]
 ];
 
 export default function AgentsWorkspace(){
@@ -21,14 +24,14 @@ export default function AgentsWorkspace(){
   return <>
     <section className="panel" style={{marginBottom:18,padding:12}}>
       <div role="tablist" aria-label="Ajanlar çalışma alanı" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8}}>
-        {tabs.map(([id,label],index)=><button
+        {tabs.map(([id,label])=><button
           key={id}
           type="button"
           role="tab"
           aria-selected={tab===id}
           onClick={()=>setTab(id)}
           className={tab===id?"active":""}
-          style={{minHeight:44,padding:"9px 10px",fontSize:14,width:"100%",gridColumn:index===4?"1 / -1":undefined}}
+          style={{minHeight:44,padding:"9px 10px",fontSize:14,width:"100%"}}
         >{label}{tab===id?<small style={{display:"block",marginTop:2}}>Açık</small>:null}</button>)}
       </div>
     </section>
@@ -38,5 +41,7 @@ export default function AgentsWorkspace(){
     {tab==="crm"&&<CRMManager/>}
     {tab==="work"&&<WorkManager/>}
     {tab==="sales"&&<><SalesManager/><PaymentsManager/></>}
+    {tab==="creator-intel"&&<CreatorAgentDesks mode="all"/>}
+    {tab==="creator-solutions"&&<CreatorAgentDesks mode="solution"/>}
   </>;
 }
