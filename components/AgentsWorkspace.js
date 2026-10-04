@@ -9,15 +9,18 @@ import PaymentsManager from "./PaymentsManager";
 import SalesManager from "./SalesManager";
 import CreatorAgentDesks from "./CreatorAgentDesks";
 import BusinessAgentDesks from "./BusinessAgentDesks";
+import AgentCenter from "./AgentCenter";
 
 const businessTabs=[
   ["overview","Genel / Satış"],
+  ["center","Ajan Merkezi"],
   ["diagnosis","Sorun Tespit Masaları"],
   ["solutions","Çözüm Masaları"],
   ["crm","Lead / CRM"],
   ["work","İş / Onay"]
 ];
 const socialTabs=[
+  ["center","Ajan Merkezi"],
   ["diagnosis","Sorun Tespit Masaları"],
   ["solutions","Çözüm Masaları"]
 ];
@@ -46,6 +49,7 @@ export default function AgentsWorkspace(){
     {area==="business"&&<>
       <Tabs tabs={businessTabs} value={businessTab} onChange={setBusinessTab} label="İşletme ajan masaları"/>
       {businessTab==="overview"&&<><SalesCommandCenter/><AgentsManager/><SalesManager/><PaymentsManager/></>}
+      {businessTab==="center"&&<AgentCenter/>}
       {businessTab==="diagnosis"&&<BusinessAgentDesks mode="diagnosis"/>}
       {businessTab==="solutions"&&<BusinessAgentDesks mode="solution"/>}
       {businessTab==="crm"&&<><LeadsManager/><CRMManager/></>}
@@ -54,6 +58,7 @@ export default function AgentsWorkspace(){
 
     {area==="social"&&<>
       <Tabs tabs={socialTabs} value={socialTab} onChange={setSocialTab} label="Sosyal medya ajan masaları"/>
+      {socialTab==="center"&&<AgentCenter/>}
       {socialTab==="diagnosis"&&<CreatorAgentDesks mode="diagnosis"/>}
       {socialTab==="solutions"&&<CreatorAgentDesks mode="solution"/>}
     </>}
