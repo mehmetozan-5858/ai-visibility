@@ -99,7 +99,7 @@ export default function CommerceImpactManager(){
         <select value={signals[statusKey]} onChange={e=>setSignals(s=>({...s,[statusKey]:e.target.value}))}>
           <option value="unknown">Bağlı değil</option><option value="partial">Kısmi</option><option value="verified">Doğrulandı</option>
         </select>
-        <input value={signals[evidenceKey]||""} onChange={e=>setSignals(s=>({...s,[evidenceKey]:e.target.value}))} placeholder="Kanıt / kaynak notu (URL, sistem, dosya vb.)" />
+        <textarea value={signals[evidenceKey]||""} onChange={e=>setSignals(s=>({...s,[evidenceKey]:e.target.value}))} placeholder="Kanıt / kaynak notu yazın (URL, sistem, dosya vb.)" rows={2} inputMode="text" style={{width:"100%",minHeight:54,resize:"vertical",padding:"10px 12px",borderRadius:10,boxSizing:"border-box",fontSize:16,lineHeight:1.35,opacity:1,pointerEvents:"auto",touchAction:"manipulation"}} />
       </div>)}</div>
       <button type="button" onClick={saveSignals} disabled={signalBusy||!clientId} style={{width:"auto",marginTop:12,minHeight:42,padding:"10px 16px"}}>{signalBusy?"Kaydediliyor…":"Ticari sinyalleri kaydet"}</button>
       <p style={{marginBottom:0,marginTop:10}}><small>“Bağlı değil” alanları skora katılmaz. “Kısmi” ve “Doğrulandı” yalnız yönetici tarafından kanıtla işaretlenir.</small></p>
