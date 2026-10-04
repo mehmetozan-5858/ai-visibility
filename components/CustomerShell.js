@@ -10,8 +10,8 @@ export default function CustomerShell({title,subtitle,children}){
     <header className="top">
       <Link href="/musteri-panel" className="brand"><span className="logo">A</span><div><strong>AI VISIBILITY</strong><small>{t("customerPanel")}</small></div></Link>
       <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",justifyContent:"flex-end"}}>
-        <Link href="/musteri-panel" className="mini-action">{t("portalHome")}</Link>
-        <Link href="/" className="mini-action">{t("siteHome")}</Link>
+        <Link href="/musteri-panel" className="mini-action">{lang==="en"?"Portal Home":"Panel Ana Sayfa"}</Link>
+        <Link href="/" className="mini-action">{lang==="en"?"Website Home":"Site Ana Sayfa"}</Link>
         <LanguageSwitcher/>
         <button onClick={logout}>{t("logout")}</button>
       </div>
