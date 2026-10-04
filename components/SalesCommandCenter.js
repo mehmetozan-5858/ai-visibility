@@ -45,8 +45,8 @@ export default function SalesCommandCenter(){
 
     <div className="content-plan" style={{marginBottom:14}}>
       <b>Satış hunisi</b>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(64px,1fr))",gap:8,marginTop:10,overflowX:"auto",paddingBottom:4}}>
-        {pipeline.map(x=><div key={x.status} style={{padding:"10px 8px",border:"1px solid rgba(80,200,255,.25)",borderRadius:12,textAlign:"center",minWidth:64}}><small>{statusLabel[x.status]}</small><strong style={{display:"block",fontSize:22}}>{x.count}</strong></div>)}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginTop:10}}>
+        {pipeline.map(x=><div key={x.status} style={{padding:"10px 6px",border:"1px solid rgba(80,200,255,.25)",borderRadius:12,textAlign:"center",minWidth:0}}><small style={{display:"block",whiteSpace:"normal",lineHeight:1.2}}>{statusLabel[x.status]}</small><strong style={{display:"block",fontSize:22,marginTop:4}}>{x.count}</strong></div>)}
       </div>
     </div>
 
