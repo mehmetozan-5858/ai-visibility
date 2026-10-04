@@ -2,7 +2,10 @@ import {databaseStatus,getDatabaseUrl} from "../../../lib/db";
 import {providerStatus} from "../../../lib/providers";
 import {authConfigured} from "../../../lib/admin-auth";
 import {recoveryStatus} from "../../../lib/recovery-sender";
-export async function GET(){
+import {requireAdmin} from "../../../lib/api-security";
+
+export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   const providers=providerStatus();
   return Response.json({
     app:"AI Visibility",
@@ -15,9 +18,6 @@ export async function GET(){
   });
 }
 // production-refresh-secure-checkout
-
 // production-refresh-final-polish
-
 // release-0.9.1
-
 // release-0.9.2
