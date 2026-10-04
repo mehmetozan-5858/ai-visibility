@@ -1,9 +1,14 @@
 import {listPayments,confirmPayment} from "../../../lib/repository";
-export async function GET(){
+import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
+
+export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   try{return Response.json({payments:await listPayments(150)})}
   catch(e){return Response.json({error:"Ödemeler okunamadı.",detail:String(e?.message||e).slice(0,220)},{status:500})}
 }
 export async function PATCH(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  const originError=enforceSameOrigin(req);if(originError)return originError;
   try{
     const body=await req.json();
     if(!body?.id)return Response.json({error:"Ödeme kaydı gerekli."},{status:400});
