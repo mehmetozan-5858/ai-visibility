@@ -1,4 +1,4 @@
-import {requireAdmin,requireSameOrigin} from "../../../lib/api-security";
+import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
 import {addSharedAgentEvent,getAgentCenter} from "../../../lib/agent-coordination";
 
 export async function GET(req){
@@ -8,7 +8,7 @@ export async function GET(req){
 
 export async function POST(req){
   const denied=await requireAdmin(req);if(denied)return denied;
-  const originDenied=requireSameOrigin(req);if(originDenied)return originDenied;
+  const originDenied=enforceSameOrigin(req);if(originDenied)return originDenied;
   const body=await req.json().catch(()=>({}));
   const event=await addSharedAgentEvent({
     agent:body.agent||"Koordinatör Ajan",
