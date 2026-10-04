@@ -20,19 +20,19 @@ export async function GET(req){
     const account=await getClientAccount(client.id);
     const paidPayment=(account?.payments||[]).find(x=>x.status==="paid")||null;
     const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
+    const tryRail=plan.currency==="TRY";
     return Response.json({
       client,
       profile:{country:selectedCountry,city:profile?.city||"",sector:profile?.sector||""},
       plan,
       payment:{...payment,currency:plan.currency},
       bank:{bankName:process.env.PAYMENT_BANK_NAME||"",accountHolder:process.env.PAYMENT_ACCOUNT_HOLDER||"",iban:process.env.PAYMENT_IBAN||""},
-      transferReady:Boolean(process.env.PAYMENT_BANK_NAME&&process.env.PAYMENT_ACCOUNT_HOLDER&&process.env.PAYMENT_IBAN),
-      cardReady:Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT)
+      transferReady:tryRail&&Boolean(process.env.PAYMENT_BANK_NAME&&process.env.PAYMENT_ACCOUNT_HOLDER&&process.env.PAYMENT_IBAN),
+      cardReady:tryRail&&Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),
+      internationalPaymentPending:!tryRail
     });
   }catch(e){return Response.json({error:"Odeme bilgileri okunamadi.",detail:String(e?.message||e).slice(0,220)},{status:500})}
 }
-
-// env-refresh: redeploy after payment variables were configured
 
 export async function POST(req){
   try{
