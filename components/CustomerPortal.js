@@ -3,9 +3,16 @@ import {useEffect,useMemo,useState} from "react";
 
 const severityLabel={critical:"Kritik",high:"Yüksek",medium:"Orta",low:"Düşük"};
 const statusLabel={open:"Açık",requested:"Talep edildi",offered:"Teklif hazır",approved:"Onaylandı","in-progress":"Uygulanıyor",resolved:"Çözüldü",draft:"Hazırlanıyor",accepted:"Kabul edildi",paid:"Ödendi",completed:"Tamamlandı"};
+const tabs=[
+  ["overview","Genel Bakış"],
+  ["findings","Bulgu ve Çözümler"],
+  ["work","Çalışmalar"],
+  ["scans","Taramalar"],
+  ["payments","Ödemeler"]
+];
 
 export default function CustomerPortal(){
-  const [account,setAccount]=useState(null),[findings,setFindings]=useState([]),[msg,setMsg]=useState(""),[busy,setBusy]=useState("");
+  const [account,setAccount]=useState(null),[findings,setFindings]=useState([]),[msg,setMsg]=useState(""),[busy,setBusy]=useState(""),[tab,setTab]=useState("overview");
   async function load(){
     try{
       const [a,f]=await Promise.all([
@@ -28,18 +35,37 @@ export default function CustomerPortal(){
   }
   if(msg&&!account)return <section className="panel"><p className="client-message">{msg}</p></section>;
   if(!account)return <section className="panel"><p>Müşteri paneli yükleniyor…</p></section>;
-  return <section className="grid reports-grid">
+
+  const tabBar=<div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:4,marginBottom:14}}>
+    {tabs.map(([id,label])=><button key={id} onClick={()=>setTab(id)} aria-pressed={tab===id} style={{whiteSpace:"nowrap",opacity:tab===id?1:.58,boxShadow:tab===id?"0 0 0 2px #4aa7ff55":"none"}}>{label}</button>)}
+  </div>;
+
+  return <section>
     {msg&&<article className="panel"><p className="client-message">{msg}</p></article>}
-    <article className="panel">
-      <h2>{account.client.name}</h2>
-      <p>{account.client.domain}</p>
-      <div className="report-kpis">
-        <div><span>AI görünürlük</span><strong>{latest?.score==null?"—":latest.score+"/100"}</strong></div>
-        <div><span>Paket</span><strong>{account.client.plan||"—"}</strong></div>
-        <div><span>Tamamlanan tarama</span><strong>{completed.length}</strong></div>
-      </div>
-    </article>
-    <article className="panel">
+    {tabBar}
+
+    {tab==="overview"&&<div className="grid reports-grid">
+      <article className="panel">
+        <h2>{account.client.name}</h2>
+        <p>{account.client.domain}</p>
+        <div className="report-kpis">
+          <div><span>AI görünürlük</span><strong>{latest?.score==null?"—":latest.score+"/100"}</strong></div>
+          <div><span>Paket</span><strong>{account.client.plan||"—"}</strong></div>
+          <div><span>Tamamlanan tarama</span><strong>{completed.length}</strong></div>
+        </div>
+      </article>
+      <article className="panel">
+        <h2>Hızlı durum</h2>
+        <div className="client-list">
+          <div className="client-row"><div><b>{findings.length}</b><small>Bulgu ve çözüm kaydı</small></div><button onClick={()=>setTab("findings")}>Aç</button></div>
+          <div className="client-row"><div><b>{(account.workItems||[]).length}</b><small>Çalışma kaydı</small></div><button onClick={()=>setTab("work")}>Aç</button></div>
+          <div className="client-row"><div><b>{completed.length}</b><small>Tamamlanan tarama</small></div><button onClick={()=>setTab("scans")}>Aç</button></div>
+          <div className="client-row"><div><b>{(account.payments||[]).length}</b><small>Ödeme kaydı</small></div><button onClick={()=>setTab("payments")}>Aç</button></div>
+        </div>
+      </article>
+    </div>}
+
+    {tab==="findings"&&<article className="panel">
       <h2>Bulgu ve çözümler</h2>
       <p>Taramanızda bulunan sorunları ve hazırlanabilecek çözümleri burada görebilirsiniz.</p>
       {!findings.length?<div className="empty">Henüz müşteri paneline aktarılmış bulgu yok.</div>:
@@ -48,21 +74,24 @@ export default function CustomerPortal(){
         <span>{x.price>0?Number(x.price).toLocaleString("tr-TR")+" "+x.currency:(statusLabel[x.offerStatus]||"Fiyat hazırlanıyor")}</span>
         {x.status==="requested"||x.offerStatus==="requested"?<em>Talep edildi</em>:x.status==="resolved"?<em>Çözüldü</em>:<button disabled={busy===x.id} onClick={()=>requestSolution(x.id)}>{busy===x.id?"Gönderiliyor…":"Çözümü istiyorum"}</button>}
       </article>)}</div>}
-    </article>
-    <article className="panel">
+    </article>}
+
+    {tab==="work"&&<article className="panel">
       <h2>Çalışmalar</h2>
       {(account.workItems||[]).length===0?<div className="empty">Henüz çalışma kaydı yok.</div>:
       <div className="client-list">{account.workItems.slice(0,20).map(x=><div className="client-row" key={x.id}><div><b>{x.title}</b><small>{x.category} · {x.status}</small>{x.detail&&<small>{x.detail}</small>}</div></div>)}</div>}
-    </article>
-    <article className="panel">
+    </article>}
+
+    {tab==="scans"&&<article className="panel">
       <h2>Son taramalar</h2>
       {completed.length===0?<div className="empty">Henüz tamamlanmış tarama yok.</div>:
       <div className="client-list">{completed.slice(0,10).map(x=><div className="client-row" key={x.id}><div><b>{x.score}/100</b><small>{new Date(x.completedAt||x.createdAt).toLocaleString("tr-TR")}</small></div></div>)}</div>}
-    </article>
-    <article className="panel">
+    </article>}
+
+    {tab==="payments"&&<article className="panel">
       <h2>Ödemeler</h2>
       {(account.payments||[]).length===0?<div className="empty">Ödeme kaydı yok.</div>:
       <div className="client-list">{account.payments.slice(0,10).map(x=><div className="client-row" key={x.id}><div><b>{x.plan}</b><small>{x.status} · {(Number(x.setupAmount||0)+Number(x.monthlyAmount||0)).toLocaleString("tr-TR")} TL</small></div></div>)}</div>}
-    </article>
+    </article>}
   </section>;
 }
