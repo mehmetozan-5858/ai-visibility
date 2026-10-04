@@ -1,7 +1,9 @@
 import {getSalesCandidates,upsertSalesOpportunity} from "../../../lib/repository";
 import {createPaymentAccessToken} from "../../../lib/admin-auth";
+import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
 
-export async function GET(){
+export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   try{
     const candidates=await getSalesCandidates(20);
     return Response.json({candidates});
@@ -51,6 +53,8 @@ function buildOffer(c){
 }
 
 export async function POST(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  const originError=enforceSameOrigin(req);if(originError)return originError;
   try{
     const body=await req.json();
     const candidates=await getSalesCandidates(50);
