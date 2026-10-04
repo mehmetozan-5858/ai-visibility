@@ -28,39 +28,69 @@ function marketForToday(){
   return MARKETS[day%MARKETS.length];
 }
 
+function logCycle(event,payload={}){
+  console.log(JSON.stringify({source:"daily-agent-cycle",event,at:new Date().toISOString(),...payload}));
+}
+
 export async function GET(req){
-  if(!authorized(req))return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{"cache-control":"no-store"}});
+  if(!authorized(req)){
+    logCycle("unauthorized");
+    return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{"cache-control":"no-store"}});
+  }
 
   const startedAt=new Date().toISOString();
   const market=marketForToday();
   const report={ok:true,startedAt,market,discovered:0,newProspects:0,scanned:0,completed:0,errors:[]};
+  logCycle("started",{market});
 
   try{
     const existingNames=await getProspectNames();
     const found=await discoverBusinesses({...market,existingNames});
     report.discovered=found.length;
+    logCycle("discovery-complete",{market,discovered:report.discovered,existingProspects:existingNames.length});
+
     const seeded=await seedProspects(found);
     const existingSet=new Set(existingNames.map(x=>String(x).toLocaleLowerCase("tr-TR")));
     const fresh=seeded.filter(x=>!existingSet.has(String(x.name||"").toLocaleLowerCase("tr-TR")));
     report.newProspects=fresh.length;
+    logCycle("prospects-seeded",{newProspects:report.newProspects});
 
     for(const prospect of fresh.slice(0,4)){
       try{
         report.scanned+=1;
+        logCycle("scan-started",{prospectId:prospect.id,name:prospect.name,scanned:report.scanned});
         const scan=await queueProspectScan(prospect.id);
         if(scan.status==="demo-only")throw new Error("database-unavailable");
         const result=await runProviderCheck(prospect);
         if(!result)throw new Error("no-provider-result");
         await completeProspectScan(scan.id,prospect.id,result);
         report.completed+=1;
+        logCycle("scan-completed",{prospectId:prospect.id,name:prospect.name,completed:report.completed});
       }catch(e){
-        report.errors.push({prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)});
+        const error=String(e?.message||e).slice(0,180);
+        report.errors.push({prospectId:prospect.id,name:prospect.name,error});
+        console.error(JSON.stringify({source:"daily-agent-cycle",event:"scan-error",at:new Date().toISOString(),prospectId:prospect.id,name:prospect.name,error}));
       }
     }
   }catch(e){
     report.ok=false;
-    report.errors.push({stage:"discovery",error:String(e?.message||e).slice(0,220)});
+    const error=String(e?.message||e).slice(0,220);
+    report.errors.push({stage:"discovery",error});
+    console.error(JSON.stringify({source:"daily-agent-cycle",event:"discovery-error",at:new Date().toISOString(),market,error}));
   }
 
-  return Response.json({...report,finishedAt:new Date().toISOString()},{status:report.ok?200:500,headers:{"cache-control":"no-store"}});
+  const finishedAt=new Date().toISOString();
+  logCycle("finished",{
+    ok:report.ok,
+    market,
+    discovered:report.discovered,
+    newProspects:report.newProspects,
+    scanned:report.scanned,
+    completed:report.completed,
+    errorCount:report.errors.length,
+    startedAt,
+    finishedAt
+  });
+
+  return Response.json({...report,finishedAt},{status:report.ok?200:500,headers:{"cache-control":"no-store"}});
 }
