@@ -1,7 +1,21 @@
 import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById,recordPaymentConsent,getClientAccount} from "../../../lib/repository";
 import {getClientProfile} from "../../../lib/client-profile";
 import {verifyPaymentAccessToken} from "../../../lib/admin-auth";
-import {priceFor,formatMoney} from "../../../lib/regional-pricing";
+import {servicePrice,pricingCatalog,formatMoney,SERVICE_CODES,BUNDLE_DISCOUNT_RANGE} from "../../../lib/regional-pricing";
+
+function languageFrom(req){
+  return String(req.headers.get("accept-language")||"").toLowerCase().startsWith("en")?"en":"tr";
+}
+function formatPlan(plan,lang){
+  const locale=plan.currency==="TRY"?"tr-TR":plan.currency==="GBP"?"en-GB":plan.currency==="EUR"?"en-IE":"en-US";
+  const zero=formatMoney(0,plan.currency,locale);
+  return {
+    ...plan,
+    setup:plan.setupAmount?formatMoney(plan.setupAmount,plan.currency,locale):zero,
+    monthly:plan.monthlyAmount?formatMoney(plan.monthlyAmount,plan.currency,locale)+(lang==="tr"?"/ay":"/mo"):zero,
+    displayAmount:formatMoney(plan.amount,plan.currency,locale)
+  };
+}
 
 export async function GET(req){
   try{
@@ -13,10 +27,11 @@ export async function GET(req){
     if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
     const profile=await getClientProfile(client.id).catch(()=>null);
     const selectedCountry=String(url.searchParams.get("country")||profile?.country||"Türkiye").trim();
-    const plan=priceFor({score:Number(client.score)||0,country:selectedCountry});
-    const locale=plan.currency==="TRY"?"tr-TR":plan.currency==="GBP"?"en-GB":plan.currency==="EUR"?"en-IE":"en-US";
-    plan.setup=formatMoney(plan.setupAmount,plan.currency,locale);
-    plan.monthly=formatMoney(plan.monthlyAmount,plan.currency,locale)+(plan.currency==="TRY"?"/ay":"/mo");
+    const lang=languageFrom(req);
+    const requestedService=String(url.searchParams.get("service")||"business-diagnosis");
+    const service=SERVICE_CODES.includes(requestedService)?requestedService:"business-diagnosis";
+    const plan=formatPlan(servicePrice({service,country:selectedCountry,language:lang}),lang);
+    const catalog=pricingCatalog({country:selectedCountry,language:lang}).map(x=>formatPlan(x,lang));
     const account=await getClientAccount(client.id);
     const paidPayment=(account?.payments||[]).find(x=>x.status==="paid")||null;
     const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
@@ -25,6 +40,8 @@ export async function GET(req){
       client,
       profile:{country:selectedCountry,city:profile?.city||"",sector:profile?.sector||""},
       plan,
+      pricingCatalog:catalog,
+      bundleDiscountRange:BUNDLE_DISCOUNT_RANGE,
       payment:{...payment,currency:plan.currency},
       bank:{bankName:process.env.PAYMENT_BANK_NAME||"",accountHolder:process.env.PAYMENT_ACCOUNT_HOLDER||"",iban:process.env.PAYMENT_IBAN||""},
       transferReady:tryRail&&Boolean(process.env.PAYMENT_BANK_NAME&&process.env.PAYMENT_ACCOUNT_HOLDER&&process.env.PAYMENT_IBAN),
