@@ -8,7 +8,7 @@ export default function LoginForm(){
       const r=await fetch("/api/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({password})});
       const d=await r.json();
       if(!r.ok)throw new Error(d.error||"Giriş yapılamadı.");
-      window.location.href="/";
+      window.location.href="/admin";
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }
   return <form className="panel scan-form" onSubmit={submit} style={{maxWidth:440,margin:"80px auto"}}>
