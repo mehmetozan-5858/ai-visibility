@@ -10,7 +10,7 @@ export default function CustomerLoginForm(){
     try{
       const r=await fetch("/api/client-auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,password})});
       const d=await r.json();if(!r.ok)throw new Error(d.error||t("loginFailed"));
-      window.location.href="/musteri-panel";
+      window.location.replace("/musteri-panel");
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }
   return <div style={{maxWidth:440,margin:"80px auto",padding:"0 16px"}}>
