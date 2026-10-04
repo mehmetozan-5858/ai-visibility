@@ -3,7 +3,7 @@ import {verifyAdminToken,verifyClientToken,authConfigured} from "./lib/admin-aut
 
 export async function proxy(req){
   const {pathname}=req.nextUrl;
-  const publicPages=["/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/musteri-sifre-sifirla","/demo","/yeni-musteri"];
+  const publicPages=["/","/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/musteri-sifre-sifirla","/demo","/yeni-musteri"];
   const publicPath=pathname==="/login"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname==="/api/leads"||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/")||pathname.startsWith("/api/cron/");
   if(publicPath)return NextResponse.next();
 
