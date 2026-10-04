@@ -1,7 +1,10 @@
 import {getClientCredentialByEmail,createOrUpdateClientCredential} from "../../../../lib/client-credentials";
 import {createVerificationCode,sendVerificationEmail,verifyEmailCode} from "../../../../lib/email-verification";
+import {checkRateLimit,enforceSameOrigin} from "../../../../lib/api-security";
 
 export async function POST(req){
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"client-password-reset",limit:10,windowMs:15*60*1000});if(limited)return limited;
   try{
     const body=await req.json();
     const email=String(body?.email||"").trim().toLowerCase();
