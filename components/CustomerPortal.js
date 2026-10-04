@@ -1,15 +1,6 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
-
-const severityLabel={critical:"Kritik",high:"Yüksek",medium:"Orta",low:"Düşük"};
-const statusLabel={open:"Açık",requested:"Talep edildi",offered:"Teklif hazır",approved:"Onaylandı","in-progress":"Uygulanıyor",resolved:"Çözüldü",draft:"Hazırlanıyor",accepted:"Kabul edildi",paid:"Ödendi",completed:"Tamamlandı",cancelled:"İptal edildi"};
-const tabs=[
-  ["overview","Genel Bakış","⌂"],
-  ["findings","Bulgu ve Çözümler","◆"],
-  ["work","Çalışmalar","⚙"],
-  ["scans","Taramalar","◎"],
-  ["payments","Ödemeler","₺"]
-];
+import {useLanguage} from "./LanguageProvider";
 
 const shell={display:"grid",gap:14};
 const card={background:"linear-gradient(145deg,#0b1d2a,#091722)",border:"1px solid #183f54",borderRadius:22,padding:18,boxShadow:"0 14px 35px #00000024"};
@@ -17,132 +8,69 @@ const soft={background:"#0c2230",border:"1px solid #1d4a61",borderRadius:16,padd
 const muted={color:"#89a2b2",fontSize:12};
 const title={margin:"0 0 6px",fontSize:20};
 
-function StatusPill({text,tone="blue"}){
-  const map={blue:["#123956","#77b9ff"],green:["#0d4236","#68e3bd"],orange:["#4a3315","#ffc474"],red:["#4a2227","#ff9aa8"],gray:["#25333d","#b3c1ca"]};
-  const [bg,color]=map[tone]||map.blue;
-  return <span style={{background:bg,color,border:`1px solid ${color}44`,borderRadius:999,padding:"5px 9px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{text}</span>;
-}
+const copy={
+ tr:{
+  panel:"Müşteri Paneli",noPlan:"Paket yok",overview:"Genel Bakış",findings:"Bulgu ve Çözümler",work:"Çalışmalar",scans:"Taramalar",payments:"Ödemeler",
+  loadFail:"Panel yüklenemedi.",solutionsLoadFail:"Çözümler yüklenemedi.",loading:"Müşteri paneli yükleniyor…",requestFail:"Talep gönderilemedi.",requestOk:"Çözüm talebiniz alındı.",
+  visibility:"AI görünürlük",firstMeasurement:"İlk ölçüm",pointsUp:"puan artış",pointsChange:"puan değişim",noChange:"Değişim yok",criticalHigh:"Kritik / yüksek bulgu",priorityAction:"Öncelikli aksiyon gerekli",noCritical:"Kritik bulgu yok",activeWork:"Aktif çalışma",ongoingWork:"Devam eden işler",completedScans:"Tamamlanan tarama",noScan:"Henüz tarama yok",
+  currentStatus:"Son durum",current:"Güncel",waitingData:"Veri bekleniyor",latestScore:"Son skor",finding:"Bulgu",paidRecords:"Ödenen kayıt",quickActions:"Hızlı işlemler",quickHelp:"İlgili alana doğrudan geç.",reviewFindings:"Bulgu ve çözümleri incele",trackWork:"Çalışmaları takip et",openScans:"Tarama geçmişini aç",viewPayments:"Ödeme geçmişini gör",record:"kayıt",scan:"tarama",
+  findingsHelp:"Sorunlar, önem seviyesi ve uygulanabilir çözüm teklifleri.",noFindings:"Henüz bulgu yok.",noFindingsHelp:"Yeni bir tarama tamamlandığında bulgular otomatik olarak burada listelenecek.",pricePreparing:"Fiyat hazırlanıyor",suggestedSolution:"Önerilen çözüm",visibilityImprovement:"AI görünürlük iyileştirmesi",requested:"Talep edildi",resolved:"Çözüldü",sending:"Gönderiliyor…",requestSolution:"Çözümü istiyorum",
+  workHelp:"Onaylanan işlerin uygulama sürecini buradan takip edebilirsin.",noWork:"Henüz çalışma kaydı yok.",noWorkHelp:"Bir çözüm onaylandığında süreç burada Bekliyor → Hazırlanıyor → Uygulanıyor → Tamamlandı şeklinde görünür.",workItem:"Çalışma",
+  scansHelp:"Tamamlanan görünürlük taramalarınızı ve geçmiş skorlarınızı inceleyin.",noScans:"Henüz tamamlanmış tarama yok.",score:"Skor",completed:"Tamamlandı",providerResults:"Sağlayıcı sonuçları",summary:"Özet",recommendations:"Öneriler",
+  paymentsHelp:"Ödeme kayıtlarınızı, referans kodlarını ve durumlarını görüntüleyin.",noPayments:"Henüz ödeme kaydı yok.",reference:"Referans",method:"Yöntem",plan:"Paket",setup:"Kurulum",monthly:"Aylık",total:"Toplam",date:"Tarih",
+  critical:"Kritik",high:"Yüksek",medium:"Orta",low:"Düşük",open:"Açık",offered:"Teklif hazır",approved:"Onaylandı",inProgress:"Uygulanıyor",draft:"Hazırlanıyor",accepted:"Kabul edildi",paid:"Ödendi",cancelled:"İptal edildi",ready:"Hazır",accessRequired:"Erişim gerekiyor",approvalRequired:"Müşteri onayı",pending:"Bekliyor",customerReported:"Ödeme bildirildi",failed:"Başarısız",bankTransfer:"Banka havalesi",card:"Kart"
+ },
+ en:{
+  panel:"Customer Portal",noPlan:"No plan",overview:"Overview",findings:"Findings & Solutions",work:"Work",scans:"Scans",payments:"Payments",
+  loadFail:"Unable to load the portal.",solutionsLoadFail:"Unable to load solutions.",loading:"Loading customer portal…",requestFail:"Unable to submit the request.",requestOk:"Your solution request has been received.",
+  visibility:"AI visibility",firstMeasurement:"First measurement",pointsUp:"points increase",pointsChange:"points change",noChange:"No change",criticalHigh:"Critical / high findings",priorityAction:"Priority action required",noCritical:"No critical findings",activeWork:"Active work",ongoingWork:"Work in progress",completedScans:"Completed scans",noScan:"No scans yet",
+  currentStatus:"Current status",current:"Current",waitingData:"Waiting for data",latestScore:"Latest score",finding:"Findings",paidRecords:"Paid records",quickActions:"Quick actions",quickHelp:"Go directly to the relevant section.",reviewFindings:"Review findings and solutions",trackWork:"Track work",openScans:"Open scan history",viewPayments:"View payment history",record:"records",scan:"scans",
+  findingsHelp:"Issues, severity levels and actionable solution offers.",noFindings:"No findings yet.",noFindingsHelp:"Findings will appear here automatically when a new scan is completed.",pricePreparing:"Price being prepared",suggestedSolution:"Suggested solution",visibilityImprovement:"AI visibility improvement",requested:"Requested",resolved:"Resolved",sending:"Sending…",requestSolution:"Request solution",
+  workHelp:"Track the implementation progress of approved work here.",noWork:"No work items yet.",noWorkHelp:"Once a solution is approved, progress will appear here as Waiting → Preparing → In progress → Completed.",workItem:"Work item",
+  scansHelp:"Review completed visibility scans and historical scores.",noScans:"No completed scans yet.",score:"Score",completed:"Completed",providerResults:"Provider results",summary:"Summary",recommendations:"Recommendations",
+  paymentsHelp:"View your payment records, reference codes and statuses.",noPayments:"No payment records yet.",reference:"Reference",method:"Method",plan:"Plan",setup:"Setup",monthly:"Monthly",total:"Total",date:"Date",
+  critical:"Critical",high:"High",medium:"Medium",low:"Low",open:"Open",offered:"Offer ready",approved:"Approved",inProgress:"In progress",draft:"Preparing",accepted:"Accepted",paid:"Paid",cancelled:"Cancelled",ready:"Ready",accessRequired:"Access required",approvalRequired:"Customer approval",pending:"Pending",customerReported:"Payment reported",failed:"Failed",bankTransfer:"Bank transfer",card:"Card"
+ }
+};
 
+function StatusPill({text,tone="blue"}){
+ const map={blue:["#123956","#77b9ff"],green:["#0d4236","#68e3bd"],orange:["#4a3315","#ffc474"],red:["#4a2227","#ff9aa8"],gray:["#25333d","#b3c1ca"]};
+ const [bg,color]=map[tone]||map.blue;
+ return <span style={{background:bg,color,border:`1px solid ${color}44`,borderRadius:999,padding:"5px 9px",fontSize:11,fontWeight:800,whiteSpace:"nowrap"}}>{text}</span>;
+}
 function Metric({label,value,sub,icon,tone="blue"}){
-  const glow=tone==="green"?"#26d7ad":tone==="orange"?"#f4a94e":tone==="purple"?"#9a7bff":"#4a9dff";
-  return <div style={{...soft,minHeight:118,position:"relative",overflow:"hidden"}}>
-    <div style={{position:"absolute",right:-18,top:-18,width:70,height:70,borderRadius:"50%",background:glow,opacity:.08}}/>
-    <div style={{fontSize:22,marginBottom:10}}>{icon}</div>
-    <div style={muted}>{label}</div>
-    <strong style={{display:"block",fontSize:25,margin:"4px 0 2px"}}>{value}</strong>
-    {sub&&<small style={{color:glow}}>{sub}</small>}
-  </div>;
+ const glow=tone==="green"?"#26d7ad":tone==="orange"?"#f4a94e":tone==="purple"?"#9a7bff":"#4a9dff";
+ return <div style={{...soft,minHeight:118,position:"relative",overflow:"hidden"}}><div style={{position:"absolute",right:-18,top:-18,width:70,height:70,borderRadius:"50%",background:glow,opacity:.08}}/><div style={{fontSize:22,marginBottom:10}}>{icon}</div><div style={muted}>{label}</div><strong style={{display:"block",fontSize:25,margin:"4px 0 2px"}}>{value}</strong>{sub&&<small style={{color:glow}}>{sub}</small>}</div>;
 }
 
 export default function CustomerPortal(){
-  const [account,setAccount]=useState(null),[findings,setFindings]=useState([]),[msg,setMsg]=useState(""),[busy,setBusy]=useState(""),[tab,setTab]=useState("overview");
-  async function load(){
-    try{
-      const [a,f]=await Promise.all([
-        fetch("/api/client-portal",{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"Panel yüklenemedi.");return d}),
-        fetch("/api/client-portal/solutions",{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"Çözümler yüklenemedi.");return d})
-      ]);
-      setAccount(a.account);setFindings(f.findings||[]);
-    }catch(e){setMsg(e.message)}
-  }
-  useEffect(()=>{load()},[]);
-  const completed=useMemo(()=>account?.scans?.filter(x=>x.status==="completed"&&Number.isFinite(Number(x.score)))||[],[account]);
-  const latest=completed[0]||null;
-  const previous=completed[1]||null;
-  const delta=latest&&previous?Number(latest.score)-Number(previous.score):null;
-  const critical=findings.filter(x=>x.severity==="critical"||x.severity==="high").length;
-  const activeWork=(account?.workItems||[]).filter(x=>!["completed","resolved","cancelled"].includes(String(x.status||"").toLowerCase())).length;
-  const paidCount=(account?.payments||[]).filter(x=>String(x.status||"").toLowerCase()==="paid").length;
+ const {lang}=useLanguage();const c=copy[lang]||copy.tr;const locale=lang==="en"?"en-US":"tr-TR";
+ const [account,setAccount]=useState(null),[findings,setFindings]=useState([]),[msg,setMsg]=useState(""),[busy,setBusy]=useState(""),[tab,setTab]=useState("overview");
+ const severityLabel={critical:c.critical,high:c.high,medium:c.medium,low:c.low};
+ const statusLabel={open:c.open,requested:c.requested,offered:c.offered,approved:c.approved,"in-progress":c.inProgress,resolved:c.resolved,draft:c.draft,accepted:c.accepted,paid:c.paid,completed:c.completed,cancelled:c.cancelled,ready:c.ready,"access-required":c.accessRequired,"approval-required":c.approvalRequired,pending:c.pending,"customer-reported":c.customerReported,failed:c.failed};
+ const tabs=[["overview",c.overview,"⌂"],["findings",c.findings,"◆"],["work",c.work,"⚙"],["scans",c.scans,"◎"],["payments",c.payments,"₺"]];
+ async function load(){try{const [a,f]=await Promise.all([fetch("/api/client-portal",{cache:"no-store",headers:{"accept-language":lang}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||c.loadFail);return d}),fetch("/api/client-portal/solutions",{cache:"no-store",headers:{"accept-language":lang}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||c.solutionsLoadFail);return d})]);setAccount(a.account);setFindings(f.findings||[])}catch(e){setMsg(e.message)}}
+ useEffect(()=>{load()},[lang]);
+ const completed=useMemo(()=>account?.scans?.filter(x=>x.status==="completed"&&Number.isFinite(Number(x.score)))||[],[account]);
+ const latest=completed[0]||null,previous=completed[1]||null;const delta=latest&&previous?Number(latest.score)-Number(previous.score):null;
+ const critical=findings.filter(x=>x.severity==="critical"||x.severity==="high").length;
+ const activeWork=(account?.workItems||[]).filter(x=>!["completed","resolved","cancelled"].includes(String(x.status||"").toLowerCase())).length;
+ const paidCount=(account?.payments||[]).filter(x=>String(x.status||"").toLowerCase()==="paid").length;
+ async function requestSolution(id){setBusy(id);setMsg("");try{const r=await fetch("/api/client-portal/solutions",{method:"POST",headers:{"content-type":"application/json","accept-language":lang},body:JSON.stringify({findingId:id,language:lang})});const d=await r.json();if(!r.ok)throw new Error(d.error||c.requestFail);setMsg(d.message||c.requestOk);await load()}catch(e){setMsg(e.message)}finally{setBusy("")}}
+ if(msg&&!account)return <section className="panel"><p className="client-message">{msg}</p></section>;
+ if(!account)return <section className="panel"><p>{c.loading}</p></section>;
+ return <section style={shell}>
+  {msg&&<article style={{...card,borderColor:"#246c72"}}><p className="client-message" style={{margin:0}}>{msg}</p></article>}
+  <article style={{...card,padding:16}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:15}}><div><div style={{...muted,textTransform:"uppercase",letterSpacing:".12em"}}>{c.panel}</div><h2 style={{margin:"5px 0 3px",fontSize:24}}>{account.client.name}</h2><div style={muted}>{account.client.domain}</div></div><StatusPill text={account.client.plan||c.noPlan} tone="green"/></div><div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:3}}>{tabs.map(([id,label,icon])=><button key={id} onClick={()=>setTab(id)} aria-pressed={tab===id} style={{whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:7,borderRadius:14,padding:"10px 13px",background:tab===id?"linear-gradient(90deg,#367cff,#22cfa4)":"#102735",border:tab===id?"1px solid #58b9ff":"1px solid #21465a",color:"white",opacity:tab===id?1:.75}}><span>{icon}</span>{label}</button>)}</div></article>
 
-  async function requestSolution(id){
-    setBusy(id);setMsg("");
-    try{
-      const r=await fetch("/api/client-portal/solutions",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({findingId:id})});
-      const d=await r.json();if(!r.ok)throw new Error(d.error||"Talep gönderilemedi.");
-      setMsg(d.message||"Çözüm talebiniz alındı.");await load();
-    }catch(e){setMsg(e.message)}finally{setBusy("")}
-  }
-  if(msg&&!account)return <section className="panel"><p className="client-message">{msg}</p></section>;
-  if(!account)return <section className="panel"><p>Müşteri paneli yükleniyor…</p></section>;
+  {tab==="overview"&&<><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10}}><Metric label={c.visibility} value={latest?.score==null?"—":latest.score+"/100"} sub={delta==null?c.firstMeasurement:delta>0?`+${delta} ${c.pointsUp}`:delta<0?`${delta} ${c.pointsChange}`:c.noChange} icon="◎" tone={delta!=null&&delta>0?"green":"blue"}/><Metric label={c.criticalHigh} value={critical} sub={critical?c.priorityAction:c.noCritical} icon="◆" tone={critical?"orange":"green"}/><Metric label={c.activeWork} value={activeWork} sub={c.ongoingWork} icon="⚙" tone="purple"/><Metric label={c.completedScans} value={completed.length} sub={latest?new Date(latest.completedAt||latest.createdAt).toLocaleDateString(locale):c.noScan} icon="◉"/></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}}><article style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={title}>{c.currentStatus}</h3><StatusPill text={latest?c.current:c.waitingData} tone={latest?"green":"gray"}/></div><div style={{display:"grid",gap:10}}><div style={soft}><div style={muted}>{c.latestScore}</div><strong style={{fontSize:30}}>{latest?.score==null?"—":latest.score+"/100"}</strong></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><div style={soft}><div style={muted}>{c.finding}</div><strong style={{fontSize:22}}>{findings.length}</strong></div><div style={soft}><div style={muted}>{c.paidRecords}</div><strong style={{fontSize:22}}>{paidCount}</strong></div></div></div></article><article style={card}><h3 style={title}>{c.quickActions}</h3><p style={{...muted,marginTop:0}}>{c.quickHelp}</p><div style={{display:"grid",gap:9}}>{[["findings",c.reviewFindings,`${findings.length} ${c.record}`],["work",c.trackWork,`${(account.workItems||[]).length} ${c.record}`],["scans",c.openScans,`${completed.length} ${c.scan}`],["payments",c.viewPayments,`${(account.payments||[]).length} ${c.record}`]].map(([id,label,count])=><button key={id} onClick={()=>setTab(id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:"#102735",border:"1px solid #21465a"}}><span>{label}</span><small>{count} ›</small></button>)}</div></article></div></>}
 
-  return <section style={shell}>
-    {msg&&<article style={{...card,borderColor:"#246c72"}}><p className="client-message" style={{margin:0}}>{msg}</p></article>}
+  {tab==="findings"&&<article style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>{c.findings}</h3><p style={{...muted,margin:0}}>{c.findingsHelp}</p></div><StatusPill text={`${findings.length} ${c.record}`} tone="blue"/></div>{!findings.length?<div className="empty"><b>{c.noFindings}</b><br/><span style={muted}>{c.noFindingsHelp}</span></div>:<div style={{display:"grid",gap:11}}>{findings.slice(0,30).map(x=>{const tone=x.severity==="critical"?"red":x.severity==="high"?"orange":x.severity==="medium"?"blue":"gray";const done=x.status==="resolved";const requested=x.status==="requested"||x.offerStatus==="requested";return <article key={x.id} style={{...soft,borderLeft:`4px solid ${tone==="red"?"#ff6f82":tone==="orange"?"#f4a94e":tone==="blue"?"#4a9dff":"#6f8796"}`}}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div><b style={{fontSize:16}}>{x.title}</b><div style={{display:"flex",gap:7,marginTop:7,flexWrap:"wrap"}}><StatusPill text={severityLabel[x.severity]||x.severity} tone={tone}/><StatusPill text={x.provider||"AI"} tone="gray"/></div></div><strong style={{fontSize:14}}>{x.price>0?Number(x.price).toLocaleString(locale)+" "+x.currency:(statusLabel[x.offerStatus]||c.pricePreparing)}</strong></div>{x.detail&&<p style={{color:"#a6bac7",lineHeight:1.5,fontSize:13}}>{x.detail}</p>}<div style={{background:"#091923",borderRadius:12,padding:11,marginTop:10}}><div style={muted}>{c.suggestedSolution}</div><b style={{display:"block",marginTop:4}}>{x.solutionTitle||c.visibilityImprovement}</b>{x.deliverable&&<small style={{...muted,display:"block",marginTop:5}}>{x.deliverable}</small>}</div><div style={{marginTop:11,display:"flex",justifyContent:"flex-end"}}>{requested?<StatusPill text={c.requested} tone="green"/>:done?<StatusPill text={c.resolved} tone="green"/>:<button disabled={busy===x.id} onClick={()=>requestSolution(x.id)}>{busy===x.id?c.sending:c.requestSolution}</button>}</div></article>})}</div>}</article>}
 
-    <article style={{...card,padding:16}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:15}}>
-        <div>
-          <div style={{...muted,textTransform:"uppercase",letterSpacing:".12em"}}>Müşteri Paneli</div>
-          <h2 style={{margin:"5px 0 3px",fontSize:24}}>{account.client.name}</h2>
-          <div style={muted}>{account.client.domain}</div>
-        </div>
-        <StatusPill text={account.client.plan||"Paket yok"} tone="green"/>
-      </div>
-      <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:3}}>
-        {tabs.map(([id,label,icon])=><button key={id} onClick={()=>setTab(id)} aria-pressed={tab===id} style={{whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:7,borderRadius:14,padding:"10px 13px",background:tab===id?"linear-gradient(90deg,#367cff,#22cfa4)":"#102735",border:tab===id?"1px solid #58b9ff":"1px solid #21465a",color:"white",opacity:tab===id?1:.75,boxShadow:tab===id?"0 8px 24px #247ecb33":"none"}}><span>{icon}</span>{label}</button>)}
-      </div>
-    </article>
+  {tab==="work"&&<article style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>{c.work}</h3><p style={{...muted,margin:0}}>{c.workHelp}</p></div><StatusPill text={`${(account.workItems||[]).length} ${c.record}`} tone="blue"/></div>{!(account.workItems||[]).length?<div className="empty"><b>{c.noWork}</b><br/><span style={muted}>{c.noWorkHelp}</span></div>:<div style={{display:"grid",gap:10}}>{account.workItems.slice(0,30).map(x=><div style={soft} key={x.id}><div style={{display:"flex",justifyContent:"space-between",gap:10}}><div><b>{x.title}</b><small style={{...muted,display:"block",marginTop:5}}>{x.category||c.workItem}</small></div><StatusPill text={statusLabel[x.status]||x.status} tone={x.status==="completed"?"green":x.status==="in-progress"?"orange":"blue"}/></div>{x.detail&&<p style={{...muted,lineHeight:1.5}}>{x.detail}</p>}<div style={{height:6,borderRadius:99,background:"#153444",overflow:"hidden",marginTop:11}}><div style={{height:"100%",width:x.status==="completed"?"100%":x.status==="in-progress"?"70%":x.status==="approved"?"45%":"20%",background:"linear-gradient(90deg,#3d86ff,#2ad1aa)"}}/></div></div>)}</div>}</article>}
 
-    {tab==="overview"&&<>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10}}>
-        <Metric label="AI görünürlük" value={latest?.score==null?"—":latest.score+"/100"} sub={delta==null?"İlk ölçüm":delta>0?`+${delta} puan artış`:delta<0?`${delta} puan değişim`:"Değişim yok"} icon="◎" tone={delta!=null&&delta>0?"green":"blue"}/>
-        <Metric label="Kritik / yüksek bulgu" value={critical} sub={critical?"Öncelikli aksiyon gerekli":"Kritik bulgu yok"} icon="◆" tone={critical?"orange":"green"}/>
-        <Metric label="Aktif çalışma" value={activeWork} sub="Devam eden işler" icon="⚙" tone="purple"/>
-        <Metric label="Tamamlanan tarama" value={completed.length} sub={latest?new Date(latest.completedAt||latest.createdAt).toLocaleDateString("tr-TR"):"Henüz tarama yok"} icon="◉"/>
-      </div>
+  {tab==="scans"&&<article style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>{c.scans}</h3><p style={{...muted,margin:0}}>{c.scansHelp}</p></div><StatusPill text={`${completed.length} ${c.scan}`} tone="blue"/></div>{!completed.length?<div className="empty"><b>{c.noScans}</b></div>:<div style={{display:"grid",gap:10}}>{completed.map(x=><div key={x.id} style={soft}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}><div><b>{c.score}: {x.score}/100</b><small style={{...muted,display:"block",marginTop:4}}>{new Date(x.completedAt||x.createdAt).toLocaleString(locale)}</small></div><StatusPill text={c.completed} tone="green"/></div>{Array.isArray(x.results)&&x.results.length>0&&<div style={{display:"grid",gap:8,marginTop:10}}>{x.results.map((r,i)=><div key={i} style={{background:"#091923",borderRadius:12,padding:10}}><b>{r.provider||"AI"}</b>{r.summary&&<p style={{...muted,lineHeight:1.5,marginBottom:0}}>{r.summary}</p>}{Array.isArray(r.recommendations)&&r.recommendations.length>0&&<div style={{marginTop:8}}><small style={muted}>{c.recommendations}</small><ul style={{margin:"6px 0 0",paddingLeft:18}}>{r.recommendations.slice(0,4).map((v,j)=><li key={j} style={{fontSize:13,marginBottom:4}}>{v}</li>)}</ul></div>}</div>)}</div>}</div>)}</div>}</article>}
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:12}}>
-        <article style={card}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={title}>Son durum</h3><StatusPill text={latest?"Güncel":"Veri bekleniyor"} tone={latest?"green":"gray"}/></div>
-          <div style={{display:"grid",gap:10}}>
-            <div style={soft}><div style={muted}>Son skor</div><strong style={{fontSize:30}}>{latest?.score==null?"—":latest.score+"/100"}</strong></div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              <div style={soft}><div style={muted}>Bulgu</div><strong style={{fontSize:22}}>{findings.length}</strong></div>
-              <div style={soft}><div style={muted}>Ödenen kayıt</div><strong style={{fontSize:22}}>{paidCount}</strong></div>
-            </div>
-          </div>
-        </article>
-
-        <article style={card}>
-          <h3 style={title}>Hızlı işlemler</h3>
-          <p style={{...muted,marginTop:0}}>İlgili alana doğrudan geç.</p>
-          <div style={{display:"grid",gap:9}}>
-            {[["findings","Bulgu ve çözümleri incele",`${findings.length} kayıt`],["work","Çalışmaları takip et",`${(account.workItems||[]).length} kayıt`],["scans","Tarama geçmişini aç",`${completed.length} tarama`],["payments","Ödeme geçmişini gör",`${(account.payments||[]).length} kayıt`]].map(([id,label,count])=><button key={id} onClick={()=>setTab(id)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",background:"#102735",border:"1px solid #21465a"}}><span>{label}</span><small>{count} ›</small></button>)}
-          </div>
-        </article>
-      </div>
-    </>}
-
-    {tab==="findings"&&<article style={card}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>Bulgu ve Çözümler</h3><p style={{...muted,margin:0}}>Sorunlar, önem seviyesi ve uygulanabilir çözüm teklifleri.</p></div><StatusPill text={`${findings.length} kayıt`} tone="blue"/></div>
-      {!findings.length?<div className="empty"><b>Henüz bulgu yok.</b><br/><span style={muted}>Yeni bir tarama tamamlandığında bulgular otomatik olarak burada listelenecek.</span></div>:
-      <div style={{display:"grid",gap:11}}>{findings.slice(0,30).map(x=>{
-        const tone=x.severity==="critical"?"red":x.severity==="high"?"orange":x.severity==="medium"?"blue":"gray";
-        const done=x.status==="resolved";
-        const requested=x.status==="requested"||x.offerStatus==="requested";
-        return <article key={x.id} style={{...soft,borderLeft:`4px solid ${tone==="red"?"#ff6f82":tone==="orange"?"#f4a94e":tone==="blue"?"#4a9dff":"#6f8796"}`}}>
-          <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div><b style={{fontSize:16}}>{x.title}</b><div style={{display:"flex",gap:7,marginTop:7,flexWrap:"wrap"}}><StatusPill text={severityLabel[x.severity]||x.severity} tone={tone}/><StatusPill text={x.provider||"AI"} tone="gray"/></div></div><strong style={{fontSize:14}}>{x.price>0?Number(x.price).toLocaleString("tr-TR")+" "+x.currency:(statusLabel[x.offerStatus]||"Fiyat hazırlanıyor")}</strong></div>
-          {x.detail&&<p style={{color:"#a6bac7",lineHeight:1.5,fontSize:13}}>{x.detail}</p>}
-          <div style={{background:"#091923",borderRadius:12,padding:11,marginTop:10}}><div style={muted}>Önerilen çözüm</div><b style={{display:"block",marginTop:4}}>{x.solutionTitle||"AI görünürlük iyileştirmesi"}</b>{x.deliverable&&<small style={{...muted,display:"block",marginTop:5}}>{x.deliverable}</small>}</div>
-          <div style={{marginTop:11,display:"flex",justifyContent:"flex-end"}}>{requested?<StatusPill text="Talep edildi" tone="green"/>:done?<StatusPill text="Çözüldü" tone="green"/>:<button disabled={busy===x.id} onClick={()=>requestSolution(x.id)}>{busy===x.id?"Gönderiliyor…":"Çözümü istiyorum"}</button>}</div>
-        </article>})}</div>}
-    </article>}
-
-    {tab==="work"&&<article style={card}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>Çalışmalar</h3><p style={{...muted,margin:0}}>Onaylanan işlerin uygulama sürecini buradan takip edebilirsin.</p></div><StatusPill text={`${(account.workItems||[]).length} kayıt`} tone="purple"/></div>
-      {(account.workItems||[]).length===0?<div className="empty"><b>Henüz çalışma kaydı yok.</b><br/><span style={muted}>Bir çözüm onaylandığında süreç burada Bekliyor → Hazırlanıyor → Uygulanıyor → Tamamlandı şeklinde görünür.</span></div>:
-      <div style={{display:"grid",gap:10}}>{account.workItems.slice(0,20).map(x=><div style={soft} key={x.id}><div style={{display:"flex",justifyContent:"space-between",gap:10}}><div><b>{x.title}</b><small style={{...muted,display:"block",marginTop:5}}>{x.category||"Çalışma"}</small></div><StatusPill text={statusLabel[x.status]||x.status} tone={x.status==="completed"?"green":x.status==="in-progress"?"orange":"blue"}/></div>{x.detail&&<p style={{...muted,lineHeight:1.5}}>{x.detail}</p>}<div style={{height:6,borderRadius:99,background:"#153444",overflow:"hidden",marginTop:11}}><div style={{height:"100%",width:x.status==="completed"?"100%":x.status==="in-progress"?"70%":x.status==="approved"?"45%":"20%",background:"linear-gradient(90deg,#3d86ff,#2ad1aa)"}}/></div></div>)}</div>}
-    </article>}
-
-    {tab==="scans"&&<article style={card}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>Tarama Geçmişi</h3><p style={{...muted,margin:0}}>AI görünürlük skorunun zaman içindeki değişimini izle.</p></div><StatusPill text={`${completed.length} tarama`} tone="blue"/></div>
-      {completed.length===0?<div className="empty"><b>Henüz tamamlanmış tarama yok.</b><br/><span style={muted}>İlk tarama tamamlandığında skor geçmişi burada görünür.</span></div>:
-      <div style={{display:"grid",gap:10}}>{completed.slice(0,10).map((x,i)=>{const prev=completed[i+1];const d=prev?Number(x.score)-Number(prev.score):null;return <div key={x.id} style={{...soft,display:"grid",gridTemplateColumns:"auto 1fr auto",gap:12,alignItems:"center"}}><div style={{width:54,height:54,borderRadius:"50%",display:"grid",placeItems:"center",background:"radial-gradient(circle,#155f87,#0a2637)",border:"1px solid #2f779a"}}><strong>{x.score}</strong></div><div><b>{new Date(x.completedAt||x.createdAt).toLocaleDateString("tr-TR")}</b><small style={{...muted,display:"block",marginTop:4}}>{new Date(x.completedAt||x.createdAt).toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}</small></div><StatusPill text={d==null?"İlk ölçüm":d>0?`+${d} puan`:d<0?`${d} puan`:"Değişmedi"} tone={d>0?"green":d<0?"red":"gray"}/></div>})}</div>}
-    </article>}
-
-    {tab==="payments"&&<article style={card}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>Ödemeler</h3><p style={{...muted,margin:0}}>Paket, tutar ve ödeme durumlarını görüntüle.</p></div><StatusPill text={`${(account.payments||[]).length} kayıt`} tone="green"/></div>
-      {(account.payments||[]).length===0?<div className="empty"><b>Ödeme kaydı yok.</b><br/><span style={muted}>Ödeme oluştuğunda paket ve durum bilgisi burada listelenecek.</span></div>:
-      <div style={{display:"grid",gap:10}}>{account.payments.slice(0,10).map(x=>{const total=Number(x.setupAmount||0)+Number(x.monthlyAmount||0);return <div style={{...soft,display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}} key={x.id}><div><b>{x.plan||"Paket"}</b><small style={{...muted,display:"block",marginTop:4}}>{x.createdAt?new Date(x.createdAt).toLocaleDateString("tr-TR"):"Tarih yok"}</small></div><div style={{textAlign:"right"}}><strong style={{display:"block"}}>{total.toLocaleString("tr-TR")} TL</strong><div style={{marginTop:5}}><StatusPill text={statusLabel[x.status]||x.status} tone={String(x.status).toLowerCase()==="paid"?"green":"orange"}/></div></div></div>})}</div>}
-    </article>}
-  </section>;
+  {tab==="payments"&&<article style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h3 style={title}>{c.payments}</h3><p style={{...muted,margin:0}}>{c.paymentsHelp}</p></div><StatusPill text={`${(account.payments||[]).length} ${c.record}`} tone="blue"/></div>{!(account.payments||[]).length?<div className="empty"><b>{c.noPayments}</b></div>:<div style={{display:"grid",gap:10}}>{account.payments.map(x=>{const total=Number(x.setupAmount||0)+Number(x.monthlyAmount||0);return <div key={x.id} style={soft}><div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"center"}}><div><b>{x.referenceCode||"—"}</b><small style={{...muted,display:"block",marginTop:4}}>{new Date(x.paidAt||x.reportedAt||x.createdAt).toLocaleString(locale)}</small></div><StatusPill text={statusLabel[x.status]||x.status} tone={x.status==="paid"?"green":x.status==="failed"?"red":"orange"}/></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginTop:10}}><div style={{background:"#091923",borderRadius:10,padding:9}}><small style={muted}>{c.method}</small><b style={{display:"block",marginTop:3}}>{x.method==="bank-transfer"?c.bankTransfer:x.method==="card"?c.card:x.method}</b></div><div style={{background:"#091923",borderRadius:10,padding:9}}><small style={muted}>{c.plan}</small><b style={{display:"block",marginTop:3}}>{x.plan||"—"}</b></div><div style={{background:"#091923",borderRadius:10,padding:9}}><small style={muted}>{c.total}</small><b style={{display:"block",marginTop:3}}>{total.toLocaleString(locale)} TRY</b></div></div></div>})}</div>}</article>}
+ </section>;
 }
