@@ -1,33 +1,30 @@
 import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById,recordPaymentConsent,getClientAccount} from "../../../lib/repository";
+import {getClientProfile} from "../../../lib/client-profile";
 import {verifyPaymentAccessToken} from "../../../lib/admin-auth";
-function money(envName,fallback){const n=Number(process.env[envName]);return Number.isFinite(n)&&n>0?Math.round(n):fallback}
-function planFor(score){
-  if(score<=30){
-    const setupAmount=money("PRO_SETUP_PRICE",10000),monthlyAmount=money("PRO_MONTHLY_PRICE",6000);
-    return {code:"pro",name:"Pro",setup:"7.500-12.500 TL",monthly:"4.500-7.500 TL/ay",setupAmount,monthlyAmount,firstPayment:setupAmount+monthlyAmount};
-  }
-  if(score<=55){
-    const setupAmount=money("STARTER_SETUP_PRICE",7500),monthlyAmount=money("STARTER_MONTHLY_PRICE",4500);
-    return {code:"starter",name:"Starter",setup:"5.000-10.000 TL",monthly:"3.500-6.000 TL/ay",setupAmount,monthlyAmount,firstPayment:setupAmount+monthlyAmount};
-  }
-  const setupAmount=money("MONITOR_SETUP_PRICE",5000),monthlyAmount=money("MONITOR_MONTHLY_PRICE",3000);
-  return {code:"monitor",name:"Takip",setup:"5.000-7.500 TL",monthly:"2.500-4.500 TL/ay",setupAmount,monthlyAmount,firstPayment:setupAmount+monthlyAmount};
-}
+import {priceFor,formatMoney} from "../../../lib/regional-pricing";
+
 export async function GET(req){
   try{
-    const token=new URL(req.url).searchParams.get("token")||"";
+    const url=new URL(req.url);
+    const token=url.searchParams.get("token")||"";
     const access=await verifyPaymentAccessToken(token);
     if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
     const candidates=await getSalesCandidates(50),client=candidates.find(x=>x.id===access.clientId)||null;
     if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
-    const plan=planFor(Number(client.score)||0);
+    const profile=await getClientProfile(client.id).catch(()=>null);
+    const selectedCountry=String(url.searchParams.get("country")||profile?.country||"Türkiye").trim();
+    const plan=priceFor({score:Number(client.score)||0,country:selectedCountry});
+    const locale=plan.currency==="TRY"?"tr-TR":plan.currency==="GBP"?"en-GB":plan.currency==="EUR"?"en-IE":"en-US";
+    plan.setup=formatMoney(plan.setupAmount,plan.currency,locale);
+    plan.monthly=formatMoney(plan.monthlyAmount,plan.currency,locale)+(plan.currency==="TRY"?"/ay":"/mo");
     const account=await getClientAccount(client.id);
     const paidPayment=(account?.payments||[]).find(x=>x.status==="paid")||null;
     const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
     return Response.json({
       client,
+      profile:{country:selectedCountry,city:profile?.city||"",sector:profile?.sector||""},
       plan,
-      payment,
+      payment:{...payment,currency:plan.currency},
       bank:{bankName:process.env.PAYMENT_BANK_NAME||"",accountHolder:process.env.PAYMENT_ACCOUNT_HOLDER||"",iban:process.env.PAYMENT_IBAN||""},
       transferReady:Boolean(process.env.PAYMENT_BANK_NAME&&process.env.PAYMENT_ACCOUNT_HOLDER&&process.env.PAYMENT_IBAN),
       cardReady:Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT)
@@ -36,7 +33,6 @@ export async function GET(req){
 }
 
 // env-refresh: redeploy after payment variables were configured
-
 
 export async function POST(req){
   try{
