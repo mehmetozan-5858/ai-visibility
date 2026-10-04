@@ -1,7 +1,7 @@
 import CustomerShell from "../../components/CustomerShell";
-import CustomerPortal from "../../components/CustomerPortal";
+import CustomerPortalGate from "../../components/CustomerPortalGate";
 export default function Page(){
   return <CustomerShell title="Müşteri Paneli" subtitle="AI görünürlüğünüz, çalışmalarınız, rapor süreciniz ve ödemeleriniz.">
-    <CustomerPortal/>
+    <CustomerPortalGate/>
   </CustomerShell>;
 }
