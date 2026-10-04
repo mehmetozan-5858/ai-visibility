@@ -1,6 +1,7 @@
 "use client";
 import {useMemo,useState} from "react";
 import {creatorAgentDesks,creatorPlatforms,creatorWorkflow} from "../lib/creator-agents";
+import CreatorOperations from "./CreatorOperations";
 
 export default function CreatorAgentDesks({mode="all"}){
   const [platform,setPlatform]=useState("youtube");
@@ -40,5 +41,7 @@ export default function CreatorAgentDesks({mode="all"}){
       <h3 style={{marginTop:0}}>Creator iş akışı</h3>
       <div style={{display:"grid",gap:8}}>{creatorWorkflow.map((x,i)=><div key={x} style={{display:"flex",gap:10,alignItems:"center"}}><span style={{width:26,height:26,borderRadius:999,display:"inline-grid",placeItems:"center",background:"rgba(37,99,235,.10)",fontWeight:800}}>{i+1}</span><span>{x}</span></div>)}</div>
     </section>}
+
+    <CreatorOperations/>
   </div>;
 }
