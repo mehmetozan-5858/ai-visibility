@@ -1,6 +1,8 @@
 import {addClientActivity,getClientAccount,getClient} from "../../../lib/repository";
+import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
 
 export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   try{
     const clientId=new URL(req.url).searchParams.get("clientId")||"";
     if(!clientId)return Response.json({error:"Müşteri seçilmelidir."},{status:400});
@@ -13,6 +15,8 @@ export async function GET(req){
 }
 
 export async function POST(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  const origin=enforceSameOrigin(req);if(origin)return origin;
   try{
     const body=await req.json();
     if(!body?.clientId)return Response.json({error:"Müşteri seçilmelidir."},{status:400});
