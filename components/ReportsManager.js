@@ -35,8 +35,8 @@ export default function ReportsManager(){
   function download(){const qs=filter==="all"?"":("?clientId="+encodeURIComponent(filter));window.location.href="/api/reports/pdf"+qs}
 
   return <section>
-    <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:5,marginBottom:14}}>
-      {tabs.map(([id,label])=><button key={id} type="button" onClick={()=>setTab(id)} aria-pressed={tab===id} style={{whiteSpace:"nowrap",opacity:tab===id?1:.62,boxShadow:tab===id?"0 0 0 2px #4aa7ff55":"none"}}>{label}</button>)}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,paddingBottom:5,marginBottom:14}}>
+      {tabs.map(([id,label])=><button key={id} type="button" onClick={()=>setTab(id)} aria-pressed={tab===id} style={{width:"100%",minWidth:0,whiteSpace:"normal",textAlign:"center",opacity:tab===id?1:.62,boxShadow:tab===id?"0 0 0 2px #4aa7ff55":"none"}}>{label}</button>)}
     </div>
 
     {tab==="findings"&&<FindingsManager/>}
