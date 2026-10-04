@@ -10,6 +10,7 @@ export default function AgentCenter(){
   useEffect(()=>{load()},[]);
   const latest=data?.latest;
   const health=useMemo(()=>!latest?"Bekleniyor":latest.errorCount>0?"Dikkat":latest.completed>0?"Sağlıklı":"Çalıştı / sonuç yok",[latest]);
+  const world=data?.worldNetwork;
   return <div>
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
@@ -26,10 +27,21 @@ export default function AgentCenter(){
     </section>
 
     <section className="panel" style={{marginBottom:18}}>
-      <h2 style={{marginTop:0}}>Koordinatör Ajan + Ortak Çalışma Alanı</h2>
-      <p style={{opacity:.72}}><b>{data?.coordinator?.name||"Koordinatör Ajan"}</b> tüm uzman ajanların bulgu, yardım ve görev devrini ortak panoda toplar. Her ajanın yardımcısı olarak aynı koordinasyon katmanı kullanılır.</p>
+      <h2 style={{marginTop:0}}>Dünya Ajan Ağı</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10,marginTop:12}}>
+        <div className="panel" style={{padding:12}}><small style={{opacity:.65}}>Ülke Masası</small><div style={{fontWeight:800,fontSize:22,marginTop:4}}>{world?.countryCount??"-"}</div></div>
+        <div className="panel" style={{padding:12}}><small style={{opacity:.65}}>Yönetim</small><div style={{fontWeight:800,marginTop:4}}>Global Baş Amir → Ülke Amirleri</div></div>
+        <div className="panel" style={{padding:12}}><small style={{opacity:.65}}>Şehir Kapsamı</small><div style={{fontWeight:800,marginTop:4}}>Dinamik şehir masaları</div></div>
+      </div>
+      <p style={{opacity:.72,marginBottom:6}}>{world?.model}</p>
+      <small style={{opacity:.65}}>{world?.cityPolicy}</small>
+    </section>
+
+    <section className="panel" style={{marginBottom:18}}>
+      <h2 style={{marginTop:0}}>Global Baş Amir + Ortak Çalışma Alanı</h2>
+      <p style={{opacity:.72}}><b>{data?.coordinator?.name||"Global Baş Amir Ajan"}</b> ülke amirlerini, şehir masalarını ve uzman ajanların görev devirlerini ortak panoda toplar.</p>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:8}}>
-        {(data?.roster||[]).map(a=><div key={a} className="panel" style={{padding:10}}><b>{a}</b><small style={{display:"block",opacity:.65,marginTop:4}}>Yardımcı: Koordinatör Ajan • Ortak pano aktif</small></div>)}
+        {(data?.roster||[]).map(a=><div key={a} className="panel" style={{padding:10}}><b>{a}</b><small style={{display:"block",opacity:.65,marginTop:4}}>Ortak pano + koordinasyon aktif</small></div>)}
       </div>
     </section>
 
