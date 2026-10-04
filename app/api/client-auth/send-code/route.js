@@ -1,8 +1,11 @@
 import {verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
 import {createVerificationCode,sendVerificationEmail} from "../../../../lib/email-verification";
+import {checkRateLimit,enforceSameOrigin} from "../../../../lib/api-security";
 
 export async function POST(req){
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"client-send-code",limit:8,windowMs:15*60*1000});if(limited)return limited;
   try{
     const body=await req.json();
     const access=await verifyPaymentAccessToken(body?.token||"");
