@@ -1,10 +1,14 @@
 import {addClient,findClientByIdentity,createScan,completeScan,getLatestCompletedScan,getOrCreatePaymentIntent,recordPaymentConsent,reportPayment,confirmPayment} from "../../../lib/repository";
 import {createPaymentAccessToken} from "../../../lib/admin-auth";
+import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
 
 const TEST_NAME="AI Visibility Test Müşteri";
 const TEST_DOMAIN="test.ai-visibility.local";
 
-export async function POST(){
+export async function POST(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"admin-test-flow",limit:6,windowMs:10*60*1000});if(limited)return limited;
   try{
     let client=await findClientByIdentity(TEST_NAME,TEST_DOMAIN);
     if(!client){
