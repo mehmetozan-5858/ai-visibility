@@ -1,5 +1,5 @@
-import {discoverBusinesses,runProviderCheck} from "../../../../../lib/providers";
-import {getProspectNames,seedProspects,queueProspectScan,completeProspectScan} from "../../../../../lib/prospects";
+import {discoverBusinesses,runProviderCheck} from "../../../../lib/providers";
+import {getProspectNames,seedProspects,queueProspectScan,completeProspectScan} from "../../../../lib/prospects";
 
 export const runtime="nodejs";
 export const maxDuration=300;
@@ -44,7 +44,6 @@ export async function GET(req){
     const fresh=seeded.filter(x=>!existingSet.has(String(x.name||"").toLocaleLowerCase("tr-TR")));
     report.newProspects=fresh.length;
 
-    // Keep daily provider cost bounded. The remaining prospects stay in the lead pool for later cycles.
     for(const prospect of fresh.slice(0,4)){
       try{
         report.scanned+=1;
