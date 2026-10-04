@@ -1,7 +1,11 @@
 import {getLatestCompletedScan} from "../../../lib/repository";
 import {runContentPlan} from "../../../lib/providers";
+import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
 
 export async function POST(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"content-agent",limit:20,windowMs:10*60*1000});if(limited)return limited;
   try{
     const body=await req.json();
     if(!body?.clientId)return Response.json({error:"Bir müşteri seçmelisiniz."},{status:400});
