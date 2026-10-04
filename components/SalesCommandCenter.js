@@ -45,8 +45,8 @@ export default function SalesCommandCenter(){
 
     <div className="content-plan" style={{marginBottom:14}}>
       <b>Satış hunisi</b>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(0,1fr))",gap:8,marginTop:10}}>
-        {pipeline.map(x=><div key={x.status} style={{padding:"10px 8px",border:"1px solid rgba(80,200,255,.25)",borderRadius:12,textAlign:"center"}}><small>{statusLabel[x.status]}</small><strong style={{display:"block",fontSize:22}}>{x.count}</strong></div>)}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(64px,1fr))",gap:8,marginTop:10,overflowX:"auto",paddingBottom:4}}>
+        {pipeline.map(x=><div key={x.status} style={{padding:"10px 8px",border:"1px solid rgba(80,200,255,.25)",borderRadius:12,textAlign:"center",minWidth:64}}><small>{statusLabel[x.status]}</small><strong style={{display:"block",fontSize:22}}>{x.count}</strong></div>)}
       </div>
     </div>
 
@@ -54,7 +54,7 @@ export default function SalesCommandCenter(){
       <article className="content-plan">
         <b>Takip bekleyen leadler</b>
         {!nextLeads.length?<div className="empty" style={{marginTop:10}}>Aktif lead yok.</div>:<div className="client-list" style={{marginTop:10}}>{nextLeads.map(x=><div className="client-row" key={x.id} style={{display:"grid",gridTemplateColumns:"minmax(0,1fr)",gap:8}}>
-          <div><b>{x.businessName}</b><small>{x.name} · {x.email}</small></div>
+          <div style={{minWidth:0}}><b style={{overflowWrap:"anywhere"}}>{x.businessName}</b><small style={{overflowWrap:"anywhere"}}>{x.name} · {x.email}</small></div>
           <select value={x.status} disabled={busy===x.id} onChange={e=>moveLead(x.id,e.target.value)}>
             <option value="new">Yeni</option><option value="contacted">Temas edildi</option><option value="qualified">Nitelikli</option><option value="proposal">Teklif</option><option value="won">Kazanıldı</option><option value="lost">Kaybedildi</option>
           </select>
@@ -63,7 +63,14 @@ export default function SalesCommandCenter(){
 
       <article className="content-plan">
         <b>Öncelikli satış fırsatları</b>
-        {!topOpp.length?<div className="empty" style={{marginTop:10}}>Henüz tarama bazlı fırsat yok.</div>:<div className="client-list" style={{marginTop:10}}>{topOpp.map(x=><div className="client-row" key={x.id}><div><b>{x.name}</b><small>{x.domain||"Web sitesi yok"} · skor {x.score}/100</small></div><span>{Number(x.score)<=30?"Yüksek":Number(x.score)<=55?"Orta":"Takip"}</span></div>)}</div>}
+        {!topOpp.length?<div className="empty" style={{marginTop:10}}>Henüz tarama bazlı fırsat yok.</div>:<div className="client-list" style={{marginTop:10}}>{topOpp.map(x=>{
+          const priority=Number(x.score)<=30?"Yüksek":Number(x.score)<=55?"Orta":"Takip";
+          return <div className="client-row" key={x.id} style={{display:"block",padding:14}}>
+            <b style={{display:"block",fontSize:17,lineHeight:1.25,overflowWrap:"break-word"}}>{x.name}</b>
+            <small style={{display:"block",marginTop:6,lineHeight:1.35,overflowWrap:"anywhere"}}>{x.domain||"Web sitesi yok"} · skor {x.score}/100</small>
+            <span style={{display:"inline-flex",width:"auto",marginTop:10,padding:"6px 10px",borderRadius:999}}>{priority}</span>
+          </div>;
+        })}</div>}
       </article>
     </div>
   </section>;
