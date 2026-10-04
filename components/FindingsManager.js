@@ -25,16 +25,16 @@ export default function FindingsManager(){
     <div className="section-title"><div><h2>Bulgu → Çözüm Merkezi</h2><small>Seçilen müşterinin tarama bulgularını çözüm paketlerine dönüştürür.</small></div></div>
     <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10,marginBottom:14}}><div className="content-plan"><small>Açık</small><h2>{counts.open}</h2></div><div className="content-plan"><small>Kritik</small><h2>{counts.critical}</h2></div><div className="content-plan"><small>Yüksek</small><h2>{counts.high}</h2></div></div>
     <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end",marginBottom:14}}>
-      <label style={{minWidth:240,flex:"1 1 240px"}}>Müşteri<select value={clientId} onChange={e=>{setClientId(e.target.value);setMsg("")}}>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-      <button onClick={generate} disabled={!clientId||busy==="generate"}>{busy==="generate"?"Üretiliyor…":"✦ Son taramadan bulguları üret"}</button>
+      <label style={{minWidth:0,flex:"1 1 100%"}}>Müşteri<select value={clientId} onChange={e=>{setClientId(e.target.value);setMsg("")}}>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+      <button style={{width:"100%"}} onClick={generate} disabled={!clientId||busy==="generate"}>{busy==="generate"?"Üretiliyor…":"✦ Son taramadan bulguları üret"}</button>
     </div>
     {msg&&<p className="client-message">{msg}</p>}
-    {!filtered.length?<div className="empty">Bu müşteri için henüz bulgu yok. Son taramadan bulguları üretebilirsiniz.</div>:<div className="client-list">{filtered.map(x=><article className="client-row" key={x.id} style={{alignItems:"flex-start"}}>
+    {!filtered.length?<div className="empty">Bu müşteri için henüz bulgu yok. Son taramadan bulguları üretebilirsiniz.</div>:<div className="client-list">{filtered.map(x=><article className="client-row" key={x.id} style={{alignItems:"flex-start",flexWrap:"wrap"}}>
       <div className="client-avatar">{x.severity==="critical"?"!":"✦"}</div>
-      <div style={{minWidth:0,flex:1}}><b>{x.title}</b><small>{x.provider} · {sev[x.severity]||x.severity} · {statusLabel[x.status]||x.status}</small><p style={{margin:"7px 0"}}>{x.solutionTitle}</p><small>{x.deliverable}</small></div>
-      <div style={{display:"grid",gap:7,minWidth:145}}>
-        <input type="number" min="0" defaultValue={x.price||0} aria-label="Fiyat" onBlur={e=>save(x,{price:Number(e.target.value),offerStatus:x.offerStatus||"draft"})}/>
-        <select value={x.status} disabled={busy===x.id} onChange={e=>save(x,{status:e.target.value,price:x.price||0,offerStatus:x.offerStatus||"draft"})}><option value="open">Açık</option><option value="requested">Talep edildi</option><option value="offered">Teklif</option><option value="approved">Onaylandı</option><option value="in-progress">Uygulanıyor</option><option value="resolved">Çözüldü</option><option value="dismissed">Kapatıldı</option></select>
+      <div style={{minWidth:0,flex:"1 1 220px"}}><b>{x.title}</b><small>{x.provider} · {sev[x.severity]||x.severity} · {statusLabel[x.status]||x.status}</small><p style={{margin:"7px 0"}}>{x.solutionTitle}</p><small>{x.deliverable}</small></div>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:7,width:"100%",marginTop:10}}>
+        <label style={{minWidth:0}}><small>Fiyat</small><input style={{width:"100%"}} type="number" min="0" defaultValue={x.price||0} aria-label="Fiyat" onBlur={e=>save(x,{price:Number(e.target.value),offerStatus:x.offerStatus||"draft"})}/></label>
+        <label style={{minWidth:0}}><small>Durum</small><select style={{width:"100%"}} value={x.status} disabled={busy===x.id} onChange={e=>save(x,{status:e.target.value,price:x.price||0,offerStatus:x.offerStatus||"draft"})}><option value="open">Açık</option><option value="requested">Talep edildi</option><option value="offered">Teklif</option><option value="approved">Onaylandı</option><option value="in-progress">Uygulanıyor</option><option value="resolved">Çözüldü</option><option value="dismissed">Kapatıldı</option></select></label>
       </div>
     </article>)}</div>}
   </section>;
