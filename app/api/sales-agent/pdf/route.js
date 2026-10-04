@@ -46,6 +46,6 @@ export async function GET(req){
     ["Gerekli web sitesi erisimi veya teknik ekip koordinasyonu","Google Isletme Profili yetkisi gereken islemlerde yonetici erisimi","Adres, telefon, calisma saati, fiyat ve menu gibi gercek bilgilerin onayi"].forEach(bullet);
     y-=8;line("Not",10,bold,rgb(.08,.24,.31),3);para("Sorun tespit ve rapor ucreti tek seferliktir. Cozum paketi is kapsaminin yogunluguna gore baslangic fiyatindan yukari cikabilir. Surekli takip ve optimizasyon aylik hizmettir. Dis sistemlerde degisiklikler yetki ve onay olmadan yapilmaz.",8);
     const bytes=await pdf.save(),filename="ai-visibility-teklif-"+tr(c.name).toLowerCase().replace(/[^a-z0-9]+/g,"-")+".pdf";
-    return new Response(bytes,{headers:{"content-type":"application/pdf","content-disposition":`attachment; filename="${filename}"`,`cache-control`:"no-store"}});
+    return new Response(bytes,{headers:{"content-type":"application/pdf","content-disposition":`attachment; filename="${filename}"`,"cache-control":"no-store"}});
   }catch(e){return Response.json({error:"Teklif PDF olusturulamadi.",detail:String(e?.message||e).slice(0,240)},{status:500})}
 }
