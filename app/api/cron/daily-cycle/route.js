@@ -1,5 +1,5 @@
-import {discoverBusinesses,runProviderCheck} from "../../../../lib/providers";
-import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan} from "../../../../lib/prospects";
+import {discoverBusinesses,runProviderCheck,findPublicBusinessContact} from "../../../../lib/providers";
+import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact} from "../../../../lib/prospects";
 import {addSharedAgentEvent,saveDailyAgentReport} from "../../../../lib/agent-coordination";
 
 export const runtime="nodejs";
@@ -61,6 +61,7 @@ export async function GET(req){
         report.scanned++;const scan=await queueProspectScan(prospect.id);if(scan.status==="demo-only")throw new Error("database-unavailable");
         const result=await runProviderCheck(prospect);if(!result)throw new Error("no-provider-result");
         await completeProspectScan(scan.id,prospect.id,result);report.completed++;
+        try{const contact=await findPublicBusinessContact(prospect);await saveProspectContact(prospect.id,contact);await share({agent:"Contact Finder",eventType:"handoff",title:`İletişim kontrolü: ${prospect.name}`,detail:contact.status==="verified"?"Doğrulanmış kamusal kurumsal iletişim kanalı bulundu.":"Doğrulanabilir kamusal kurumsal iletişim kanalı bulunamadı.",payload:{prospectId:prospect.id,status:contact.status,sourceUrl:contact.sourceUrl||""},status:contact.status==="verified"?"completed":"needs-attention"})}catch(contactError){report.errors.push({stage:"contact-finder",prospectId:prospect.id,error:String(contactError?.message||contactError).slice(0,160)})}
         await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sonuç uzman ve satış ajanlarının ortak kullanımına açıldı.",payload:{prospectId:prospect.id,name:prospect.name,provider:result?.provider||""},status:"completed"});
       }catch(e){report.errors.push({prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
     }
