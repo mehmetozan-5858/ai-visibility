@@ -10,6 +10,7 @@ import SalesManager from "./SalesManager";
 import CreatorAgentDesks from "./CreatorAgentDesks";
 import BusinessAgentDesks from "./BusinessAgentDesks";
 import AgentCenter from "./AgentCenter";
+import CommunicationCenter from "./CommunicationCenter";
 
 const businessTabs=[
   ["overview","Satış Komuta Merkezi"],
@@ -17,6 +18,7 @@ const businessTabs=[
   ["diagnosis","Sorun Tespit Masaları"],
   ["solutions","Çözüm Masaları"],
   ["crm","Lead / CRM"],
+  ["communication","İletişim Merkezi"],
   ["work","İş / Onay"]
 ];
 const socialTabs=[
@@ -53,6 +55,7 @@ export default function AgentsWorkspace(){
       {businessTab==="diagnosis"&&<BusinessAgentDesks mode="diagnosis"/>}
       {businessTab==="solutions"&&<BusinessAgentDesks mode="solution"/>}
       {businessTab==="crm"&&<><LeadsManager/><CRMManager/></>}
+      {businessTab==="communication"&&<CommunicationCenter/>}
       {businessTab==="work"&&<WorkManager/>}
     </>}
 
