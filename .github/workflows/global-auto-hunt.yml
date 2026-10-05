@@ -401,3 +401,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-resource-economics" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  dual-engine-unit-economics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Measure business creator unit economics
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-unit-economics" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
