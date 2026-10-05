@@ -421,3 +421,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || exit 1
           curl --fail --silent --show-error "https://www.aivisibilityworks.com/api/verified-revenue-attribution" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  commercial-truth-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh verified commercial performance
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || exit 1
+          curl --fail --silent --show-error "https://www.aivisibilityworks.com/api/commercial-truth-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
