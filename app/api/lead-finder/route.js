@@ -1,5 +1,5 @@
-import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../../lib/api-security";
-import {saveDiscovered,listDiscovered} from "../../../../lib/lead-finder";
+import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
+import {saveDiscovered,listDiscovered} from "../../../lib/lead-finder";
 function clean(v,n=120){return String(v||"").trim().slice(0,n)}
 function jsonFrom(s){const t=String(s||"").replace(/^```json\s*/i,"").replace(/```$/,"").trim();const a=t.indexOf("["),b=t.lastIndexOf("]");if(a<0||b<a)return [];try{return JSON.parse(t.slice(a,b+1))}catch{return []}}
 export async function GET(req){const denied=await requireAdmin(req);if(denied)return denied;try{return Response.json({leads:await listDiscovered(150)})}catch(e){return Response.json({error:"Lead Finder kayıtları okunamadı."},{status:500})}}
