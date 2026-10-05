@@ -1,6 +1,6 @@
 import {discoverBusinesses,runProviderCheck,findPublicBusinessContact,personalizeProspectOutreach,buildProspectProposal} from "../../../../lib/providers";
 import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact,saveProspectPersonalization,saveProspectProposal,prepareProspectCommunication} from "../../../../lib/prospects";
-import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning,refreshMarketEconomics} from "../../../../lib/agent-coordination";
+import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning,refreshMarketEconomics,listLearnedPolicies} from "../../../../lib/agent-coordination";
 
 export const runtime="nodejs";
 export const maxDuration=300;
@@ -25,7 +25,7 @@ async function marketsForCurrentHour(){
   const slot=Math.floor(Date.now()/3600000);
   const width=Math.max(2,Math.min(Number(process.env.PARALLEL_HUNT_MARKETS)||4,8));
   const base=Array.from({length:width},(_,i)=>MARKETS[(slot*width+i)%MARKETS.length]);
-  try{await refreshMarketEconomics();const learned=await listMarketLearning(12);if(learned.length>=4&&slot%3!==0){const top=learned.slice(0,Math.max(1,width-1)).map(x=>({country:x.country,city:x.city}));const explore=base.find(b=>!top.some(t=>t.country===b.country&&t.city===b.city))||base[0];return [...top,explore].slice(0,width)}}catch{}
+  try{await refreshMarketEconomics();const learned=await listMarketLearning(12),policies=await listLearnedPolicies(30);if(learned.length>=4&&slot%3!==0){const validated=new Set(policies.filter(x=>x.safeToApply&&x.policyType==="market-priority").map(x=>String(x.scope).toLowerCase()));const ranked=[...learned].sort((a,b)=>(validated.has(`${String(b.country).toLowerCase()}/${String(b.city).toLowerCase()}`)?1:0)-(validated.has(`${String(a.country).toLowerCase()}/${String(a.city).toLowerCase()}`)?1:0)||Number(b.efficiencyScore||0)-Number(a.efficiencyScore||0));const top=ranked.slice(0,Math.max(1,width-1)).map(x=>({country:x.country,city:x.city}));const explore=base.find(b=>!top.some(t=>t.country===b.country&&t.city===b.city))||base[0];return [...top,explore].slice(0,width)}}catch{}
   return base;
 }
 
