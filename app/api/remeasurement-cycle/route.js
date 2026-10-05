@@ -1,3 +1,4 @@
+import {heartbeatComponent} from "../../../lib/agent-coordination";
 import {getClientsReadyForRemeasurement,createScan,completeScan,failScan,getScanComparison,addClientActivityEvent} from "../../../lib/repository";
 import {getClientProfile} from "../../../lib/client-profile";
 import {runLocalizedProviderChecks} from "../../../lib/localized-ai";
@@ -19,5 +20,5 @@ export async function GET(req){
    await addClientActivityEvent(client.id,"remeasurement","Uygulama sonrası yeniden ölçüm tamamlandı",comparison?`Önceki skor ${comparison.previous.score}/100 → yeni skor ${comparison.current.score}/100; değişim ${comparison.delta>0?"+":""}${comparison.delta} puan.`:"Karşılaştırma için yeterli geçmiş tarama bulunamadı.",{comparison,automatic:true});
   }catch(e){if(scanId)await failScan(scanId,String(e?.message||e)).catch(()=>null);out.errors.push({clientId:client.id,error:String(e?.message||e).slice(0,160)})}
  }
- return Response.json(out,{headers:{"cache-control":"no-store"}});
+ await heartbeatComponent({key:"remeasurement-cycle",type:"cycle",ok:out.errors.length===0,expectedIntervalMinutes:60,detail:`eligible=${out.eligible}; errors=${out.errors.length}`}).catch(()=>null);\n return Response.json(out,{headers:{"cache-control":"no-store"}});
 }
