@@ -26,9 +26,10 @@ export async function GET(req){
     const candidates=await getSalesCandidates(50),client=candidates.find(x=>x.id===access.clientId)||null;
     if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
     const profile=await getClientProfile(client.id).catch(()=>null);
-    const selectedCountry=String(url.searchParams.get("country")||profile?.country||"Türkiye").trim();
+    const selectedCountry=String(profile?.country||url.searchParams.get("country")||"Türkiye").trim();
     const lang=languageFrom(req);
-    const requestedService=String(url.searchParams.get("service")||"business-diagnosis");
+    const tokenService=String(access?.service||"");
+    const requestedService=tokenService||String(url.searchParams.get("service")||"business-diagnosis");
     const service=SERVICE_CODES.includes(requestedService)?requestedService:"business-diagnosis";
     const plan=formatPlan(servicePrice({service,country:selectedCountry,language:lang}),lang);
     const catalog=pricingCatalog({country:selectedCountry,language:lang}).map(x=>formatPlan(x,lang));
