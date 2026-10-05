@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
+import SystemHealthMap from "./SystemHealthMap";
 
 function fmt(v){if(!v)return "-";try{return new Date(v).toLocaleString("tr-TR")}catch{return String(v)}}
 function marketText(m){
@@ -21,6 +22,7 @@ export default function AgentCenter(){
   const parallel=markets(latest?.market);
   const successRate=latest?.scanned?Math.round((Number(latest.completed||0)/Number(latest.scanned))*100):0;
   return <div>
+    <SystemHealthMap/>
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
         <div><h2 style={{marginTop:0}}>Global Av Canlı Durum</h2><p style={{marginBottom:0,opacity:.72}}>Ajanların gerçek çalışma durumunu tek ekrandan izle. GitHub veya Vercel loguna girmen gerekmez.</p></div>
