@@ -22,7 +22,7 @@ export default function SalesManager(){
   }
 
   const OfferCard=({o})=><div className="content-plan" style={{margin:"10px 0 16px"}}>
-    <h3>{o.client.name} · {o.priority||"fırsat"}</h3>
+    <h3>{o.client.name} · {o.priority||"fırsat"}</h3><p><b>Fırsat skoru:</b> {o.opportunityScore??"—"}/100 · {o.opportunityType||"AI görünürlük fırsatı"}</p>
     {o.fallback&&<small>Standart satış şablonu · AI teklif üretimi kullanılamadığı için skor bazlı hazırlandı.</small>}
     <b>Neden şimdi?</b><ul>{(o.whyNow||[]).map((x,i)=><li key={i}>{x}</li>)}</ul>
     <b>Önerilen paket</b><p>{o.offer?.name||"AI Görünürlük Paketi"}</p>
@@ -47,7 +47,7 @@ export default function SalesManager(){
       <article className="client-row">
         <div className="client-avatar">₺</div>
         <div><b>{x.name}</b><small>{x.domain||"Web sitesi yok"} · son skor {x.score}/100</small></div>
-        <span>{x.score<=30?"Yüksek fırsat":x.score<=55?"Orta fırsat":"Takip"}</span>
+        <span>{x.score<=30?"Yüksek fırsat":x.score<=55?"Orta fırsat":"Takip"} · {Math.max(0,Math.min(100,100-(Number(x.score)||0)))}/100</span>
         <button onClick={()=>prepare(x.id)} disabled={busy===x.id}>{busy===x.id?"Hazırlanıyor…":"Teklif hazırla"}</button>
       </article>
       {offer?.client?.id===x.id&&<OfferCard o={offer}/>}
