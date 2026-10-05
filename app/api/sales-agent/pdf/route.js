@@ -19,6 +19,8 @@ export async function GET(req){
     const solution=servicePrice({service:"business-solution",country,language:"tr"});
     const monitoring=servicePrice({service:"business-monitoring",country,language:"tr"});
     const results=Array.isArray(c.results)?c.results:[];
+    const opportunityScore=Math.max(0,Math.min(100,100-(Number(c.score)||0)));
+    const validUntil=new Date(Date.now()+14*86400000).toLocaleDateString("tr-TR");
     const pdf=await PDFDocument.create(),reg=await pdf.embedFont(StandardFonts.Helvetica),bold=await pdf.embedFont(StandardFonts.HelveticaBold);
     const W=595,H=842,M=44;let page=pdf.addPage([W,H]),y=H-M;
     const need=h=>{if(y-h<M){page=pdf.addPage([W,H]);y=H-M}};
@@ -29,7 +31,7 @@ export async function GET(req){
     line("AI Gorunurluk Teklifi",24,bold,rgb(.05,.12,.16),7);
     line(c.name,15,bold,rgb(.08,.24,.31),4);line(c.domain||"Web sitesi belirtilmedi",9,reg,rgb(.42,.5,.55),6);
     line("Fiyat bolgesi: "+country+" / "+diagnosis.currency,9,reg,rgb(.42,.5,.55),12);
-    line("Genel gorunurluk skoru: "+c.score+"/100",14,bold,rgb(.04,.25,.36),10);
+    line("Genel gorunurluk skoru: "+c.score+"/100",14,bold,rgb(.04,.25,.36),4);line("Firsat skoru: "+opportunityScore+"/100",11,bold,rgb(.08,.35,.48),4);line("Teklif gecerlilik: "+validUntil,9,reg,rgb(.42,.5,.55),10);
     line("Saglayici sonuclari",13,bold,rgb(.05,.12,.16),5);
     for(const r of results)line((r.provider||"AI")+": "+(r.score??"-")+"/100",10,bold,rgb(.08,.35,.48),3);
     y-=6;
@@ -44,7 +46,7 @@ export async function GET(req){
     y-=5;
     line("Musteriden gerekenler",12,bold,rgb(.05,.12,.16),4);
     ["Gerekli web sitesi erisimi veya teknik ekip koordinasyonu","Google Isletme Profili yetkisi gereken islemlerde yonetici erisimi","Adres, telefon, calisma saati, fiyat ve menu gibi gercek bilgilerin onayi"].forEach(bullet);
-    y-=8;line("Not",10,bold,rgb(.08,.24,.31),3);para("Sorun tespit ve rapor ucreti tek seferliktir. Cozum paketi is kapsaminin yogunluguna gore baslangic fiyatindan yukari cikabilir. Surekli takip ve optimizasyon aylik hizmettir. Dis sistemlerde degisiklikler yetki ve onay olmadan yapilmaz.",8);
+    y-=8;line("Teklif kapsami ve sinirlar",12,bold,rgb(.05,.12,.16),4);["Analiz ve rapor hizmeti tek seferliktir.","Cozum uygulamasi, onaylanan kapsam ve gerekli erisimler sonrasinda baslar.","Dogrulanmamis trafik, satis veya AI citation sonucu garanti edilmez.","Ek kapsam ve ucuncu taraf maliyetleri ayrica onaylanir."].forEach(bullet);y-=8;line("Not",10,bold,rgb(.08,.24,.31),3);para("Sorun tespit ve rapor ucreti tek seferliktir. Cozum paketi is kapsaminin yogunluguna gore baslangic fiyatindan yukari cikabilir. Surekli takip ve optimizasyon aylik hizmettir. Dis sistemlerde degisiklikler yetki ve onay olmadan yapilmaz.",8);
     const bytes=await pdf.save(),filename="ai-visibility-teklif-"+tr(c.name).toLowerCase().replace(/[^a-z0-9]+/g,"-")+".pdf";
     return new Response(bytes,{headers:{"content-type":"application/pdf","content-disposition":`attachment; filename="${filename}"`,"cache-control":"no-store"}});
   }catch(e){return Response.json({error:"Teklif PDF olusturulamadi.",detail:String(e?.message||e).slice(0,240)},{status:500})}
