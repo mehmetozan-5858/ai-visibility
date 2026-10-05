@@ -6,7 +6,8 @@ const A=[
  ["Görünürlük Ajanı","GEO/AEO taramalarını yönetir","/taramalar"],
  ["İçerik Ajanı","Tarama sonuçlarından iyileştirme önerileri üretir","/raporlar"],
  ["Uygulama Ajanı","Eksikleri hazır içerik, schema ve görev paketine dönüştürür","/raporlar"],
- ["Opportunity Ajanı","AI görünürlük açığını satış fırsatı skoruna dönüştürür","/ajanlar"],\n ["Satış Ajanı","Fırsatlardan teklif ve ödeme akışı üretir","/ajanlar"],
+ ["Opportunity Ajanı","AI görünürlük açığını satış fırsatı skoruna dönüştürür","/ajanlar"],
+ ["Satış Ajanı","Fırsatlardan teklif ve ödeme akışı üretir","/ajanlar"],
  ["CEO Ajanı","Yönetici özetlerini raporlar","/raporlar"]
 ];
 export default function AgentsManager(){
