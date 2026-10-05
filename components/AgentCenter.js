@@ -9,20 +9,23 @@ export default function AgentCenter(){
   const load=()=>fetch("/api/agent-center",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Yüklenemedi");return r.json()}).then(setData).catch(e=>setError(e.message));
   useEffect(()=>{load()},[]);
   const latest=data?.latest;
-  const health=useMemo(()=>!latest?"Bekleniyor":latest.errorCount>0?"Dikkat":latest.completed>0?"Sağlıklı":"Çalıştı / sonuç yok",[latest]);
+  const lastAt=latest?.finishedAt?new Date(latest.finishedAt).getTime():0;
+  const ageMinutes=lastAt?Math.max(0,Math.floor((Date.now()-lastAt)/60000)):null;
+  const health=useMemo(()=>!latest?"🟡 BEKLENİYOR":latest.errorCount>0?"🔴 HATA":ageMinutes!==null&&ageMinutes<=90?"🟢 ONLINE":"🟡 GECİKMİŞ",[latest,ageMinutes]);
+  const nextAt=lastAt?new Date(lastAt+60*60*1000):null;
   const world=data?.worldNetwork;
   return <div>
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
-        <div><h2 style={{marginTop:0}}>Ajan Günlük Raporu</h2><p style={{marginBottom:0,opacity:.72}}>Tüm ajanların günlük ortak çalışma özeti. Vercel loguna girmen gerekmez.</p></div>
+        <div><h2 style={{marginTop:0}}>Global Av Canlı Durum</h2><p style={{marginBottom:0,opacity:.72}}>Ajanların gerçek çalışma durumunu tek ekrandan izle. GitHub veya Vercel loguna girmen gerekmez.</p></div>
         <button onClick={load}>Yenile</button>
       </div>
       {error?<p style={{color:"crimson"}}>{error}</p>:null}
       {!data?<p>Yükleniyor…</p>:<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginTop:16}}>
-          {[["Durum",health],["Pazar",marketText(latest?.market)],["Bulunan",latest?.discovered??0],["Yeni aday",latest?.newProspects??0],["Taranan",latest?.scanned??0],["Tamamlanan",latest?.completed??0],["Hata",latest?.errorCount??0]].map(([k,v])=><div key={k} className="panel" style={{padding:12}}><small style={{opacity:.65}}>{k}</small><div style={{fontWeight:800,fontSize:18,marginTop:4}}>{v}</div></div>)}
+          {[["Sistem",health],["Son av",fmt(latest?.finishedAt)],["Sonraki av",nextAt?fmt(nextAt):"-"],["Pazar",marketText(latest?.market)],["Bulunan",latest?.discovered??0],["Yeni aday",latest?.newProspects??0],["Taranan",latest?.scanned??0],["Tamamlanan",latest?.completed??0],["Hata",latest?.errorCount??0]].map(([k,v])=><div key={k} className="panel" style={{padding:12}}><small style={{opacity:.65}}>{k}</small><div style={{fontWeight:800,fontSize:18,marginTop:4}}>{v}</div></div>)}
         </div>
-        <p style={{fontSize:13,opacity:.65,marginBottom:0}}>Son çalışma: {fmt(latest?.finishedAt)}</p>
+        <p style={{fontSize:13,opacity:.65,marginBottom:0}}>Saatlik hedef: 60 dk · ONLINE ölçütü: son başarılı rapor 90 dk içinde. {ageMinutes!==null?`Son rapor ${ageMinutes} dk önce.`:"Henüz başarılı çalışma raporu yok."}</p>
       </>}
     </section>
 
