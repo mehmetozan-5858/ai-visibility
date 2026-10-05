@@ -1,0 +1,1 @@
+import {Shell} from "../../components/ui";import LeadFinder from "../../components/LeadFinder";export default function Page(){return <Shell title="Lead Finder" subtitle="Global potansiyel müşteri araştırması ve tekrar temizleme"><LeadFinder/></Shell>}
