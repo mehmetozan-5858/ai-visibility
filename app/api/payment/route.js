@@ -23,7 +23,8 @@ export async function GET(req){
     const token=url.searchParams.get("token")||"";
     const access=await verifyPaymentAccessToken(token);
     if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
-    const candidates=await getSalesCandidates(50),client=candidates.find(x=>x.id===access.clientId)||null;
+    const account=await getClientAccount(access.clientId);
+    const client=account?.client||null;
     if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
     const profile=await getClientProfile(client.id).catch(()=>null);
     const selectedCountry=String(profile?.country||url.searchParams.get("country")||"Türkiye").trim();
@@ -33,7 +34,6 @@ export async function GET(req){
     const service=SERVICE_CODES.includes(requestedService)?requestedService:"business-diagnosis";
     const plan=formatPlan(servicePrice({service,country:selectedCountry,language:lang}),lang);
     const catalog=pricingCatalog({country:selectedCountry,language:lang}).map(x=>formatPlan(x,lang));
-    const account=await getClientAccount(client.id);
     const paidPayment=(account?.payments||[]).find(x=>x.status==="paid")||null;
     const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
     const tryRail=plan.currency==="TRY";
