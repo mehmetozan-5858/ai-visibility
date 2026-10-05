@@ -5,6 +5,7 @@ export async function GET(req){
  if(!authorized(req))return Response.json({ok:false,error:"unauthorized"},{status:401});
  try{const snapshot=await getProfitControlSnapshot(),negative=snapshot.currencies.filter(x=>x.cost>0&&x.contribution<0);
   if(negative.length)await addSharedAgentEvent({agent:"Cost & Profit Brain",helperAgent:"CEO Ajanı",eventType:"profit-risk",title:"Maliyet/gelir dengesi kontrol edildi",detail:negative.map(x=>`${x.currency}: katkı ${x.contribution}`).join(" · "),payload:{negative},status:"needs-attention"}).catch(()=>null);
-  await heartbeatComponent({key:"profit-control-cycle",type:"cycle",ok:true,expectedIntervalMinutes:60,detail:"Cycle completed"}).catch(()=>null);\n  return Response.json({ok:true,...snapshot,financialActionsAutomatic:false});
+  await heartbeatComponent({key:"profit-control-cycle",type:"cycle",ok:true,expectedIntervalMinutes:60,detail:"Cycle completed"}).catch(()=>null);
+  return Response.json({ok:true,...snapshot,financialActionsAutomatic:false});
  }catch(e){await heartbeatComponent({key:"profit-control-cycle",type:"cycle",ok:false,expectedIntervalMinutes:60,detail:String(e?.message||e)}).catch(()=>null);return Response.json({ok:false,error:String(e?.message||e).slice(0,180)},{status:500})}
 }
