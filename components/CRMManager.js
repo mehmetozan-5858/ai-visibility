@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 const labels={new:"Yeni",contacted:"Temas edildi",meeting:"Görüşme",proposal:"Teklif",won:"Kazanıldı",lost:"Kaybedildi"};
+function followupText(x){const d=x.nextFollowUp?new Date(x.nextFollowUp):null;if(!d)return "Takip tarihi yok";const today=new Date();today.setHours(0,0,0,0);d.setHours(0,0,0,0);const days=Math.round((d-today)/86400000);return days<0?`Takip ${Math.abs(days)} gün gecikti`:days===0?"Bugün takip":days===1?"Yarın takip":`${days} gün sonra takip`;}
 export default function CRMManager(){
   const [rows,setRows]=useState([]),[busy,setBusy]=useState(""),[msg,setMsg]=useState("");
   async function load(){const r=await fetch("/api/sales-pipeline",{cache:"no-store"}),d=await r.json();if(r.ok)setRows(d.opportunities||[])}
@@ -19,7 +20,7 @@ export default function CRMManager(){
     <div className="client-list">{rows.map(x=><article className="client-row" key={x.id}>
       <div className="client-avatar">{x.stage==="won"?"✓":"◎"}</div>
       <div><b>{x.clientName}</b><small>{x.domain||""} · skor {x.score??"—"}/100 · {x.priority}</small></div>
-      <span>{labels[x.stage]||x.stage}</span><textarea aria-label="CRM notu" placeholder="Görüşme / takip notu" defaultValue={x.notes||""} onBlur={e=>{if(e.target.value!==(x.notes||""))update(x,{stage:x.stage,nextFollowUp:x.nextFollowUp,notes:e.target.value})}} style={{minWidth:180,minHeight:58,background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:9,padding:8}}/>
+      <span>{labels[x.stage]||x.stage}<small style={{display:"block"}}>{followupText(x)}</small></span><textarea aria-label="CRM notu" placeholder="Görüşme / takip notu" defaultValue={x.notes||""} onBlur={e=>{if(e.target.value!==(x.notes||""))update(x,{stage:x.stage,nextFollowUp:x.nextFollowUp,notes:e.target.value})}} style={{minWidth:180,minHeight:58,background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:9,padding:8}}/>
       <div style={{display:"grid",gap:6,minWidth:150}}>
         <select value={x.stage} disabled={busy===x.id} onChange={e=>update(x,{stage:e.target.value,nextFollowUp:x.nextFollowUp,notes:x.notes})} style={{background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:9,padding:8}}>
           {Object.entries(labels).map(([v,l])=><option key={v} value={v}>{l}</option>)}
