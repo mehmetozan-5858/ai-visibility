@@ -185,3 +185,15 @@ jobs:
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/budget-guard-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  provider-health-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check provider reliability memory
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/provider-health-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
