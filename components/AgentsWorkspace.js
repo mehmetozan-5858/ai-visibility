@@ -12,7 +12,7 @@ import BusinessAgentDesks from "./BusinessAgentDesks";
 import AgentCenter from "./AgentCenter";
 
 const businessTabs=[
-  ["overview","Genel / Satış"],
+  ["overview","Satış Komuta Merkezi"],
   ["center","Ajan Merkezi"],
   ["diagnosis","Sorun Tespit Masaları"],
   ["solutions","Çözüm Masaları"],
