@@ -16,9 +16,9 @@ const MARKETS=[
 ];
 
 function authorized(req){
-  const secret=process.env.CRON_SECRET||"";
   const auth=req.headers.get("authorization")||"";
-  return Boolean(secret)&&auth===`Bearer ${secret}`;
+  const secrets=[process.env.CRON_SECRET,process.env.AUTO_HUNT_SECRET].filter(Boolean);
+  return secrets.some(secret=>auth===`Bearer ${secret}`);
 }
 
 function marketForCurrentHour(){
