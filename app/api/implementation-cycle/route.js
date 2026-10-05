@@ -16,5 +16,6 @@ export async function GET(req){
    out.prepared++;
   }catch(e){out.errors.push({clientId:client.id,error:String(e?.message||e).slice(0,160)})}
  }
- await heartbeatComponent({key:"implementation-cycle",type:"cycle",ok:out.errors.length===0,expectedIntervalMinutes:60,detail:`eligible=${out.eligible}; errors=${out.errors.length}`}).catch(()=>null);\n return Response.json(out,{headers:{"cache-control":"no-store"}});
+ await heartbeatComponent({key:"implementation-cycle",type:"cycle",ok:out.errors.length===0,expectedIntervalMinutes:60,detail:`eligible=${out.eligible}; errors=${out.errors.length}`}).catch(()=>null);
+ return Response.json(out,{headers:{"cache-control":"no-store"}});
 }
