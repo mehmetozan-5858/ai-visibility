@@ -351,3 +351,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/unified-mission-control" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  dual-engine-ceo-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build business creator CEO funnel report
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-ceo-report" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
