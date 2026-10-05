@@ -1,8 +1,9 @@
 import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
-import {saveDiscovered,listDiscovered} from "../../../lib/lead-finder";
+import {saveDiscovered,listDiscovered,qualifyDiscovered} from "../../../lib/lead-finder";
 function clean(v,n=120){return String(v||"").trim().slice(0,n)}
 function jsonFrom(s){const t=String(s||"").replace(/^```json\s*/i,"").replace(/```$/,"").trim();const a=t.indexOf("["),b=t.lastIndexOf("]");if(a<0||b<a)return [];try{return JSON.parse(t.slice(a,b+1))}catch{return []}}
 export async function GET(req){const denied=await requireAdmin(req);if(denied)return denied;try{return Response.json({leads:await listDiscovered(150)})}catch(e){return Response.json({error:"Lead Finder kayıtları okunamadı."},{status:500})}}
+export async function PATCH(req){const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;try{const count=await qualifyDiscovered();return Response.json({ok:true,count,leads:await listDiscovered(150)})}catch{return Response.json({error:"Qualification çalıştırılamadı."},{status:500})}}
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;const limited=checkRateLimit(req,{bucket:"lead-finder",limit:12,windowMs:10*60*1000});if(limited)return limited;
  try{const b=await req.json(),country=clean(b.country),city=clean(b.city),sector=clean(b.sector),limit=Math.min(20,Math.max(3,Number(b.limit)||10));if(!country||!city||!sector)return Response.json({error:"Ülke, şehir ve sektör zorunludur."},{status:400});
