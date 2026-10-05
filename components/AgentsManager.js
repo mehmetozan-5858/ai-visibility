@@ -8,6 +8,8 @@ const A=[
  ["Uygulama Ajanı","Eksikleri hazır içerik, schema ve görev paketine dönüştürür","/raporlar"],
  ["Opportunity Ajanı","AI görünürlük açığını satış fırsatı skoruna dönüştürür","/ajanlar"],
  ["Satış Ajanı","Fırsatlardan teklif ve ödeme akışı üretir","/ajanlar"],
+ ["Commerce Ready Ajanı","Katalog, fiyat, stok, varyant, schema ve AI okunabilirliğini 0–100 değerlendirir","/raporlar"],
+ ["Business Impact Ajanı","Görünürlük artışını lead, görüşme ve doğrulanmış/öngörülen ticari etkiyle ilişkilendirir","/raporlar"],
  ["CEO Ajanı","Yönetici özetlerini raporlar","/raporlar"]
 ];
 export default function AgentsManager(){
