@@ -19,7 +19,7 @@ export default function CRMManager(){
     <div className="client-list">{rows.map(x=><article className="client-row" key={x.id}>
       <div className="client-avatar">{x.stage==="won"?"✓":"◎"}</div>
       <div><b>{x.clientName}</b><small>{x.domain||""} · skor {x.score??"—"}/100 · {x.priority}</small></div>
-      <span>{labels[x.stage]||x.stage}</span>
+      <span>{labels[x.stage]||x.stage}</span><textarea aria-label="CRM notu" placeholder="Görüşme / takip notu" defaultValue={x.notes||""} onBlur={e=>{if(e.target.value!==(x.notes||""))update(x,{stage:x.stage,nextFollowUp:x.nextFollowUp,notes:e.target.value})}} style={{minWidth:180,minHeight:58,background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:9,padding:8}}/>
       <div style={{display:"grid",gap:6,minWidth:150}}>
         <select value={x.stage} disabled={busy===x.id} onChange={e=>update(x,{stage:e.target.value,nextFollowUp:x.nextFollowUp,notes:x.notes})} style={{background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:9,padding:8}}>
           {Object.entries(labels).map(([v,l])=><option key={v} value={v}>{l}</option>)}
