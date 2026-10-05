@@ -4,6 +4,7 @@ export const runtime="nodejs";export const maxDuration=120;
 function authorized(req){const a=req.headers.get("authorization")||"";return [process.env.CRON_SECRET,process.env.AUTO_HUNT_SECRET].filter(Boolean).some(x=>a===`Bearer ${x}`)}
 export async function GET(req){
  if(!authorized(req))return Response.json({ok:false,error:"unauthorized"},{status:401});
+ if(process.env.OUTREACH_SEND_ENABLED!=="true")return Response.json({ok:true,sendEnabled:false,due:0,sent:0,errors:[],message:"Outbound sending is disabled by safety gate."});
  const rows=await listFollowUpQueue(25),out={ok:true,due:rows.length,sent:0,errors:[]};
  for(const x of rows){
   try{
