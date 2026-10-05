@@ -4,9 +4,9 @@ import PublicPage from "../../components/PublicPage";
 export const metadata={title:"AI Visibility | Hizmetler ve Fiyatlar",description:"AI görünürlük analizi, GEO/AEO çözüm uygulama ve sürekli takip hizmetleri; kapsam ve başlangıç fiyatları."};
 
 const packages=[
-  {title:"AI Visibility Analizi + Rapor",price:"4.990 TL",type:"Tek seferlik",desc:"İşletmenizin AI görünürlüğü ölçülür; sorunlar, öncelikler ve geliştirme alanları detaylı raporlanır.",items:["AI görünürlük skoru","Sorun ve eksiklerin tespiti","Önceliklendirilmiş detaylı rapor","Geliştirme yol haritası"]},
-  {title:"Çözüm / Uygulama Paketi",price:"19.900 TL'den başlayan",type:"Tek seferlik",desc:"Analizde belirlenen ve müşteri tarafından onaylanan sorunlar için teknik ve içerik iyileştirmeleri uygulanır.",items:["Onaylanan sorunların çözümü","GEO / AEO iyileştirmeleri","İçerik ve yapılandırılmış veri çalışmaları","Uygulama sonrası yeniden ölçüm"]},
-  {title:"Sürekli Takip + Optimizasyon",price:"6.990 TL / ay",type:"Aylık hizmet",desc:"Görünürlük düzenli olarak takip edilir; değişimler raporlanır ve gerekli optimizasyon görevleri planlanır.",items:["Periyodik görünürlük takibi","Karşılaştırmalı raporlama","Yeni sorun ve fırsat tespiti","Sürekli optimizasyon planı"]}
+  {code:"business-diagnosis",title:"AI Visibility Analizi + Rapor",price:"4.990 TL",type:"Tek seferlik",desc:"İşletmenizin AI görünürlüğü ölçülür; sorunlar, öncelikler ve geliştirme alanları detaylı raporlanır.",items:["AI görünürlük skoru","Sorun ve eksiklerin tespiti","Önceliklendirilmiş detaylı rapor","Geliştirme yol haritası"]},
+  {code:"business-solution",title:"Çözüm / Uygulama Paketi",price:"19.900 TL'den başlayan",type:"Tek seferlik",desc:"Analizde belirlenen ve müşteri tarafından onaylanan sorunlar için teknik ve içerik iyileştirmeleri uygulanır.",items:["Onaylanan sorunların çözümü","GEO / AEO iyileştirmeleri","İçerik ve yapılandırılmış veri çalışmaları","Uygulama sonrası yeniden ölçüm"]},
+  {code:"business-monitoring",title:"Sürekli Takip + Optimizasyon",price:"6.990 TL / ay",type:"Aylık hizmet",desc:"Görünürlük düzenli olarak takip edilir; değişimler raporlanır ve gerekli optimizasyon görevleri planlanır.",items:["Periyodik görünürlük takibi","Karşılaştırmalı raporlama","Yeni sorun ve fırsat tespiti","Sürekli optimizasyon planı"]}
 ];
 
 export default function Page(){return <PublicPage title="Hizmetler ve Fiyatlar" subtitle="Satın alabileceğiniz AI görünürlük, analiz ve iyileştirme hizmetleri. Tüm hizmetler dijital olarak sunulur.">
@@ -17,7 +17,7 @@ export default function Page(){return <PublicPage title="Hizmetler ve Fiyatlar" 
       <div style={{fontSize:24,fontWeight:800,margin:"10px 0"}}>{p.price}</div>
       <p>{p.desc}</p>
       <ul>{p.items.map(x=><li key={x}>{x}</li>)}</ul>
-      <Link href="/yeni-musteri" style={{display:"inline-block",marginTop:10,padding:"12px 16px",borderRadius:12,background:"#2f6df6",color:"white",textDecoration:"none",fontWeight:700}}>Satın Alma Sürecini Başlat</Link>
+      <Link href={`/yeni-musteri?service=${encodeURIComponent(p.code)}`} style={{display:"inline-block",marginTop:10,padding:"12px 16px",borderRadius:12,background:"#2f6df6",color:"white",textDecoration:"none",fontWeight:700}}>Satın Alma Sürecini Başlat</Link>
     </article>)}
   </div>
 
