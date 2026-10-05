@@ -197,3 +197,15 @@ jobs:
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/provider-health-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  truth-guard-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check evidence and data quality
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/truth-guard-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
