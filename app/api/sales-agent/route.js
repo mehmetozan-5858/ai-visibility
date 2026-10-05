@@ -75,8 +75,9 @@ export async function POST(req){
     const offer=buildOffer(c,country);
     const priority=offer.priority==="yüksek"?"high":offer.priority==="orta"?"medium":"low";
     await upsertSalesOpportunity(c.id,{priority});
-    const paymentToken=await createPaymentAccessToken(c.id,offer.offer?.diagnosis?.code||"business-diagnosis");
-    return Response.json({client:c,offer,paymentUrl:"/odeme?token="+encodeURIComponent(paymentToken)+"&service="+encodeURIComponent(offer.offer?.diagnosis?.code||"business-diagnosis")});
+    const service=offer.offer?.diagnosis?.code||"business-diagnosis";
+    const paymentToken=await createPaymentAccessToken(c.id,604800,service);
+    return Response.json({client:c,offer,paymentUrl:"/odeme?token="+encodeURIComponent(paymentToken)+"&service="+encodeURIComponent(service)});
   }catch(e){
     return Response.json({error:"Satış teklifi hazırlanamadı.",detail:String(e?.message||e).slice(0,250)},{status:500});
   }
