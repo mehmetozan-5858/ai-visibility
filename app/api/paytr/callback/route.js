@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import {confirmCardPaymentByMerchantOid,getPaymentByMerchantOid,markCardPaymentFailedByMerchantOid} from "../../../../lib/repository";
 import {markProspectWonByClient} from "../../../../lib/prospects";
+import {markCreatorWonByClient} from "../../../../lib/creator-hunt";
 export const runtime="nodejs";
 
 export async function POST(req){
@@ -35,6 +36,7 @@ export async function POST(req){
       }
       await confirmCardPaymentByMerchantOid(merchant_oid);
       await markProspectWonByClient(payment.clientId).catch(()=>null);
+      await markCreatorWonByClient(payment.clientId).catch(()=>null);
     }else{
       await markCardPaymentFailedByMerchantOid(merchant_oid);
     }
