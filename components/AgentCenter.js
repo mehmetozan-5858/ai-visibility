@@ -2,7 +2,11 @@
 import {useEffect,useMemo,useState} from "react";
 
 function fmt(v){if(!v)return "-";try{return new Date(v).toLocaleString("tr-TR")}catch{return String(v)}}
-function marketText(m){return [m?.city,m?.country].filter(Boolean).join(", ")||"-"}
+function marketText(m){
+ if(Array.isArray(m?.markets))return m.markets.map(x=>[x?.city,x?.country].filter(Boolean).join(", ")).filter(Boolean).join(" · ")||"-";
+ return [m?.city,m?.country].filter(Boolean).join(", ")||"-";
+}
+function markets(m){return Array.isArray(m?.markets)?m.markets:[]}
 
 export default function AgentCenter(){
   const [data,setData]=useState(null),[error,setError]=useState("");
@@ -14,6 +18,8 @@ export default function AgentCenter(){
   const health=useMemo(()=>!latest?"🟡 BEKLENİYOR":latest.errorCount>0?"🔴 HATA":ageMinutes!==null&&ageMinutes<=90?"🟢 ONLINE":"🟡 GECİKMİŞ",[latest,ageMinutes]);
   const nextAt=lastAt?new Date(lastAt+60*60*1000):null;
   const world=data?.worldNetwork;
+  const parallel=markets(latest?.market);
+  const successRate=latest?.scanned?Math.round((Number(latest.completed||0)/Number(latest.scanned))*100):0;
   return <div>
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
@@ -25,6 +31,17 @@ export default function AgentCenter(){
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginTop:16}}>
           {[["Sistem",health],["Son av",fmt(latest?.finishedAt)],["Sonraki av",nextAt?fmt(nextAt):"-"],["Pazar",marketText(latest?.market)],["Bulunan",latest?.discovered??0],["Yeni aday",latest?.newProspects??0],["Taranan",latest?.scanned??0],["Tamamlanan",latest?.completed??0],["Hata",latest?.errorCount??0]].map(([k,v])=><div key={k} className="panel" style={{padding:12}}><small style={{opacity:.65}}>{k}</small><div style={{fontWeight:800,fontSize:18,marginTop:4}}>{v}</div></div>)}
         </div>
+        {parallel.length>0?<div className="panel" style={{marginTop:14,padding:14}}>
+          <h3 style={{margin:"0 0 10px"}}>Bu Turda Paralel Av</h3>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+            {parallel.map((m,i)=><div key={`${m.country}-${m.city}-${i}`} className="panel" style={{padding:10}}><small style={{opacity:.65}}>Pazar {i+1}</small><div style={{fontWeight:800,marginTop:4}}>{m.city}, {m.country}</div></div>)}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginTop:10}}>
+            <div><small style={{opacity:.65}}>Paralel pazar</small><div style={{fontWeight:800,fontSize:20}}>{parallel.length}</div></div>
+            <div><small style={{opacity:.65}}>Derin analiz</small><div style={{fontWeight:800,fontSize:20}}>{latest?.scanned??0}</div></div>
+            <div><small style={{opacity:.65}}>Analiz başarısı</small><div style={{fontWeight:800,fontSize:20}}>%{successRate}</div></div>
+          </div>
+        </div>:null}
         <p style={{fontSize:13,opacity:.65,marginBottom:0}}>Saatlik hedef: 60 dk · ONLINE ölçütü: son başarılı rapor 90 dk içinde. {ageMinutes!==null?`Son rapor ${ageMinutes} dk önce.`:"Henüz başarılı çalışma raporu yok."}</p>
       </>}
     </section>
