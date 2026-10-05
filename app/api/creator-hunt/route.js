@@ -1,19 +1,30 @@
-import {saveCreatorHuntLeads,listCreatorHuntLeads} from "../../../lib/creator-hunt";
+import {saveCreatorHuntLeads} from "../../../lib/creator-hunt";
 export const runtime="nodejs"; export const maxDuration=300;
 const PLATFORMS=["youtube","instagram","tiktok","x","linkedin","facebook"];
 const NICHES=["fashion","beauty","fitness","food","travel","technology","education","finance","gaming","parenting","automotive","health","business","lifestyle"];
 const MARKETS=[["Türkiye","tr"],["United Kingdom","en"],["Germany","de"],["France","fr"],["Italy","it"],["Spain","es"],["United States","en"],["Canada","en"],["United Arab Emirates","en"],["Australia","en"],["Japan","ja"]];
 function ok(req){const a=req.headers.get("authorization")||"";return [process.env.CRON_SECRET,process.env.AUTO_HUNT_SECRET].filter(Boolean).some(s=>a===`Bearer ${s}`)}
-function arr(s){const t=String(s||"").replace(/^```json\s*/i,"").replace(/```$/,"").trim(),a=t.indexOf("["),b=t.lastIndexOf("]");if(a<0||b<a)return[];try{return JSON.parse(t.slice(a,b+1))}catch{return[]}}
+function parse(text){const t=String(text||"").replace(/^```json\s*/i,"").replace(/```$/,"").trim();try{const j=JSON.parse(t);return Array.isArray(j)?j:(Array.isArray(j?.creators)?j.creators:[])}catch{}const a=t.indexOf("["),b=t.lastIndexOf("]");if(a>=0&&b>a){try{return JSON.parse(t.slice(a,b+1))}catch{}}return[]}
+function extractAgent(d){const m=(d?.output||[]).find(x=>x?.type==="message");return (m?.content||[]).find(x=>x?.type==="output_text")?.text||""}
+async function perplexity(prompt,key){
+ const r=await fetch("https://api.perplexity.ai/v1/agent",{method:"POST",headers:{"content-type":"application/json","authorization":`Bearer ${key}`},body:JSON.stringify({preset:process.env.PERPLEXITY_PRESET||"fast",input:prompt})});
+ if(!r.ok)throw new Error(`perplexity-${r.status}: ${(await r.text()).slice(0,180)}`);return extractAgent(await r.json())
+}
+async function gemini(prompt,key){
+ const model=process.env.GEMINI_MODEL||"gemini-3.5-flash-lite";
+ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.1,responseMimeType:"application/json"}})});
+ if(!r.ok)throw new Error(`gemini-${r.status}: ${(await r.text()).slice(0,180)}`);const d=await r.json();return d?.candidates?.[0]?.content?.parts?.[0]?.text||""
+}
 export async function GET(req){
  if(!ok(req))return Response.json({ok:false,error:"unauthorized"},{status:401});
- const key=process.env.PERPLEXITY_API_KEY;if(!key)return Response.json({ok:false,error:"provider-not-configured"},{status:503});
  const slot=Math.floor(Date.now()/3600000),platform=PLATFORMS[slot%PLATFORMS.length],niche=NICHES[slot%NICHES.length],[country,language]=MARKETS[slot%MARKETS.length];
- const prompt=`Find up to 12 real public creator/personal-brand accounts on ${platform} in or strongly associated with ${country}, niche ${niche}. Use current public web evidence. Prefer creators with a genuine audience/business opportunity and visible room for discoverability, content, profile, retention or monetization improvement. Return ONLY JSON array with: platform, handle, displayName, profileUrl, niche, country, language, publicContact, sourceUrl, opportunityScore, evidence. publicContact must only contain a clearly public business contact/email or empty string. opportunityScore 0-100 must reflect creator-commercial fit plus visible improvement opportunity. evidence must be a short object of public facts supporting the score. Never invent followers, engagement, contact data, revenue or demographics. Do not send messages and do not claim private analytics.`;
- const rr=await fetch("https://api.perplexity.ai/chat/completions",{method:"POST",headers:{authorization:"Bearer "+key,"content-type":"application/json"},body:JSON.stringify({model:process.env.PERPLEXITY_MODEL||"sonar",messages:[{role:"system",content:"You are Creator Scout Agent. Accuracy and public evidence over quantity. Never fabricate accounts, metrics or contacts."},{role:"user",content:prompt}],temperature:.1})});
- if(!rr.ok)return Response.json({ok:false,error:"creator-provider-failed",status:rr.status},{status:502});
- const d=await rr.json(),items=arr(d?.choices?.[0]?.message?.content).map(x=>({...x,platform:x.platform||platform,country:x.country||country,language:x.language||language,niche:x.niche||niche}));
+ const prompt=`You are a creator research agent with public web evidence. Find up to 12 REAL public creator/personal-brand accounts on ${platform} in or strongly associated with ${country}, niche ${niche}. Prefer genuine commercial potential plus visible discoverability/content/profile improvement opportunity. Return ONLY JSON: {"creators":[{"platform":"","handle":"","displayName":"","profileUrl":"","niche":"","country":"","language":"","publicContact":"","sourceUrl":"","opportunityScore":0,"evidence":{}}]}. publicContact only when clearly public business contact, otherwise empty. Never invent accounts, followers, engagement, demographics, revenue or contact data. sourceUrl/profileUrl must support identity.`;
+ const errors=[];let text="",provider="";
+ if(process.env.PERPLEXITY_API_KEY){try{text=await perplexity(prompt,process.env.PERPLEXITY_API_KEY);provider="Perplexity"}catch(e){errors.push(String(e?.message||e))}}
+ if(!text&&process.env.GEMINI_API_KEY){try{text=await gemini(prompt,process.env.GEMINI_API_KEY);provider="Gemini"}catch(e){errors.push(String(e?.message||e))}}
+ if(!text){console.error(JSON.stringify({source:"creator-hunt",event:"provider-failed",platform,country,niche,errors}));return Response.json({ok:false,error:"creator-provider-failed",errors},{status:502})}
+ const items=parse(text).map(x=>({...x,platform:x.platform||platform,country:x.country||country,language:x.language||language,niche:x.niche||niche})).filter(x=>x.displayName&&x.profileUrl);
  const saved=await saveCreatorHuntLeads(items);
- console.log(JSON.stringify({source:"creator-hunt",event:"completed",platform,country,niche,found:items.length,saved:saved.length,at:new Date().toISOString()}));
- return Response.json({ok:true,platform,country,niche,found:items.length,saved:saved.length,top:saved.slice(0,5)});
+ console.log(JSON.stringify({source:"creator-hunt",event:"completed",provider,platform,country,niche,found:items.length,saved:saved.length,at:new Date().toISOString()}));
+ return Response.json({ok:true,provider,platform,country,niche,found:items.length,saved:saved.length,top:saved.slice(0,5),providerErrors:errors});
 }
