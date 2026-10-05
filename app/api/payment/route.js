@@ -36,7 +36,7 @@ export async function GET(req){
     const plan=formatPlan(servicePrice({service,country:selectedCountry,language:lang}),lang);
     const catalog=pricingCatalog({country:selectedCountry,language:lang}).map(x=>formatPlan(x,lang));
     const paidPayment=(account?.payments||[]).find(x=>x.status==="paid")||null;
-    const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount);
+    const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount,plan.currency);
     const tryRail=plan.currency==="TRY";
     return Response.json({
       client,
