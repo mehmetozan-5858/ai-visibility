@@ -281,3 +281,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/innovation-brain-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  dual-engine-command:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Balance business and creator engines
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-command" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
