@@ -341,3 +341,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-benchmark-innovation" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  unified-mission-control:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run unified business creator mission control
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/unified-mission-control" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
