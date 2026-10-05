@@ -1,0 +1,4 @@
+import {analyzeAndSaveCreatorReply} from "../../../lib/creator-hunt";
+import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
+export const runtime="nodejs";
+export async function POST(req){const denied=await requireAdmin(req);if(denied)return denied;const originError=enforceSameOrigin(req);if(originError)return originError;try{const body=await req.json(),replyText=String(body?.replyText||"").trim();if(!body?.creatorId||!replyText)return Response.json({error:"Creator ve cevap metni gerekli."},{status:400});const result=await analyzeAndSaveCreatorReply(body.creatorId,replyText);return Response.json({ok:true,...result,automaticReplySending:false})}catch(e){return Response.json({error:"Creator cevabı analiz edilemedi.",detail:String(e?.message||e).slice(0,180)},{status:500})}}
