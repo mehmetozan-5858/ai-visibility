@@ -41,3 +41,15 @@ jobs:
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/follow-up-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  implementation-agent-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run paid customer implementation orchestrator
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/implementation-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
