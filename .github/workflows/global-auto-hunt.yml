@@ -161,3 +161,15 @@ jobs:
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/resource-orchestrator-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  profit-control-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh cost and profit control
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/profit-control-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
