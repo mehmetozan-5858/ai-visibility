@@ -149,3 +149,15 @@ jobs:
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/opportunity-forecast-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  resource-orchestrator-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh safe resource allocation
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/resource-orchestrator-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
