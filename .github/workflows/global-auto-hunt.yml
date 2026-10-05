@@ -53,3 +53,15 @@ jobs:
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/implementation-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  remeasurement-agent-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run post implementation remeasurement
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/remeasurement-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
