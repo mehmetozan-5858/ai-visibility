@@ -31,6 +31,7 @@ export async function GET(req){
     const lang=languageFrom(req);
     const tokenService=String(access?.service||"");
     const requestedService=tokenService||String(url.searchParams.get("service")||"business-diagnosis");
+    if(tokenService&&!SERVICE_CODES.includes(tokenService))return Response.json({error:"Ödeme bağlantısındaki hizmet geçersiz."},{status:400});
     const service=SERVICE_CODES.includes(requestedService)?requestedService:"business-diagnosis";
     const plan=formatPlan(servicePrice({service,country:selectedCountry,language:lang}),lang);
     const catalog=pricingCatalog({country:selectedCountry,language:lang}).map(x=>formatPlan(x,lang));
@@ -59,6 +60,7 @@ export async function POST(req){
     if(body?.consent!==true)return Response.json({error:"Hizmet başlangıcı ve sözleşme onayı gereklidir."},{status:400});
     const access=await verifyPaymentAccessToken(body.token);
     if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
+    if(access.service&&!SERVICE_CODES.includes(access.service))return Response.json({error:"Ödeme bağlantısındaki hizmet geçersiz."},{status:400});
     const current=await getPaymentById(body.paymentId);
     if(!current||current.clientId!==access.clientId)return Response.json({error:"Bu ödeme bağlantısı bu kayıt için geçerli değil."},{status:403});
     await recordPaymentConsent(body.paymentId,"2026-10-02");
