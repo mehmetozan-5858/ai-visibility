@@ -2,6 +2,7 @@ import {databaseStatus} from "../../../lib/db";
 import {providerStatus} from "../../../lib/providers";
 import {authConfigured} from "../../../lib/admin-auth";
 import {getDashboard,listClients,listScans,listSalesPipeline,listWorkItems,listPayments} from "../../../lib/repository";
+import {requireAdmin} from "../../../lib/api-security";
 
 export const runtime="nodejs";
 
@@ -15,7 +16,8 @@ async function check(name,fn){
   }
 }
 
-export async function GET(){
+export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   const checks=await Promise.all([
     check("database",async()=>databaseStatus()),
     check("dashboard",async()=>{const d=await getDashboard();return {activeClients:d.activeClients,scansToday:d.scansToday,approvals:d.approvals,mrr:d.mrr}}),
