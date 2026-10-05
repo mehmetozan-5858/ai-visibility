@@ -2,6 +2,7 @@
 import {useEffect,useState} from "react";
 
 const labels={new:"Yeni",contacted:"İletişim kuruldu",qualified:"Nitelikli",proposal:"Teklif",won:"Müşteri oldu",lost:"Kapandı"};
+const services={"business-diagnosis":"AI Visibility Analizi + Rapor · 4.990 TL","business-solution":"Çözüm / Uygulama · 19.900 TL'den","business-monitoring":"Sürekli Takip + Optimizasyon · 6.990 TL/ay"};
 
 export default function LeadsManager(){
   const [items,setItems]=useState([]),[busy,setBusy]=useState(""),[msg,setMsg]=useState("");
@@ -24,7 +25,7 @@ export default function LeadsManager(){
     {msg&&<p className="client-message">{msg}</p>}
     {!items.length?<div className="empty">Henüz yeni müşteri başvurusu yok.</div>:<div className="client-list">{items.map(x=><article className="client-row" key={x.id}>
       <div className="client-avatar">{String(x.businessName||"?").slice(0,1).toUpperCase()}</div>
-      <div><b>{x.businessName}</b><small>{x.name} · {x.email}{x.phone?" · "+x.phone:""}</small><small>{[x.country,x.city,x.sector].filter(Boolean).join(" · ")}{x.website?" · "+x.website:""}</small></div>
+      <div><b>{x.businessName}</b><small>{x.name} · {x.email}{x.phone?" · "+x.phone:""}</small><small>{[x.country,x.city,x.sector].filter(Boolean).join(" · ")}{x.website?" · "+x.website:""}</small><small style={{fontWeight:700,color:"#73d9bd"}}>İstenen hizmet: {services[x.requestedService]||"Belirtilmedi"}</small></div>
       <span>{labels[x.status]||x.status}</span>
       <select value={x.status} disabled={busy===x.id} onChange={e=>update(x.id,e.target.value)} style={{background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:10,padding:"9px"}}>
         {Object.entries(labels).map(([k,v])=><option key={k} value={k}>{v}</option>)}
