@@ -291,3 +291,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-command" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  creator-intelligence-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run creator truth forecast and next best action
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-intelligence-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
