@@ -2,19 +2,19 @@
 import {useEffect,useMemo,useState} from "react";
 
 export default function CreatorOperations(){
-  const [data,setData]=useState({profiles:[],accounts:[],findings:[],tasks:[]});
+  const [data,setData]=useState({profiles:[],accounts:[],findings:[],tasks:[]});\n  const [hunt,setHunt]=useState({leads:[]});
   const [selected,setSelected]=useState("");
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
   const refresh=async()=>{setLoading(true);setError("");try{const r=await fetch("/api/creator-workspace",{cache:"no-store"});const j=await r.json();if(!r.ok)throw new Error(j.error||"Yüklenemedi");setData(j);if(!selected&&j.profiles?.[0]?.id)setSelected(j.profiles[0].id)}catch(e){setError(e.message)}finally{setLoading(false)}};
-  useEffect(()=>{refresh()},[]);
+  useEffect(()=>{refresh();fetch("/api/creator-hunt-leads",{cache:"no-store"}).then(r=>r.json()).then(j=>setHunt(j)).catch(()=>{})},[]);
   const profile=useMemo(()=>data.profiles.find(x=>x.id===selected),[data.profiles,selected]);
   const accounts=data.accounts.filter(x=>x.profileId===selected);
   const findings=data.findings.filter(x=>x.profileId===selected);
   const tasks=data.tasks.filter(x=>x.profileId===selected);
   const runSolutions=async()=>{if(!selected)return;setLoading(true);setError("");try{const r=await fetch("/api/creator-workspace",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"generate-solutions",profileId:selected})});const j=await r.json();if(!r.ok)throw new Error(j.error||"Çözüm görevleri üretilemedi");await refresh()}catch(e){setError(e.message);setLoading(false)}};
   const updateTask=async(id,status)=>{setLoading(true);try{await fetch("/api/creator-workspace",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"update-task",id,status})});await refresh()}finally{setLoading(false)}};
-  return <div style={{display:"grid",gap:14}}>
+  return <div style={{display:"grid",gap:14}}>\n    <section className="panel"><h3 style={{margin:"0 0 6px"}}>Creator Av Canlı Havuzu</h3><p style={{margin:"0 0 12px",opacity:.72}}>YouTube, Instagram, TikTok, X, LinkedIn ve Facebook üzerinde bulunan kamuya açık creator fırsatları.</p><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10}}><div><small>Bulunan creator</small><h2 style={{margin:"4px 0"}}>{hunt.leads?.length||0}</h2></div><div><small>Yüksek fırsat</small><h2 style={{margin:"4px 0"}}>{hunt.leads?.filter(x=>x.opportunityScore>=75).length||0}</h2></div></div>{hunt.leads?.slice(0,8).map(x=><div key={x.id} style={{padding:"10px 0",borderTop:"1px solid rgba(148,163,184,.18)"}}><strong>{x.displayName}</strong><div style={{fontSize:13,opacity:.72}}>{x.platform} · {x.country} · {x.niche} · Fırsat {x.opportunityScore}/100</div></div>)}</section>
     <section className="panel">
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}>
         <div><h3 style={{margin:"0 0 5px"}}>Creator Operasyon Masası</h3><p style={{margin:0,opacity:.72}}>Creator profilleri, platform hesapları, bulgular ve rapor sonrası çözüm görevlerinin kalıcı çalışma alanı.</p></div>
