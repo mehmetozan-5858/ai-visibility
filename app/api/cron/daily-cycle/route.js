@@ -6,16 +6,13 @@ export const runtime="nodejs";
 export const maxDuration=300;
 
 const MARKETS=[
-  {country:"Türkiye",city:"İstanbul"},
-  {country:"Türkiye",city:"Ankara"},
-  {country:"Türkiye",city:"İzmir"},
-  {country:"United Kingdom",city:"London"},
-  {country:"Germany",city:"Berlin"},
-  {country:"France",city:"Paris"},
-  {country:"United States",city:"New York"},
-  {country:"United States",city:"Miami"},
-  {country:"Canada",city:"Toronto"},
-  {country:"United Arab Emirates",city:"Dubai"}
+  {country:"Türkiye",city:"İstanbul"},{country:"Türkiye",city:"İstanbul"},
+  {country:"Türkiye",city:"Ankara"},{country:"Türkiye",city:"İzmir"},{country:"Türkiye",city:"Antalya"},{country:"Türkiye",city:"Bursa"},
+  {country:"United Kingdom",city:"London"},{country:"Germany",city:"Berlin"},{country:"Germany",city:"Munich"},
+  {country:"France",city:"Paris"},{country:"Netherlands",city:"Amsterdam"},{country:"Italy",city:"Milan"},{country:"Spain",city:"Madrid"},
+  {country:"United States",city:"New York"},{country:"United States",city:"Miami"},{country:"United States",city:"Los Angeles"},{country:"United States",city:"Chicago"},
+  {country:"Canada",city:"Toronto"},{country:"United Arab Emirates",city:"Dubai"},{country:"Saudi Arabia",city:"Riyadh"},
+  {country:"Singapore",city:"Singapore"},{country:"Australia",city:"Sydney"},{country:"Japan",city:"Tokyo"}
 ];
 
 function authorized(req){
