@@ -381,3 +381,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-outreach-draft-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  creator-follow-up-learning:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare safe creator follow ups and learn outcomes
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-follow-up-learning" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
