@@ -19,3 +19,5 @@ export async function GET(req){
  await heartbeatComponent({key:"implementation-cycle",type:"cycle",ok:out.errors.length===0,expectedIntervalMinutes:60,detail:`eligible=${out.eligible}; errors=${out.errors.length}`}).catch(()=>null);
  return Response.json(out,{headers:{"cache-control":"no-store"}});
 }
+
+// deploy trigger after build syntax repairs
