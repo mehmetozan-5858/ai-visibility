@@ -21,9 +21,10 @@ function authorized(req){
   return secrets.some(secret=>auth===`Bearer ${secret}`);
 }
 
-function marketForCurrentHour(){
+function marketsForCurrentHour(){
   const slot=Math.floor(Date.now()/3600000);
-  return MARKETS[slot%MARKETS.length];
+  const width=Math.max(2,Math.min(Number(process.env.PARALLEL_HUNT_MARKETS)||4,8));
+  return Array.from({length:width},(_,i)=>MARKETS[(slot*width+i)%MARKETS.length]);
 }
 
 function logCycle(event,payload={}){
@@ -35,75 +36,36 @@ async function share(event){
 }
 
 export async function GET(req){
-  if(!authorized(req)){
-    logCycle("unauthorized");
-    return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{"cache-control":"no-store"}});
-  }
-
-  const startedAt=new Date().toISOString();
-  const market=marketForCurrentHour();
-  const report={ok:true,startedAt,market,discovered:0,newProspects:0,scanned:0,completed:0,errors:[]};
-  logCycle("started",{market});
-  await share({agent:"Koordinatör Ajan",eventType:"cycle-start",title:`Global ajan döngüsü başladı: ${market.city}`,detail:`${market.country} / ${market.city} pazarı ortak çalışma alanına açıldı.`,payload:{market}});
-
+  if(!authorized(req)){logCycle("unauthorized");return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{"cache-control":"no-store"}})}
+  const startedAt=new Date().toISOString(),markets=marketsForCurrentHour();
+  const report={ok:true,startedAt,market:{mode:"parallel",markets},discovered:0,newProspects:0,scanned:0,completed:0,errors:[]};
+  logCycle("parallel-started",{markets});
+  await share({agent:"Global Baş Amir Ajan",eventType:"cycle-start",title:`Paralel global av başladı: ${markets.length} pazar`,detail:markets.map(x=>`${x.country}/${x.city}`).join(" · "),payload:{markets}});
   try{
     const existingNames=await getProspectNames();
-    const found=await discoverBusinesses({...market,existingNames});
-    report.discovered=found.length;
-    logCycle("discovery-complete",{market,discovered:report.discovered,existingProspects:existingNames.length});
-    await share({agent:"Araştırma Ajanı",eventType:"discovery",title:`${report.discovered} işletme bulundu`,detail:`${market.city} taraması tamamlandı ve bulgular Koordinatör Ajan ile paylaşıldı.`,payload:{market,discovered:report.discovered}});
-
-    const seeded=await seedProspects(found);
+    const batches=await Promise.allSettled(markets.map(m=>discoverBusinesses({...m,existingNames})));
+    const found=[];
+    batches.forEach((x,i)=>{if(x.status==="fulfilled")found.push(...x.value);else report.errors.push({stage:"discovery",market:markets[i],error:String(x.reason?.message||x.reason).slice(0,180)})});
+    const unique=[...new Map(found.map(x=>[`${String(x.name).toLocaleLowerCase("tr-TR")}|${String(x.domain||"").toLowerCase()}`,x])).values()];
+    report.discovered=unique.length;
+    const seeded=await seedProspects(unique);
     const existingSet=new Set(existingNames.map(x=>String(x).toLocaleLowerCase("tr-TR")));
     const fresh=seeded.filter(x=>!existingSet.has(String(x.name||"").toLocaleLowerCase("tr-TR")));
     report.newProspects=fresh.length;
-    logCycle("prospects-seeded",{newProspects:report.newProspects});
-    await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday ortak panoya aktarıldı`,detail:"Yeni adaylar görünürlük taraması için sıraya alındı.",payload:{newProspects:report.newProspects}});
-
-    for(const prospect of fresh.slice(0,4)){
+    await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
+    const deepLimit=Math.max(4,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||8,16));
+    for(const prospect of fresh.slice(0,deepLimit)){
       try{
-        report.scanned+=1;
-        logCycle("scan-started",{prospectId:prospect.id,name:prospect.name,scanned:report.scanned});
-        await share({agent:"Görünürlük Ajanı",eventType:"scan-start",title:`Tarama başladı: ${prospect.name}`,detail:"Koordinatör Ajan ilgili bulguları diğer uzman ajanlarla paylaşacak.",payload:{prospectId:prospect.id,name:prospect.name}});
-        const scan=await queueProspectScan(prospect.id);
-        if(scan.status==="demo-only")throw new Error("database-unavailable");
-        const result=await runProviderCheck(prospect);
-        if(!result)throw new Error("no-provider-result");
-        await completeProspectScan(scan.id,prospect.id,result);
-        report.completed+=1;
-        logCycle("scan-completed",{prospectId:prospect.id,name:prospect.name,completed:report.completed});
-        await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sonuçlar İçerik, Uygulama, Satış ve CEO ajanlarının ortak kullanımına açıldı.",payload:{prospectId:prospect.id,name:prospect.name,provider:result?.provider||""},status:"completed"});
-      }catch(e){
-        const error=String(e?.message||e).slice(0,180);
-        report.errors.push({prospectId:prospect.id,name:prospect.name,error});
-        console.error(JSON.stringify({source:"daily-agent-cycle",event:"scan-error",at:new Date().toISOString(),prospectId:prospect.id,name:prospect.name,error}));
-        await share({agent:"Risk Ajanı",eventType:"error",title:`Tarama hatası: ${prospect.name}`,detail:error,payload:{prospectId:prospect.id,name:prospect.name},status:"needs-attention"});
-      }
+        report.scanned++;const scan=await queueProspectScan(prospect.id);if(scan.status==="demo-only")throw new Error("database-unavailable");
+        const result=await runProviderCheck(prospect);if(!result)throw new Error("no-provider-result");
+        await completeProspectScan(scan.id,prospect.id,result);report.completed++;
+        await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sonuç uzman ve satış ajanlarının ortak kullanımına açıldı.",payload:{prospectId:prospect.id,name:prospect.name,provider:result?.provider||""},status:"completed"});
+      }catch(e){report.errors.push({prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
     }
-  }catch(e){
-    report.ok=false;
-    const error=String(e?.message||e).slice(0,220);
-    report.errors.push({stage:"discovery",error});
-    console.error(JSON.stringify({source:"daily-agent-cycle",event:"discovery-error",at:new Date().toISOString(),market,error}));
-    await share({agent:"Risk Ajanı",eventType:"error",title:"Global keşif aşamasında hata",detail:error,payload:{market},status:"needs-attention"});
-  }
-
-  const finishedAt=new Date().toISOString();
-  const finalReport={...report,finishedAt};
-  logCycle("finished",{
-    ok:report.ok,
-    market,
-    discovered:report.discovered,
-    newProspects:report.newProspects,
-    scanned:report.scanned,
-    completed:report.completed,
-    errorCount:report.errors.length,
-    startedAt,
-    finishedAt
-  });
-
+  }catch(e){report.ok=false;report.errors.push({stage:"parallel-cycle",error:String(e?.message||e).slice(0,220)})}
+  const finishedAt=new Date().toISOString(),finalReport={...report,finishedAt};
+  logCycle("parallel-finished",{markets:markets.length,discovered:report.discovered,newProspects:report.newProspects,scanned:report.scanned,completed:report.completed,errorCount:report.errors.length});
   try{await saveDailyAgentReport(finalReport)}catch(e){console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
-  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Global av özeti: ${report.completed}/${report.scanned} tarama tamamlandı`,detail:`Bulunan ${report.discovered}, yeni aday ${report.newProspects}, hata ${report.errors.length}.`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
-
+  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
   return Response.json(finalReport,{status:report.ok?200:500,headers:{"cache-control":"no-store"}});
 }
