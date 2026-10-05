@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 import Link from "next/link";
 const A=[
- ["Araştırma Ajanı","Pazar, rakip ve lead araştırması","/musteriler"],
+ ["Araştırma Ajanı","Ülke, şehir ve sektöre göre gerçek lead araştırması","/lead-finder"],
  ["Görünürlük Ajanı","GEO/AEO taramalarını yönetir","/taramalar"],
  ["İçerik Ajanı","Tarama sonuçlarından iyileştirme önerileri üretir","/raporlar"],
  ["Uygulama Ajanı","Eksikleri hazır içerik, schema ve görev paketine dönüştürür","/raporlar"],
