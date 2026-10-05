@@ -9,9 +9,14 @@ const text={
  en:{title:"Start a free assessment",help:"Share your business details to begin the visibility review and package process.",name:"Full name",business:"Business name",website:"Website",country:"Country",city:"City",sector:"Industry",select:"Select",email:"Email",phone:"Phone / WhatsApp",send:"Request assessment",sending:"Sending…",done:"Application received ✓",ok:"Your application has been received. We will review your business and prepare the appropriate analysis and offer process.",fail:"Could not submit your application.",countryHelp:"Your country determines the pricing currency: Türkiye ₺, Europe €, United Kingdom £, United States and all other countries $."}
 };
 
-export default function NewCustomerLeadForm(){
+const services={
+ "business-diagnosis":"AI Visibility Analizi + Rapor — 4.990 TL",
+ "business-solution":"Çözüm / Uygulama Paketi — 19.900 TL'den başlayan",
+ "business-monitoring":"Sürekli Takip + Optimizasyon — 6.990 TL / ay"
+};
+export default function NewCustomerLeadForm({initialService=""}){
   const {lang}=useLanguage();const c=text[lang]||text.tr;
-  const [form,setForm]=useState({name:"",businessName:"",website:"",country:"Türkiye",city:"",sector:"",email:"",phone:""});
+  const [form,setForm]=useState({name:"",businessName:"",website:"",country:"Türkiye",city:"",sector:"",email:"",phone:"",service:services[initialService]?initialService:""});
   const [busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false);
   const change=(k,v)=>setForm(x=>({...x,[k]:v}));
   async function submit(e){
@@ -24,6 +29,7 @@ export default function NewCustomerLeadForm(){
   }
   return <form className="panel scan-form" onSubmit={submit} style={{marginBottom:16}}>
     <div><h2>{c.title}</h2><p>{c.help}</p></div>
+    <label>Seçilen hizmet<select value={form.service} onChange={e=>change("service",e.target.value)} required><option value="">Hizmet seçin</option>{Object.entries(services).map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
     <label>{c.name}<input value={form.name} onChange={e=>change("name",e.target.value)} required/></label>
     <label>{c.business}<input value={form.businessName} onChange={e=>change("businessName",e.target.value)} required/></label>
     <label>{c.website}<input value={form.website} onChange={e=>change("website",e.target.value)} placeholder="https://..." inputMode="url"/></label>
