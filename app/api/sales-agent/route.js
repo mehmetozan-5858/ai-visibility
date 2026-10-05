@@ -22,6 +22,7 @@ function money(p){
 function buildOffer(c,country="Türkiye"){
   const score=Number(c.score)||0;
   const priority=score<=30?"yüksek":score<=55?"orta":"düşük";
+  const opportunityScore=Math.max(0,Math.min(100,100-score));
   const results=Array.isArray(c.results)?c.results:[];
   const providerLine=results.length?results.map(x=>`${x.provider||"AI"} ${x.score??"-"}/100`).join(" · "):`Genel skor ${score}/100`;
   const findings=results.flatMap(x=>Array.isArray(x.findings)?x.findings:[]).filter(Boolean);
@@ -31,7 +32,8 @@ function buildOffer(c,country="Türkiye"){
   const monitoring=servicePrice({service:"business-monitoring",country,language:"tr"});
 
   return {
-    priority,
+    priority,opportunityScore,
+    opportunityType:score<60?"AI görünürlük iyileştirme":"Sürekli optimizasyon",
     whyNow:[
       `Son AI görünürlük skoru ${score}/100. ${providerLine}`,
       findings[0]||"AI görünürlüğünü artırmak için doğrulanabilir iyileştirme alanları bulunuyor.",
@@ -73,8 +75,8 @@ export async function POST(req){
     const offer=buildOffer(c,country);
     const priority=offer.priority==="yüksek"?"high":offer.priority==="orta"?"medium":"low";
     await upsertSalesOpportunity(c.id,{priority});
-    const paymentToken=await createPaymentAccessToken(c.id);
-    return Response.json({client:c,offer,paymentUrl:"/odeme?token="+encodeURIComponent(paymentToken)+"&service=business-diagnosis"});
+    const paymentToken=await createPaymentAccessToken(c.id,offer.offer?.diagnosis?.code||"business-diagnosis");
+    return Response.json({client:c,offer,paymentUrl:"/odeme?token="+encodeURIComponent(paymentToken)+"&service="+encodeURIComponent(offer.offer?.diagnosis?.code||"business-diagnosis")});
   }catch(e){
     return Response.json({error:"Satış teklifi hazırlanamadı.",detail:String(e?.message||e).slice(0,250)},{status:500});
   }
