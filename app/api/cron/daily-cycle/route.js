@@ -1,6 +1,6 @@
 import {discoverBusinesses,runProviderCheck,findPublicBusinessContact,personalizeProspectOutreach,buildProspectProposal} from "../../../../lib/providers";
 import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact,saveProspectPersonalization,saveProspectProposal,prepareProspectCommunication} from "../../../../lib/prospects";
-import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning} from "../../../../lib/agent-coordination";
+import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning,refreshMarketEconomics} from "../../../../lib/agent-coordination";
 
 export const runtime="nodejs";
 export const maxDuration=300;
@@ -25,7 +25,7 @@ async function marketsForCurrentHour(){
   const slot=Math.floor(Date.now()/3600000);
   const width=Math.max(2,Math.min(Number(process.env.PARALLEL_HUNT_MARKETS)||4,8));
   const base=Array.from({length:width},(_,i)=>MARKETS[(slot*width+i)%MARKETS.length]);
-  try{const learned=await listMarketLearning(12);if(learned.length>=4&&slot%3!==0){const top=learned.slice(0,Math.max(1,width-1)).map(x=>({country:x.country,city:x.city}));const explore=base.find(b=>!top.some(t=>t.country===b.country&&t.city===b.city))||base[0];return [...top,explore].slice(0,width)}}catch{}
+  try{await refreshMarketEconomics();const learned=await listMarketLearning(12);if(learned.length>=4&&slot%3!==0){const top=learned.slice(0,Math.max(1,width-1)).map(x=>({country:x.country,city:x.city}));const explore=base.find(b=>!top.some(t=>t.country===b.country&&t.city===b.city))||base[0];return [...top,explore].slice(0,width)}}catch{}
   return base;
 }
 
