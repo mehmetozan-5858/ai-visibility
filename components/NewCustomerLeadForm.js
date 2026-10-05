@@ -14,9 +14,9 @@ const services={
  "business-solution":"Çözüm / Uygulama Paketi — 19.900 TL'den başlayan",
  "business-monitoring":"Sürekli Takip + Optimizasyon — 6.990 TL / ay"
 };
-export default function NewCustomerLeadForm({initialService=""}){
+export default function NewCustomerLeadForm({initialService="",initialCountry=""}){
   const {lang}=useLanguage();const c=text[lang]||text.tr;
-  const [form,setForm]=useState({name:"",businessName:"",website:"",country:"Türkiye",city:"",sector:"",email:"",phone:"",service:services[initialService]?initialService:""});
+  const [form,setForm]=useState({name:"",businessName:"",website:"",country:initialCountry||"Türkiye",city:"",sector:"",email:"",phone:"",service:services[initialService]?initialService:""});
   const [busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false);
   const change=(k,v)=>setForm(x=>({...x,[k]:v}));
   async function submit(e){
