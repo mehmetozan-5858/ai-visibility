@@ -3,7 +3,7 @@ name: Global Auto Hunt
 on:
   workflow_dispatch:
   schedule:
-    - cron: "15 6,12,18 * * *"
+    - cron: "0 * * * *"
 
 jobs:
   hunt:
