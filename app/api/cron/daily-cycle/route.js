@@ -1,6 +1,6 @@
 import {discoverBusinesses,runProviderCheck,findPublicBusinessContact,personalizeProspectOutreach,buildProspectProposal} from "../../../../lib/providers";
 import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact,saveProspectPersonalization,saveProspectProposal,prepareProspectCommunication} from "../../../../lib/prospects";
-import {addSharedAgentEvent,saveDailyAgentReport} from "../../../../lib/agent-coordination";
+import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning} from "../../../../lib/agent-coordination";
 
 export const runtime="nodejs";
 export const maxDuration=300;
@@ -21,10 +21,12 @@ function authorized(req){
   return secrets.some(secret=>auth===`Bearer ${secret}`);
 }
 
-function marketsForCurrentHour(){
+async function marketsForCurrentHour(){
   const slot=Math.floor(Date.now()/3600000);
   const width=Math.max(2,Math.min(Number(process.env.PARALLEL_HUNT_MARKETS)||4,8));
-  return Array.from({length:width},(_,i)=>MARKETS[(slot*width+i)%MARKETS.length]);
+  const base=Array.from({length:width},(_,i)=>MARKETS[(slot*width+i)%MARKETS.length]);
+  try{const learned=await listMarketLearning(12);if(learned.length>=4&&slot%3!==0){const top=learned.slice(0,Math.max(1,width-1)).map(x=>({country:x.country,city:x.city}));const explore=base.find(b=>!top.some(t=>t.country===b.country&&t.city===b.city))||base[0];return [...top,explore].slice(0,width)}}catch{}
+  return base;
 }
 
 function logCycle(event,payload={}){
@@ -37,7 +39,7 @@ async function share(event){
 
 export async function GET(req){
   if(!authorized(req)){logCycle("unauthorized");return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{"cache-control":"no-store"}})}
-  const startedAt=new Date().toISOString(),markets=marketsForCurrentHour();
+  const startedAt=new Date().toISOString(),markets=await marketsForCurrentHour();
   const report={ok:true,startedAt,market:{mode:"parallel",markets},discovered:0,newProspects:0,scanned:0,completed:0,errors:[]};
   logCycle("parallel-started",{markets});
   await share({agent:"Global Baş Amir Ajan",eventType:"cycle-start",title:`Paralel global av başladı: ${markets.length} pazar`,detail:markets.map(x=>`${x.country}/${x.city}`).join(" · "),payload:{markets}});
@@ -70,7 +72,7 @@ export async function GET(req){
   }catch(e){report.ok=false;report.errors.push({stage:"parallel-cycle",error:String(e?.message||e).slice(0,220)})}
   const finishedAt=new Date().toISOString(),finalReport={...report,finishedAt};
   logCycle("parallel-finished",{markets:markets.length,discovered:report.discovered,newProspects:report.newProspects,scanned:report.scanned,completed:report.completed,errorCount:report.errors.length});
-  try{await saveDailyAgentReport(finalReport)}catch(e){console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
+  try{await saveDailyAgentReport(finalReport);await learnFromMarketRun(finalReport)}catch(e){console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
   await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
   return Response.json(finalReport,{status:report.ok?200:500,headers:{"cache-control":"no-store"}});
 }
