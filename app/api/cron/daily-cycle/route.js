@@ -21,9 +21,9 @@ function authorized(req){
   return Boolean(secret)&&auth===`Bearer ${secret}`;
 }
 
-function marketForToday(){
-  const day=Math.floor(Date.now()/86400000);
-  return MARKETS[day%MARKETS.length];
+function marketForCurrentHour(){
+  const slot=Math.floor(Date.now()/3600000);
+  return MARKETS[slot%MARKETS.length];
 }
 
 function logCycle(event,payload={}){
@@ -41,10 +41,10 @@ export async function GET(req){
   }
 
   const startedAt=new Date().toISOString();
-  const market=marketForToday();
+  const market=marketForCurrentHour();
   const report={ok:true,startedAt,market,discovered:0,newProspects:0,scanned:0,completed:0,errors:[]};
   logCycle("started",{market});
-  await share({agent:"Koordinatör Ajan",eventType:"cycle-start",title:`Günlük ajan döngüsü başladı: ${market.city}`,detail:`${market.country} / ${market.city} pazarı ortak çalışma alanına açıldı.`,payload:{market}});
+  await share({agent:"Koordinatör Ajan",eventType:"cycle-start",title:`Global ajan döngüsü başladı: ${market.city}`,detail:`${market.country} / ${market.city} pazarı ortak çalışma alanına açıldı.`,payload:{market}});
 
   try{
     const existingNames=await getProspectNames();
@@ -85,7 +85,7 @@ export async function GET(req){
     const error=String(e?.message||e).slice(0,220);
     report.errors.push({stage:"discovery",error});
     console.error(JSON.stringify({source:"daily-agent-cycle",event:"discovery-error",at:new Date().toISOString(),market,error}));
-    await share({agent:"Risk Ajanı",eventType:"error",title:"Günlük keşif aşamasında hata",detail:error,payload:{market},status:"needs-attention"});
+    await share({agent:"Risk Ajanı",eventType:"error",title:"Global keşif aşamasında hata",detail:error,payload:{market},status:"needs-attention"});
   }
 
   const finishedAt=new Date().toISOString();
@@ -103,7 +103,7 @@ export async function GET(req){
   });
 
   try{await saveDailyAgentReport(finalReport)}catch(e){console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
-  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Günlük özet: ${report.completed}/${report.scanned} tarama tamamlandı`,detail:`Bulunan ${report.discovered}, yeni aday ${report.newProspects}, hata ${report.errors.length}.`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
+  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Global av özeti: ${report.completed}/${report.scanned} tarama tamamlandı`,detail:`Bulunan ${report.discovered}, yeni aday ${report.newProspects}, hata ${report.errors.length}.`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
 
   return Response.json(finalReport,{status:report.ok?200:500,headers:{"cache-control":"no-store"}});
 }
