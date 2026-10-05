@@ -411,3 +411,13 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-unit-economics" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  verified-revenue-attribution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refresh verified revenue attribution
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || exit 1
+          curl --fail --silent --show-error "https://www.aivisibilityworks.com/api/verified-revenue-attribution" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
