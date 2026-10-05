@@ -6,14 +6,26 @@ on:
     - cron: "0 * * * *"
 
 jobs:
-  global-agent-cycle:
+  business-agent-cycle:
     runs-on: ubuntu-latest
     steps:
-      - name: Run integrated global agent cycle
+      - name: Run integrated global business agent cycle
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/cron/daily-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  creator-agent-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run global creator hunt
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/creator-hunt" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
