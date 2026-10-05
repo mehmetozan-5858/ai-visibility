@@ -1,0 +1,14 @@
+import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../../lib/api-security";
+import {saveDiscovered,listDiscovered} from "../../../../lib/lead-finder";
+function clean(v,n=120){return String(v||"").trim().slice(0,n)}
+function jsonFrom(s){const t=String(s||"").replace(/^```json\s*/i,"").replace(/```$/,"").trim();const a=t.indexOf("["),b=t.lastIndexOf("]");if(a<0||b<a)return [];try{return JSON.parse(t.slice(a,b+1))}catch{return []}}
+export async function GET(req){const denied=await requireAdmin(req);if(denied)return denied;try{return Response.json({leads:await listDiscovered(150)})}catch(e){return Response.json({error:"Lead Finder kayıtları okunamadı."},{status:500})}}
+export async function POST(req){
+ const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;const limited=checkRateLimit(req,{bucket:"lead-finder",limit:12,windowMs:10*60*1000});if(limited)return limited;
+ try{const b=await req.json(),country=clean(b.country),city=clean(b.city),sector=clean(b.sector),limit=Math.min(20,Math.max(3,Number(b.limit)||10));if(!country||!city||!sector)return Response.json({error:"Ülke, şehir ve sektör zorunludur."},{status:400});
+ const key=process.env.PERPLEXITY_API_KEY;if(!key)return Response.json({error:"Lead Finder web araştırması için PERPLEXITY_API_KEY yapılandırılmalı."},{status:503});
+ const prompt=`Find up to ${limit} real businesses in ${city}, ${country}, sector: ${sector}. Use current public web information. Return ONLY a JSON array. Each object: businessName, website, phone, email, sourceUrl. Never invent contact data; use empty string if not verified. sourceUrl must be a public page supporting the business identity. Exclude directories as businesses and exclude duplicates.`;
+ const rr=await fetch("https://api.perplexity.ai/chat/completions",{method:"POST",headers:{authorization:"Bearer "+key,"content-type":"application/json"},body:JSON.stringify({model:process.env.PERPLEXITY_MODEL||"sonar",messages:[{role:"system",content:"You are a business research agent. Accuracy over quantity. Never fabricate businesses or contacts."},{role:"user",content:prompt}],temperature:0.1})});
+ if(!rr.ok)return Response.json({error:"Lead Finder araştırma sağlayıcısı yanıt vermedi."},{status:502});const d=await rr.json(),items=jsonFrom(d?.choices?.[0]?.message?.content).map(x=>({...x,country,city,sector}));const saved=await saveDiscovered(items);return Response.json({ok:true,found:items.length,saved:saved.filter(x=>!x.duplicate).length,duplicates:saved.filter(x=>x.duplicate).length,leads:saved});
+ }catch(e){return Response.json({error:"Lead Finder çalıştırılamadı.",detail:String(e?.message||e).slice(0,180)},{status:500})}
+}
