@@ -1,9 +1,13 @@
 import {listWorkItems,updateWorkItem} from "../../../lib/repository";
-export async function GET(){
+import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
+export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   try{return Response.json({items:await listWorkItems(150)})}
   catch(e){return Response.json({error:"İş listesi okunamadı.",detail:String(e?.message||e).slice(0,220)},{status:500})}
 }
 export async function PATCH(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  const origin=enforceSameOrigin(req);if(origin)return origin;
   try{
     const body=await req.json();
     if(!body?.id||!body?.status)return Response.json({error:"Görev ve durum gerekli."},{status:400});
