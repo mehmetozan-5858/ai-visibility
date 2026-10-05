@@ -1,4 +1,4 @@
-import {saveDiscovered,qualifyDiscovered,listDiscovered} from "../../../../lib/lead-finder";
+import {saveDiscovered,qualifyDiscovered,listDiscovered} from "../../../lib/lead-finder";
 
 export const runtime="nodejs";
 const MARKETS=[
