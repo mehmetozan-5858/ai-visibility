@@ -2,6 +2,7 @@ import {PDFDocument,StandardFonts,rgb} from "pdf-lib";
 import {getSalesCandidates} from "../../../../lib/repository";
 import {getClientProfile} from "../../../../lib/client-profile";
 import {servicePrice,formatMoney} from "../../../../lib/regional-pricing";
+import {requireAdmin} from "../../../../lib/api-security";
 
 export const runtime="nodejs";
 const tr=v=>String(v??"").replaceAll("ğ","g").replaceAll("Ğ","G").replaceAll("ş","s").replaceAll("Ş","S").replaceAll("ı","i").replaceAll("İ","I").replaceAll("ç","c").replaceAll("Ç","C").replaceAll("ö","o").replaceAll("Ö","O").replaceAll("ü","u").replaceAll("Ü","U");
@@ -9,6 +10,7 @@ function wrap(text,max=82){const words=tr(text).split(/\s+/).filter(Boolean),lin
 function money(p){const locale=p.currency==="TRY"?"tr-TR":p.currency==="GBP"?"en-GB":p.currency==="EUR"?"en-IE":"en-US";return formatMoney(p.amount,p.currency,locale)}
 
 export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
   try{
     const id=new URL(req.url).searchParams.get("clientId");
     const rows=await getSalesCandidates(50),c=rows.find(x=>x.id===id);
