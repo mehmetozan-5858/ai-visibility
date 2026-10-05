@@ -77,3 +77,15 @@ jobs:
           curl --fail --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/predictive-guard" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  self-healing-decision-cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run controlled self healing decision engine
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail --silent --show-error \
+            -X GET "https://www.aivisibilityworks.com/api/self-healing-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
