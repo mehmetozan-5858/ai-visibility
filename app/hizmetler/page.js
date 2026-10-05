@@ -1,46 +1,24 @@
 import Link from "next/link";
 import PublicPage from "../../components/PublicPage";
+import {servicePrice,formatMoney} from "../../lib/regional-pricing";
 
-export const metadata={title:"AI Visibility | Hizmetler ve Fiyatlar",description:"AI görünürlük analizi, GEO/AEO çözüm uygulama ve sürekli takip hizmetleri; kapsam ve başlangıç fiyatları."};
+export const metadata={title:"AI Visibility | Hizmetler ve Fiyatlar",description:"AI görünürlük analizi, GEO/AEO çözüm uygulama ve sürekli takip hizmetleri; ülkeye göre fiyatlandırma."};
 
 const packages=[
-  {code:"business-diagnosis",title:"AI Visibility Analizi + Rapor",price:"4.990 TL",type:"Tek seferlik",desc:"İşletmenizin AI görünürlüğü ölçülür; sorunlar, öncelikler ve geliştirme alanları detaylı raporlanır.",items:["AI görünürlük skoru","Sorun ve eksiklerin tespiti","Önceliklendirilmiş detaylı rapor","Geliştirme yol haritası"]},
-  {code:"business-solution",title:"Çözüm / Uygulama Paketi",price:"19.900 TL'den başlayan",type:"Tek seferlik",desc:"Analizde belirlenen ve müşteri tarafından onaylanan sorunlar için teknik ve içerik iyileştirmeleri uygulanır.",items:["Onaylanan sorunların çözümü","GEO / AEO iyileştirmeleri","İçerik ve yapılandırılmış veri çalışmaları","Uygulama sonrası yeniden ölçüm"]},
-  {code:"business-monitoring",title:"Sürekli Takip + Optimizasyon",price:"6.990 TL / ay",type:"Aylık hizmet",desc:"Görünürlük düzenli olarak takip edilir; değişimler raporlanır ve gerekli optimizasyon görevleri planlanır.",items:["Periyodik görünürlük takibi","Karşılaştırmalı raporlama","Yeni sorun ve fırsat tespiti","Sürekli optimizasyon planı"]}
+ {code:"business-diagnosis",title:"AI Visibility Analizi + Rapor",type:"Tek seferlik",desc:"İşletmenizin AI görünürlüğü ölçülür; sorunlar, öncelikler ve geliştirme alanları detaylı raporlanır.",items:["AI görünürlük skoru","Sorun ve eksiklerin tespiti","Önceliklendirilmiş detaylı rapor","Geliştirme yol haritası"]},
+ {code:"business-solution",title:"Çözüm / Uygulama Paketi",type:"Tek seferlik",desc:"Analizde belirlenen ve müşteri tarafından onaylanan sorunlar için teknik ve içerik iyileştirmeleri uygulanır.",items:["Onaylanan sorunların çözümü","GEO / AEO iyileştirmeleri","İçerik ve yapılandırılmış veri çalışmaları","Uygulama sonrası yeniden ölçüm"]},
+ {code:"business-monitoring",title:"Sürekli Takip + Optimizasyon",type:"Aylık hizmet",desc:"Görünürlük düzenli olarak takip edilir; değişimler raporlanır ve gerekli optimizasyon görevleri planlanır.",items:["Periyodik görünürlük takibi","Karşılaştırmalı raporlama","Yeni sorun ve fırsat tespiti","Sürekli optimizasyon planı"]}
 ];
-
-export default function Page(){return <PublicPage title="Hizmetler ve Fiyatlar" subtitle="Satın alabileceğiniz AI görünürlük, analiz ve iyileştirme hizmetleri. Tüm hizmetler dijital olarak sunulur.">
+const countries=["Türkiye","United Kingdom","United States","Germany","France","Italy","Spain","Netherlands","Belgium","Austria","Ireland","Portugal","Poland","Romania","Bulgaria","Greece","Sweden","Norway","Denmark","Finland","Switzerland","Canada","Australia","United Arab Emirates","Saudi Arabia","Qatar","Japan","South Korea","India","China","Brazil","Mexico","South Africa"];
+function display(service,country){const p=servicePrice({service,country,language:"tr"});const locale=p.currency==="TRY"?"tr-TR":p.currency==="GBP"?"en-GB":p.currency==="EUR"?"de-DE":"en-US";return formatMoney(p.amount,p.currency,locale)+(p.kind==="from"?"'dan başlayan":p.kind==="monthly"?" / ay":"")}
+export default async function Page({searchParams}){
+ const sp=await searchParams;const requested=String(sp?.country||"Türkiye");const country=countries.includes(requested)?requested:"Türkiye";
+ return <PublicPage title="Hizmetler ve Fiyatlar" subtitle="Ülkenizi seçin; fiyatlar ilgili pazarın para birimiyle gösterilir. Tüm hizmetler dijital olarak sunulur.">
+  <form method="get" style={{display:"flex",gap:10,alignItems:"end",flexWrap:"wrap",margin:"18px 0"}}><label style={{minWidth:240}}>Fiyatlandırma ülkesi<select name="country" defaultValue={country} style={{display:"block",width:"100%",marginTop:6}}>{countries.map(x=><option key={x}>{x}</option>)}</select></label><button type="submit">Fiyatları göster</button></form>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,margin:"24px 0"}}>
-    {packages.map(p=><article className="panel" style={{padding:20}} key={p.title}>
-      <div style={{fontSize:13,opacity:.75}}>{p.type}</div>
-      <h2 style={{fontSize:21,marginBottom:8}}>{p.title}</h2>
-      <div style={{fontSize:24,fontWeight:800,margin:"10px 0"}}>{p.price}</div>
-      <p>{p.desc}</p>
-      <ul>{p.items.map(x=><li key={x}>{x}</li>)}</ul>
-      <Link href={`/yeni-musteri?service=${encodeURIComponent(p.code)}`} style={{display:"inline-block",marginTop:10,padding:"12px 16px",borderRadius:12,background:"#2f6df6",color:"white",textDecoration:"none",fontWeight:700}}>Satın Alma Sürecini Başlat</Link>
-    </article>)}
+   {packages.map(p=><article className="panel" style={{padding:20}} key={p.code}><div style={{fontSize:13,opacity:.75}}>{p.type}</div><h2 style={{fontSize:21,marginBottom:8}}>{p.title}</h2><div style={{fontSize:24,fontWeight:800,margin:"10px 0"}}>{display(p.code,country)}</div><small>{country}</small><p>{p.desc}</p><ul>{p.items.map(x=><li key={x}>{x}</li>)}</ul><Link href={`/yeni-musteri?service=${encodeURIComponent(p.code)}&country=${encodeURIComponent(country)}`} style={{display:"inline-block",marginTop:10,padding:"12px 16px",borderRadius:12,background:"#2f6df6",color:"white",textDecoration:"none",fontWeight:700}}>Satın Alma Sürecini Başlat</Link></article>)}
   </div>
-
-  <section className="panel" style={{padding:20,marginTop:18}}>
-    <h2>Nasıl satın alınır?</h2>
-    <ol>
-      <li>“Satın Alma Sürecini Başlat” ile işletme bilgilerinizi girin.</li>
-      <li>İhtiyacınıza uygun hizmet ve kapsam kesinleştirilir.</li>
-      <li>Güvenli ödeme ekranında toplam ücret, sözleşmeler ve hizmet başlangıç onayı gösterilir.</li>
-      <li>Ödeme onayından sonra müşteri hesabınız aktive edilir ve hizmet başlatılır.</li>
-    </ol>
-    <p><b>Not:</b> Çözüm paketlerinde fiyat, uygulanacak işlerin kapsamına göre ödeme öncesinde kesin olarak gösterilir. Müşterinin onayı olmadan ek ücret oluşturulmaz.</p>
-  </section>
-
-  <section className="panel" style={{padding:20,marginTop:18}}>
-    <h2>Ödeme öncesi yasal bilgiler</h2>
-    <p>Satın almadan önce hizmet kapsamını, iptal/iade koşullarını ve sözleşmeleri inceleyebilirsiniz.</p>
-    <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
-      <Link href="/mesafeli-hizmet-sozlesmesi">Mesafeli Hizmet Sözleşmesi</Link>
-      <Link href="/iptal-iade">İptal / İade Politikası</Link>
-      <Link href="/gizlilik">Gizlilik</Link>
-      <Link href="/kvkk">KVKK</Link>
-      <Link href="/iletisim">İletişim</Link>
-    </div>
-  </section>
-</PublicPage>}
+  <section className="panel" style={{padding:20,marginTop:18}}><h2>Nasıl satın alınır?</h2><ol><li>Ülkenizi seçerek o pazara ait fiyatı görüntüleyin.</li><li>“Satın Alma Sürecini Başlat” ile işletme bilgilerinizi girin; seçtiğiniz hizmet ve ülke başvurunuza taşınır.</li><li>Güvenli ödeme ekranında aynı hizmet, para birimi, toplam ücret, sözleşmeler ve hizmet başlangıç onayı gösterilir.</li><li>Ödeme onayından sonra müşteri hesabınız aktive edilir ve hizmet başlatılır.</li></ol><p><b>Not:</b> Çözüm paketlerinde fiyat uygulanacak işlerin kapsamına göre ödeme öncesinde kesinleştirilir. Müşterinin onayı olmadan ek ücret oluşturulmaz.</p></section>
+  <section className="panel" style={{padding:20,marginTop:18}}><h2>Ödeme öncesi yasal bilgiler</h2><div style={{display:"flex",gap:12,flexWrap:"wrap"}}><Link href="/mesafeli-hizmet-sozlesmesi">Mesafeli Hizmet Sözleşmesi</Link><Link href="/iptal-iade">İptal / İade Politikası</Link><Link href="/gizlilik">Gizlilik</Link><Link href="/kvkk">KVKK</Link><Link href="/iletisim">İletişim</Link></div></section>
+ </PublicPage>;
+}
