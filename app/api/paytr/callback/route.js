@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import {confirmCardPaymentByMerchantOid,getPaymentByMerchantOid,markCardPaymentFailedByMerchantOid} from "../../../../lib/repository";
+import {markProspectWonByClient} from "../../../../lib/prospects";
 export const runtime="nodejs";
 
 export async function POST(req){
@@ -33,6 +34,7 @@ export async function POST(req){
         return new Response("PAYTR notification failed: consent missing",{status:400,headers:{"content-type":"text/plain"}});
       }
       await confirmCardPaymentByMerchantOid(merchant_oid);
+      await markProspectWonByClient(payment.clientId).catch(()=>null);
     }else{
       await markCardPaymentFailedByMerchantOid(merchant_oid);
     }
