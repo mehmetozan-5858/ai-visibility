@@ -13,6 +13,7 @@ export async function GET(req){
     if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
     const account=await getClientAccount(session.clientId);
     if(!account)return Response.json({error:en?"Customer account not found.":"Müşteri hesabı bulunamadı."},{status:404});
+    if(account.client?.status==="payment-review"||account.status==="payment-review")return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
     const profile=await getClientProfile(session.clientId).catch(()=>null);
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;
