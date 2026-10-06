@@ -1,4 +1,5 @@
 import {shopierProduct,paymentMatchesPlan} from "../../../lib/hosted-checkout";
+import {bankTransfer} from "../../../lib/bank-transfer";
 import {getClientCredential} from "../../../lib/client-credentials";
 import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById,recordPaymentConsent,getClientAccount} from "../../../lib/repository";
 import {getClientProfile} from "../../../lib/client-profile";
@@ -41,19 +42,21 @@ export async function GET(req){
     const paidPayment=(account?.payments||[]).find(x=>x.status==="paid"&&paymentMatchesPlan(x,canonicalPlan))||null;
     const payment=paidPayment||await getOrCreatePaymentIntent(client.id,canonicalPlan.name,plan.setupAmount,plan.monthlyAmount,plan.currency);
     const tryRail=plan.currency==="TRY";
+    const bank=bankTransfer(plan.currency);
+    const hostedReady=Boolean(tokenService&&shopierProduct({...plan,code:service}));
     return Response.json({
       client,
       accountCreated:Boolean(await getClientCredential(client.id)),
-      hostedReady:Boolean(tokenService&&shopierProduct({...plan,code:service})),
+      hostedReady,
       profile:{country:selectedCountry,city:profile?.city||"",sector:profile?.sector||""},
       plan,
       pricingCatalog:catalog,
       bundleDiscountRange:BUNDLE_DISCOUNT_RANGE,
       payment:{...payment,currency:plan.currency},
-      bank:{bankName:process.env.PAYMENT_BANK_NAME||"",accountHolder:process.env.PAYMENT_ACCOUNT_HOLDER||"",iban:process.env.PAYMENT_IBAN||""},
-      transferReady:tryRail&&Boolean(process.env.PAYMENT_BANK_NAME&&process.env.PAYMENT_ACCOUNT_HOLDER&&process.env.PAYMENT_IBAN),
+      bank:bank||{},
+      transferReady:Boolean(bank),
       cardReady:tryRail&&Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),
-      internationalPaymentPending:!tryRail
+      internationalPaymentPending:!tryRail&&!bank&&!hostedReady
     });
   }catch(e){return Response.json({error:"Odeme bilgileri okunamadi.",detail:String(e?.message||e).slice(0,220)},{status:500})}
 }
