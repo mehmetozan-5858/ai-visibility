@@ -1,3 +1,4 @@
+import {nicheSearchSector,nicheFit} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../../lib/db";
 import {withRequestBudget} from "../../../../lib/request-budget";
@@ -56,10 +57,11 @@ async function runCycle(req){
   const startedMs=Date.now(),startedAt=new Date().toISOString();
   const guard=await refreshBudgetGuard();
   if(guard.mode==="emergency")return Response.json({ok:true,skipped:"ai-budget-exhausted",budget:guard},{headers:{"cache-control":"no-store"}});
-  const markets=(await marketsForCurrentHour()).slice(0,guard.multiplier<1?1:6);
+  const slot=Math.floor(Date.now()/3600000);
+  const markets=(await marketsForCurrentHour()).slice(0,guard.multiplier<1?1:6).map((m,i)=>({...m,focusArea:nicheSearchSector(slot,i),nicheFocus:slot%5!==4}));
   const budgetMs=Math.max(45000,Math.min(Number(process.env.DAILY_CYCLE_BUDGET_MS)||75000,80000));
   const hasBudget=(reserve=30000)=>Date.now()-startedMs<budgetMs-reserve;
-  const report={ok:true,startedAt,market:{mode:"parallel",markets},budget:guard,discovered:0,newProspects:0,scanned:0,completed:0,truncated:false,stopReason:"",errors:[]};
+  const report={ok:true,startedAt,market:{mode:"parallel",targeting:"specialist-b2b-80-percent",markets},budget:guard,discovered:0,newProspects:0,scanned:0,completed:0,truncated:false,stopReason:"",errors:[]};
   logCycle("parallel-started",{markets});
   await share({agent:"Global Baş Amir Ajan",eventType:"cycle-start",title:`Paralel global av başladı: ${markets.length} pazar`,detail:markets.map(x=>`${x.country}/${x.city}`).join(" · "),payload:{markets}});
   try{
@@ -74,7 +76,7 @@ async function runCycle(req){
     const fresh=seeded.filter(x=>!existingSet.has(String(x.name||"").toLocaleLowerCase("tr-TR")));
     report.newProspects=fresh.length;
     const qualified=[];const pending=await listPendingAutomationProspects(16);for(const prospect of pending){if(!hasBudget(35000)){report.truncated=true;report.stopReason="runtime-budget";break}try{const q=await qualifyProspect(prospect.id);qualified.push({...prospect,qualificationScore:q?.qualificationScore||0,qualificationLevel:q?.qualificationLevel||"low"})}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
-    qualified.sort((a,b)=>((b.qualificationLevel==="hot")-(a.qualificationLevel==="hot"))||((b.qualificationScore||0)-(a.qualificationScore||0)));
+    qualified.sort((a,b)=>(Number(nicheFit(b.sector,b.source))-Number(nicheFit(a.sector,a.source)))||((b.qualificationLevel==="hot")-(a.qualificationLevel==="hot"))||((b.qualificationScore||0)-(a.qualificationScore||0)));
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
     const deepLimit=Math.max(1,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||1,2));
     const hotCount=qualified.filter(x=>x.qualificationLevel==="hot").length;
