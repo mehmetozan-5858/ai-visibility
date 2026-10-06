@@ -22,7 +22,7 @@ export async function proxy(req){
     return new NextResponse("Service temporarily unavailable.",{status:503,headers:{"cache-control":"no-store"}});
   }
 
-  if(pathname==="/musteri-panel"||pathname.startsWith("/api/client-portal")){
+  if(pathname==="/musteri-panel"||pathname.startsWith("/musteri-panel/")||pathname.startsWith("/api/client-portal")){
     const clientToken=req.cookies.get("ai_client")?.value||"";
     if(await verifyClientToken(clientToken))return NextResponse.next();
     if(pathname.startsWith("/api/"))return Response.json({error:"Müşteri oturumu gerekli."},{status:401,headers:{"cache-control":"no-store"}});

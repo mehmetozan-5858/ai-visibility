@@ -3,7 +3,7 @@ import {verifyClientToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
 import {buildReportResponse} from "../../../../lib/report-pdf";
 export const runtime="nodejs";
-export async function GET(){
+export async function GET(req){
  try{
   const store=await cookies();
   const session=await verifyClientToken(store.get("ai_client")?.value||"");
@@ -13,6 +13,8 @@ export async function GET(){
   if(account.client.status==="payment-review"||!account.payments.some(p=>p.status==="paid"))return Response.json({error:"Doğrulanmış ödeme gerekli."},{status:403});
   const scans=account.scans.filter(s=>s.status==="completed"&&s.score!=null&&Number.isFinite(Number(s.score)));
   if(!scans.length)return Response.json({error:"Tamamlanmış rapor henüz yok."},{status:409});
-  return await buildReportResponse({clients:[account.client],clientId:session.clientId,allScans:scans.map(s=>({...s,clientId:session.clientId}))});
+  const response=await buildReportResponse({clients:[account.client],clientId:session.clientId,allScans:scans.map(s=>({...s,clientId:session.clientId}))});
+  if(!req||new URL(req.url).searchParams.get("download")!=="1")response.headers.set("content-disposition",response.headers.get("content-disposition").replace("attachment;","inline;"));
+  return response;
  }catch{return Response.json({error:"Rapor hazırlanamadı."},{status:500})}
 }

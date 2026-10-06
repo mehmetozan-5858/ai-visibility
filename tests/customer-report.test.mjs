@@ -7,7 +7,7 @@ const source=(await fs.readFile(new URL('../app/api/client-portal/report/route.j
 function endpoint({session={clientId:'own'},account={client:{id:'own',status:'active'},payments:[{status:'paid'}],scans:[{status:'completed',score:42}]}}={}){
  const builds=[];
  const get=new Function('cookies','verifyClientToken','getClientAccount','buildReportResponse',source+';return GET')(
- async()=>({get:()=>({value:'token'})}),async()=>session,async id=>{assert.equal(id,'own');return account},async data=>{builds.push(data);return new Response('pdf')});
+ async()=>({get:()=>({value:'token'})}),async()=>session,async id=>{assert.equal(id,'own');return account},async data=>{builds.push(data);return new Response('pdf',{headers:{'content-disposition':'attachment; filename=report.pdf'}})});
  return {get,builds};
 }
 test('customer report requires session, payment, completed scan and ignores requested customer ID',async()=>{
