@@ -33,11 +33,14 @@ export async function POST(req){
     const body=await req.json();language=resolveRequestLanguage(req,body);const en=language==="en";
     if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
     const account=await getClientAccount(session.clientId);
-    if(!(await customerAccess(account)).allowed)return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
+    const access=await customerAccess(account);
+    if(!access.allowed)return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
+    if(access.kind==='pilot')return Response.json({error:en?"Your free pilot includes diagnosis and reports. Implementation requires a separate paid service.":"Ücretsiz pilot analiz ve rapor içindir. Uygulama için ayrıca ücretli hizmet gereklidir."},{status:403});
     const findingId=String(body?.findingId||"").trim();
     if(!findingId)return Response.json({error:en?"No finding was selected.":"Bulgu seçilmedi."},{status:400});
     const result=await requestSolution(session.clientId,findingId);
     if(!result)return Response.json({error:en?"Finding not found.":"Bulgu bulunamadı."},{status:404});
+    if(result.unchanged)return Response.json({ok:true,result,language,message:en?"The existing implementation status has been preserved.":"Mevcut uygulama durumu korundu; yeni talep açılmadı."});
     return Response.json({ok:true,result,language,message:en?"Your solution request has been received. Pricing and the implementation step will appear in your portal.":"Çözüm talebiniz alındı. Fiyat ve uygulama adımı panelinize yansıtılacak."});
   }catch{return Response.json({error:language==="en"?"Your solution request could not be processed.":"Çözüm talebi alınamadı."},{status:500})}
 }
