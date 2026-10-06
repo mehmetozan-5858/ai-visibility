@@ -23,7 +23,7 @@ function authorized(req){
 
 async function marketsForCurrentHour(){
   const slot=Math.floor(Date.now()/3600000);
-  const width=Math.max(2,Math.min(Number(process.env.PARALLEL_HUNT_MARKETS)||4,8));
+  const width=Math.max(2,Math.min(Number(process.env.PARALLEL_HUNT_MARKETS)||3,6));
   const base=Array.from({length:width},(_,i)=>MARKETS[(slot*width+i)%MARKETS.length]);
   try{await refreshMarketEconomics();const learned=await listMarketLearning(12),policies=await listLearnedPolicies(30);if(learned.length>=4&&slot%3!==0){const validated=new Set(policies.filter(x=>x.safeToApply&&x.policyType==="market-priority").map(x=>String(x.scope).toLowerCase()));const ranked=[...learned].sort((a,b)=>(validated.has(`${String(b.country).toLowerCase()}/${String(b.city).toLowerCase()}`)?1:0)-(validated.has(`${String(a.country).toLowerCase()}/${String(a.city).toLowerCase()}`)?1:0)||Number(b.efficiencyScore||0)-Number(a.efficiencyScore||0));const top=ranked.slice(0,Math.max(1,width-1)).map(x=>({country:x.country,city:x.city}));const explore=base.find(b=>!top.some(t=>t.country===b.country&&t.city===b.city))||base[0];return [...top,explore].slice(0,width)}}catch{}
   return base;
@@ -57,7 +57,7 @@ export async function GET(req){
     const qualified=[];for(const prospect of fresh){try{const q=await qualifyProspect(prospect.id);qualified.push({...prospect,qualificationScore:q?.qualificationScore||0,qualificationLevel:q?.qualificationLevel||"low"})}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
     qualified.sort((a,b)=>(b.qualificationScore||0)-(a.qualificationScore||0));
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
-    const deepLimit=Math.max(4,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||8,16));
+    const deepLimit=Math.max(2,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||4,8));
     for(const prospect of qualified.filter(x=>x.qualificationLevel!=="low").slice(0,deepLimit)){
       try{
         report.scanned++;const scan=await queueProspectScan(prospect.id);if(scan.status==="demo-only")throw new Error("database-unavailable");
