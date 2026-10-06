@@ -39,8 +39,10 @@ async function share(event){
 
 export async function GET(req){
   if(!authorized(req)){logCycle("unauthorized");return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{"cache-control":"no-store"}})}
-  const startedAt=new Date().toISOString(),markets=await marketsForCurrentHour();
-  const report={ok:true,startedAt,market:{mode:"parallel",markets},discovered:0,newProspects:0,scanned:0,completed:0,errors:[]};
+  const startedMs=Date.now(),startedAt=new Date().toISOString(),markets=await marketsForCurrentHour();
+  const budgetMs=Math.max(120000,Math.min(Number(process.env.DAILY_CYCLE_BUDGET_MS)||210000,240000));
+  const hasBudget=(reserve=30000)=>Date.now()-startedMs<budgetMs-reserve;
+  const report={ok:true,startedAt,market:{mode:"parallel",markets},discovered:0,newProspects:0,scanned:0,completed:0,truncated:false,stopReason:"",errors:[]};
   logCycle("parallel-started",{markets});
   await share({agent:"Global Baş Amir Ajan",eventType:"cycle-start",title:`Paralel global av başladı: ${markets.length} pazar`,detail:markets.map(x=>`${x.country}/${x.city}`).join(" · "),payload:{markets}});
   try{
@@ -54,11 +56,12 @@ export async function GET(req){
     const existingSet=new Set(existingNames.map(x=>String(x).toLocaleLowerCase("tr-TR")));
     const fresh=seeded.filter(x=>!existingSet.has(String(x.name||"").toLocaleLowerCase("tr-TR")));
     report.newProspects=fresh.length;
-    const qualified=[];for(const prospect of fresh){try{const q=await qualifyProspect(prospect.id);qualified.push({...prospect,qualificationScore:q?.qualificationScore||0,qualificationLevel:q?.qualificationLevel||"low"})}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
+    const qualified=[];for(const prospect of fresh.slice(0,16)){if(!hasBudget(70000)){report.truncated=true;report.stopReason="runtime-budget";break}try{const q=await qualifyProspect(prospect.id);qualified.push({...prospect,qualificationScore:q?.qualificationScore||0,qualificationLevel:q?.qualificationLevel||"low"})}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
     qualified.sort((a,b)=>(b.qualificationScore||0)-(a.qualificationScore||0));
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
     const deepLimit=Math.max(2,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||4,8));
     for(const prospect of qualified.filter(x=>x.qualificationLevel!=="low").slice(0,deepLimit)){
+      if(!hasBudget(65000)){report.truncated=true;report.stopReason="runtime-budget";break}
       try{
         report.scanned++;const scan=await queueProspectScan(prospect.id);if(scan.status==="demo-only")throw new Error("database-unavailable");
         const result=await runProviderCheck(prospect);if(!result)throw new Error("no-provider-result");
@@ -70,7 +73,7 @@ export async function GET(req){
       }catch(e){report.errors.push({prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
     }
   }catch(e){report.ok=false;report.errors.push({stage:"parallel-cycle",error:String(e?.message||e).slice(0,220)})}
-  const finishedAt=new Date().toISOString(),finalReport={...report,finishedAt};
+  const finishedAt=new Date().toISOString(),finalReport={...report,finishedAt,durationMs:Date.now()-startedMs};
   logCycle("parallel-finished",{markets:markets.length,discovered:report.discovered,newProspects:report.newProspects,scanned:report.scanned,completed:report.completed,errorCount:report.errors.length});
   try{await saveDailyAgentReport(finalReport);await learnFromMarketRun(finalReport)}catch(e){console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
   await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
