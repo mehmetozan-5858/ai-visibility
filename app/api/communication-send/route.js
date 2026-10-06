@@ -8,7 +8,7 @@ export async function POST(req){
   const {prospectId}=await req.json();if(!prospectId)return Response.json({error:"Aday gerekli."},{status:400});
   const x=await getCommunicationProspect(prospectId);if(!x)return Response.json({error:"Aday bulunamadı."},{status:404});
   if(x.communicationStatus!=="ready-for-review"||x.contactStatus!=="verified"||!x.contactEmail)return Response.json({error:"Gönderim güvenlik koşulları sağlanmıyor."},{status:409});
-  const sent=await sendBrandedOutreach(x);const row=await markProspectCommunicationSent(x.id,sent.id);
+  let row;const sent=await sendBrandedOutreach(x,{key:`prospect-first/${x.id}`,finalize:async id=>{row=await markProspectCommunicationSent(x.id,id)}});
   return Response.json({ok:true,delivery:sent,prospect:row});
  }catch(e){return Response.json({error:"E-posta gönderilemedi.",detail:String(e?.message||e).slice(0,180)},{status:500})}
 }

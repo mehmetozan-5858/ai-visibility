@@ -1,3 +1,4 @@
+import {customerAccess} from "../../../../lib/pilot-access";
 import {createClientCredential} from "../../../../lib/client-credentials";
 import {createClientToken,verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
@@ -13,7 +14,9 @@ export async function POST(req){
     if(!access)return Response.json({error:"Güvenli ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
     const account=await getClientAccount(access.clientId);
     if(!account)return Response.json({error:"Müşteri hesabı bulunamadı."},{status:404});
-    const paid=(account.payments||[]).some(x=>x.status==="paid");
+    const entitlement=await customerAccess(account);
+    const paid=entitlement.allowed;
+    if(entitlement.kind==="pilot"&&String(body?.email||"").trim().toLowerCase()!==entitlement.email)return Response.json({error:"Pilot için tanımlı e-posta adresini kullanın."},{status:403});
     if(!paid)return Response.json({error:"Müşteri hesabı yalnızca ödeme onaylandıktan sonra oluşturulabilir."},{status:403});
     const verified=await isEmailVerified(access.clientId,body?.email);
     if(!verified)return Response.json({error:"Önce e-posta adresinizi doğrulama koduyla doğrulayın."},{status:403});

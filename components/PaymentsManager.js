@@ -1,4 +1,5 @@
 "use client";
+import PilotAccessManager from "./PilotAccessManager";
 import {useEffect,useState} from "react";
 
 function money(amount,currency){return ["TRY","EUR","USD","GBP"].includes(currency)?new Intl.NumberFormat("tr-TR",{style:"currency",currency}).format(amount):`${amount} (para birimi eksik)`;}
@@ -48,6 +49,7 @@ export default function PaymentsManager(){
       <p>Gerçek müşteriyi veya gerçek banka hareketini değiştirmeden ödeme onayı → müşteri hesabı → müşteri paneli akışını test eder.</p>
       <button type="button" onClick={startSafeTest} disabled={testBusy}>{testBusy?"Test hazırlanıyor…":"Test müşterisiyle uçtan uca dene"}</button>
     </div>
+    <PilotAccessManager/>
     {msg&&<p className="client-message">{msg}</p>}
     {!rows.length?<div className="empty">Henüz ödeme kaydı yok.</div>:<div className="client-list">{rows.map(x=><article className="client-row" key={x.id}>
       <div className="client-avatar">{x.currency||"?"}</div>

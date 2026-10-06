@@ -1,7 +1,8 @@
+import {customerAccess} from "../../../../lib/pilot-access";
 import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../../lib/admin-auth";
 import {listFindingsForClient,requestSolution,syncFindingsFromScan} from "../../../../lib/findings";
-import {getLatestCompletedScan,getClient} from "../../../../lib/repository";
+import {getLatestCompletedScan,getClientAccount} from "../../../../lib/repository";
 import {resolveRequestLanguage} from "../../../../lib/localized-ai";
 import {enforceSameOrigin,checkRateLimit} from "../../../../lib/api-security";
 
@@ -11,8 +12,8 @@ export async function GET(req){
     const store=await cookies();
     const session=await verifyClientToken(store.get("ai_client")?.value||"");
     if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
-    const client=await getClient(session.clientId);
-    if(client?.status==="payment-review")return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
+    const account=await getClientAccount(session.clientId);
+    if(!(await customerAccess(account)).allowed)return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
     let findings=await listFindingsForClient(session.clientId);
     if(!findings.length){
       const latest=await getLatestCompletedScan(session.clientId);
@@ -31,8 +32,8 @@ export async function POST(req){
     const session=await verifyClientToken(store.get("ai_client")?.value||"");
     const body=await req.json();language=resolveRequestLanguage(req,body);const en=language==="en";
     if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
-    const client=await getClient(session.clientId);
-    if(client?.status==="payment-review")return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
+    const account=await getClientAccount(session.clientId);
+    if(!(await customerAccess(account)).allowed)return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
     const findingId=String(body?.findingId||"").trim();
     if(!findingId)return Response.json({error:en?"No finding was selected.":"Bulgu seçilmedi."},{status:400});
     const result=await requestSolution(session.clientId,findingId);

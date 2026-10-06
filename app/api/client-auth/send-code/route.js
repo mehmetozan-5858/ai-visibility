@@ -1,3 +1,4 @@
+import {customerAccess} from "../../../../lib/pilot-access";
 import {getClientCredential} from "../../../../lib/client-credentials";
 import {verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
@@ -13,7 +14,9 @@ export async function POST(req){
     if(!access)return Response.json({error:"Bağlantı geçersiz veya süresi dolmuş."},{status:401});
     if(await getClientCredential(access.clientId))return Response.json({error:"Hesap zaten oluşturulmuş. Şifre sıfırlamayı kullanın."},{status:409});
     const account=await getClientAccount(access.clientId);
-    if(!account||(account.payments||[]).every(x=>x.status!=="paid"))return Response.json({error:"Ödeme onayı gerekli."},{status:403});
+    const entitlement=await customerAccess(account);
+    if(entitlement.kind==="pilot"&&String(body?.email||"").trim().toLowerCase()!==entitlement.email)return Response.json({error:"Pilot için tanımlı e-posta adresini kullanın."},{status:403});
+    if(!entitlement.allowed)return Response.json({error:"Ödeme onayı gerekli."},{status:403});
     const v=await createVerificationCode(access.clientId,body?.email);
     await sendVerificationEmail(v.email,v.code);
     return Response.json({ok:true});

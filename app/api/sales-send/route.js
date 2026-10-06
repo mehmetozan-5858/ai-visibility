@@ -1,3 +1,4 @@
+import {deliverOnce} from "../../../lib/email-delivery";
 import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
 import {getDatabaseUrl} from "../../../lib/db";
 
@@ -14,9 +15,7 @@ export async function POST(req){
   const key=process.env.RESEND_API_KEY,from=process.env.SALES_FROM_EMAIL;
   if(!key||!from)return Response.json({error:"Gönderim altyapısı hazır fakat RESEND_API_KEY ve SALES_FROM_EMAIL yapılandırılmalı."},{status:503});
   const payload=lead.communication_payload||{};const body=[payload.message,payload.cta,payload.offer?.amount?("Önerilen paket: "+payload.offer.package+" · "+payload.offer.amount+" "+payload.offer.currency):""].filter(Boolean).join("\n\n");
-  const rr=await fetch("https://api.resend.com/emails",{method:"POST",headers:{authorization:"Bearer "+key,"content-type":"application/json"},body:JSON.stringify({from,to:[lead.contact_value],subject:payload.subject||"AI görünürlük ön değerlendirmesi",text:body})});
-  const data=await rr.json().catch(()=>({}));if(!rr.ok)return Response.json({error:"E-posta sağlayıcısı gönderimi kabul etmedi.",detail:data?.message||rr.status},{status:502});
-  await db(async p=>p.query("UPDATE discovered_leads SET communication_status='sent',status='contacted',updated_at=NOW() WHERE id=$1",[leadId]));
+  const data=await deliverOnce(`sales-first/${leadId}`,{from,to:[lead.contact_value],subject:payload.subject||"AI görünürlük ön değerlendirmesi",text:body,...(process.env.INBOUND_EMAIL_ADDRESS?{reply_to:process.env.INBOUND_EMAIL_ADDRESS}:{})},()=>db(async p=>p.query("UPDATE discovered_leads SET communication_status='sent',status='contacted',updated_at=NOW() WHERE id=$1",[leadId])));
   return Response.json({ok:true,messageId:data.id||"",status:"sent"})
  }catch(e){return Response.json({error:"Gönderim gerçekleştirilemedi.",detail:String(e?.message||e).slice(0,160)},{status:500})}
 }

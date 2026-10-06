@@ -10,7 +10,7 @@ export async function GET(req){
   try{
    if(!x.contactEmail){out.errors.push({id:x.id,error:"verified-email-required"});continue}
    const follow={...x,outreachDraft:`Merhaba, daha önce paylaştığımız ${x.proposalPackage||"AI görünürlük"} mini analizini görme fırsatınız oldu mu? Uygunsa tespit ettiğimiz alanları kısa ve somut biçimde paylaşabiliriz. İlgilenmiyorsanız tekrar iletişim kurmayacağız.`};
-   await sendBrandedOutreach(follow);await markProspectFollowUpSent(x.id);out.sent++;
+   await sendBrandedOutreach(follow,{key:`prospect-follow/${x.id}/${x.followUpCount}`,finalize:()=>markProspectFollowUpSent(x.id,x.followUpCount)});out.sent++;
   }catch(e){out.errors.push({id:x.id,error:String(e?.message||e).slice(0,120)})}
  }
  return Response.json(out,{headers:{"cache-control":"no-store"}});

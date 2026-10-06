@@ -1,3 +1,4 @@
+import {getPilotAccess} from "../../../lib/pilot-access";
 import {shopierProduct,paymentMatchesPlan} from "../../../lib/hosted-checkout";
 import {bankTransfer} from "../../../lib/bank-transfer";
 import {getClientCredential} from "../../../lib/client-credentials";
@@ -33,6 +34,11 @@ export async function GET(req){
     const selectedCountry=String(profile?.country||"Türkiye").trim();
     const lang=languageFrom(req);
     const tokenService=String(access?.service||"");
+    if(tokenService==="pilot-diagnosis"){
+      const pilot=await getPilotAccess(client.id);if(!pilot)return Response.json({error:"Pilot süresi dolmuş veya erişimi kaldırılmış."},{status:403});
+      return Response.json({client,pilot,accountCreated:Boolean(await getClientCredential(client.id)),plan:{currency:"TRY",amount:0,setupAmount:0,monthlyAmount:0},payment:null,bank:{},profile,transferReady:false,cardReady:false});
+    }
+
     const requestedService=tokenService||String(url.searchParams.get("service")||"business-diagnosis");
     if(tokenService&&!SERVICE_CODES.includes(tokenService))return Response.json({error:"Ödeme bağlantısındaki hizmet geçersiz."},{status:400});
     const service=SERVICE_CODES.includes(requestedService)?requestedService:"business-diagnosis";

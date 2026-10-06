@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
+import fs from 'node:fs/promises';
+const source=(await fs.readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8')).replace(/^import .*;$/gm,'').replace(/export /g,'');
+let pilot=null,queries=[],failAudit=false;
+const p={connect:async()=>p,release(){},async query(sql,a){queries.push(sql);if(sql.startsWith('SELECT')){assert.match(sql,/revoked_at IS NULL AND expires_at>NOW\(\)/);return {rows:pilot?[pilot]:[]}}if(sql.includes('INSERT INTO client_activity')){assert.ok(a[3]);if(failAudit)throw Error('audit-failed')}return {rows:[]}}};
+const {customerAccess,grantPilot}=new Function('crypto','databasePool','getDatabaseUrl','initializeSchema',source+';return {customerAccess,grantPilot}')(crypto,()=>p,()=>'',async()=>{});
+test('unpaid customer requires active pilot; revoked/expired pilot is denied',async()=>{const a={client:{id:'client',status:'active'},payments:[]};assert.equal((await customerAccess(a)).allowed,false);pilot={email:'owner@example.com',expiresAt:'2026-11-01'};assert.equal((await customerAccess(a)).kind,'pilot');pilot=null;assert.equal((await customerAccess(a)).allowed,false);assert.equal((await customerAccess({...a,payments:[{status:'paid'}]})).kind,'paid');assert.equal((await customerAccess({...a,client:{id:'client',status:'payment-review'},payments:[{status:'paid'}]})).allowed,false)});
+test('pilot grant audits atomically without writing payments and validates limits',async()=>{queries=[];await grantPilot('client','owner@example.com',7,'Free analysis pilot');assert.ok(queries.includes('COMMIT'));assert.ok(!queries.some(s=>/INSERT INTO payments|UPDATE payments/.test(s)));failAudit=true;await assert.rejects(grantPilot('client','owner@example.com',7,'Free analysis pilot'),/audit-failed/);assert.ok(queries.includes('ROLLBACK'));await assert.rejects(grantPilot('client','owner@example.com',31,'Free analysis pilot'),/invalid-pilot/)});

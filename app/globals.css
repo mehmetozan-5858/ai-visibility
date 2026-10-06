@@ -150,3 +150,11 @@
   .reports-grid>.panel{margin-bottom:6px}
   .report-preview.compact summary{padding:12px}
 }
+
+.customer-shell,.customer-portal{min-width:0;max-width:100%;box-sizing:border-box}
+.customer-shell .top{flex-wrap:wrap;gap:14px}
+.customer-portal>*{min-width:0}
+.customer-portal button{max-width:100%}
+.customer-report-viewer{padding-bottom:0!important;overflow:hidden}
+.report-viewer-toolbar{padding-top:calc(12px + env(safe-area-inset-top))!important;flex-wrap:wrap}
+.report-viewer-toolbar a{flex-shrink:0}
