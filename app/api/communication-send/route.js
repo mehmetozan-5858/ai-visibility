@@ -25,7 +25,7 @@ export async function GET(req){
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;const originError=enforceSameOrigin(req);if(originError)return originError;
  try{
-  const {prospectId,draft}=await req.json();if(!prospectId)return Response.json({error:"Aday gerekli."},{status:400});
+  const {prospectId,draft,action,emailId}=await req.json();if(action==="delivery-status"){const headers=new Headers(req.headers);headers.set("x-delivery-id",String(emailId||"invalid"));return GET(new Request(req.url,{headers}))}if(!prospectId)return Response.json({error:"Aday gerekli."},{status:400});
   if(draft!==undefined&&(typeof draft!=="string"||draft.trim().length<30||draft.length>6000))return Response.json({error:"Mesaj 30–6000 karakter olmalı."},{status:400});
   const x=await getCommunicationProspect(prospectId);if(!x)return Response.json({error:"Aday bulunamadı."},{status:404});
   if(x.communicationStatus!=="ready-for-review"||x.contactStatus!=="verified"||!x.contactEmail)return Response.json({error:"Gönderim güvenlik koşulları sağlanmıyor."},{status:409});
