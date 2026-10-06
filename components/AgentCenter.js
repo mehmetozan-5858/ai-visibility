@@ -23,6 +23,7 @@ export default function AgentCenter(){
   const parallel=markets(latest?.market);
   const successRate=latest?.scanned?Math.round((Number(latest.completed||0)/Number(latest.scanned))*100):0;
   return <div>
+    <section className="panel" style={{marginBottom:18}}><h2 style={{marginTop:0}}>Aktif Ülke / Şehir</h2><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>{parallel.length?parallel.map((m,i)=><div key={`${m.country}-${m.city}-${i}`} className="panel" style={{padding:10}}><small style={{opacity:.65}}>Pazar {i+1}</small><div style={{fontWeight:800}}>{m.city}, {m.country}</div></div>):<small>Henüz aktif pazar kaydı yok.</small>}</div></section>
     <section className="panel" style={{marginBottom:18}}>
       <h2 style={{marginTop:0}}>Son Bulunanlar</h2>
       <p style={{opacity:.72}}>Ultra Mega Makine'nin en son bulduğu işletme ve creator adayları.</p>
