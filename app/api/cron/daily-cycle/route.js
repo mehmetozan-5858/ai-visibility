@@ -1,9 +1,10 @@
-import {nicheSearchSector,nicheFit} from "../../../../lib/niche-targeting";
+import {evaluateOutreachPool} from "../../../../lib/outreach-selection";
+import {nicheSearchSector} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../../lib/db";
 import {withRequestBudget} from "../../../../lib/request-budget";
 import {discoverBusinesses,runProviderCheck,findPublicBusinessContact,personalizeProspectOutreach,buildProspectProposal} from "../../../../lib/providers";
-import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact,saveProspectPersonalization,saveProspectProposal,prepareProspectCommunication,listPendingAutomationProspects,getLatestProspectAnalysis} from "../../../../lib/prospects";
+import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact,saveProspectPersonalization,saveProspectProposal,prepareProspectCommunication,listOutreachEvaluationCandidates,getLatestProspectAnalysis} from "../../../../lib/prospects";
 import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning,refreshMarketEconomics,listLearnedPolicies,listResourceAllocations,getRuntimeControl,refreshBudgetGuard} from "../../../../lib/agent-coordination";
 
 export const runtime="nodejs";
@@ -75,8 +76,12 @@ async function runCycle(req){
     const existingSet=new Set(existingNames.map(x=>String(x).toLocaleLowerCase("tr-TR")));
     const fresh=seeded.filter(x=>!existingSet.has(String(x.name||"").toLocaleLowerCase("tr-TR")));
     report.newProspects=fresh.length;
-    const qualified=[];const pending=await listPendingAutomationProspects(16);for(const prospect of pending){if(!hasBudget(35000)){report.truncated=true;report.stopReason="runtime-budget";break}try{const q=await qualifyProspect(prospect.id);qualified.push({...prospect,qualificationScore:q?.qualificationScore||0,qualificationLevel:q?.qualificationLevel||"low"})}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
-    qualified.sort((a,b)=>(Number(nicheFit(b.sector,b.source))-Number(nicheFit(a.sector,a.source)))||((b.qualificationLevel==="hot")-(a.qualificationLevel==="hot"))||((b.qualificationScore||0)-(a.qualificationScore||0)));
+    // Complete discovery first, then compare the full accumulated business pool.
+    for(const prospect of seeded){try{await qualifyProspect(prospect.id)}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
+    const assessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
+    report.poolReview={evaluated:assessment.evaluated,qualifiedForContact:assessment.qualified,awaitingAnalysis:assessment.awaitingAnalysis};
+    const qualified=assessment.ranked.filter(x=>x.qualificationLevel!=="low"&&x.communicationStatus!=="ready-for-review");
+    await share({agent:"Qualification + Opportunity Agents",eventType:"pool-review",title:`Genel aday değerlendirmesi: ${assessment.evaluated} işletme`,detail:`Uzmanlık, analizdeki ihtiyaç, uygulanabilir çözüm ve kurumsal iletişim karşılaştırıldı. İletişime hazır ${assessment.qualified}; analiz bekleyen ${assessment.awaitingAnalysis}.`,payload:report.poolReview,status:"completed"});
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
     const deepLimit=Math.max(1,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||1,2));
     const hotCount=qualified.filter(x=>x.qualificationLevel==="hot").length;

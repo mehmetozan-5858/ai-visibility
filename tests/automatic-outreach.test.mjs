@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {evaluateOutreachPool} from '../lib/outreach-selection.js';
 import {publicAddress,contactPageUrl,pageContainsAddress} from '../lib/contact-page-verification.js';
 const source=(await readFile(new URL('../lib/automatic-outreach.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
-const {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach}=new Function(source+'\nreturn {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach};')();
-const prospect=(id='one')=>({id,name:'Example Business',country:'Germany',domain:'business.de',contactSourceUrl:'https://business.de/contact',contactStatus:'verified',contactEmail:id+'@business.de',communicationStatus:'ready-for-review'});
-function fixture({today=0,locked=true,blocked='',verify=true,rows=[prospect()],follow=[]}={}){
+const {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach}=new Function('evaluateOutreachPool',source+'\nreturn {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach};')(evaluateOutreachPool);
+const prospect=(id='one')=>({id,name:'Example Business '+id,country:'Germany',domain:id+'.business.de',contactSourceUrl:'https://'+id+'.business.de/contact',contactStatus:'verified',contactEmail:'info@'+id+'.business.de',communicationStatus:'ready-for-review',qualificationScore:80,outreachStatus:'drafted',proposalStatus:'drafted',scanScore:40,scanProvider:'Perplexity',scanFindings:['Product descriptions need clear structured markup.'],scanRecommendations:['Add structured product schema and buyer-specific FAQ.']});
+function fixture({today=0,hour=0,locked=true,blocked='',verify=true,rows=[prospect()],follow=[]}={}){
  const state={sends:[],reports:[],unlocked:false,released:false};const client={query:async sql=>{if(sql.includes('unlock'))state.unlocked=true;return {rows:[{acquired:locked}]}},release:()=>{state.released=true}};
- const pool={connect:async()=>client,query:async(sql,p)=>{if(sql.includes('count(*)'))return{rows:[{total:today}]};if(sql.includes('INSERT INTO outreach_cycle_reports'))state.reports.push(JSON.parse(p[0]));return{rows:[]}}};
+ const pool={connect:async()=>client,query:async(sql,p)=>{if(sql.includes('count(*)'))return{rows:[{total:sql.includes("date_trunc('hour'")?hour:today}]};if(sql.includes('INSERT INTO outreach_cycle_reports'))state.reports.push(JSON.parse(p[0]));return{rows:[]}}};
  const deps={env:{OUTREACH_SEND_ENABLED:'true',OUTREACH_DAILY_LIMIT:'20',OUTREACH_CYCLE_LIMIT:'3'},pool,listFirst:async()=>rows,listFollow:async()=>follow,getProspect:async id=>[...rows,...follow].find(x=>x.id===id),blocked:async()=>blocked,verify:async()=>verify,followDelivery:async()=>'',send:async(x,opts)=>{state.sends.push({x,key:opts.key});return{id:'provider'}},pause:async()=>{},noEvents:true};return{deps,state};
 }
 test('recipient must match official source and email domain',()=>{
@@ -33,9 +34,20 @@ test('daily and cycle limits cap sends; operation keys stable; locks released',a
  const rows=Array.from({length:5},(_,i)=>prospect('p'+i));const f=fixture({rows});const r=await runAutomaticOutreach({deps:f.deps});assert.equal(r.sent,3);assert.equal(f.state.sends[0].key,'prospect-first/p0');assert.equal(f.state.unlocked,true);assert.equal(f.state.released,true);
  const g=fixture({rows,today:19});assert.equal((await runAutomaticOutreach({deps:g.deps})).sent,1);const h=fixture({today:20});assert.equal((await runAutomaticOutreach({deps:h.deps})).sent,0);
 });
+test('5 per hour and 50 per Istanbul day share capacity across jobs, reruns and uncertain attempts',async()=>{
+ assert.equal(outreachPolicy({OUTREACH_DAILY_LIMIT:'999',OUTREACH_CYCLE_LIMIT:'999'}).dailyLimit,50);
+ const rows=Array.from({length:60},(_,i)=>prospect('p'+i));
+ const f=fixture({rows});f.deps.env.OUTREACH_DAILY_LIMIT='50';f.deps.env.OUTREACH_CYCLE_LIMIT='5';
+ assert.equal((await runAutomaticOutreach({deps:f.deps})).sent,5);
+ const g=fixture({rows,today:49,hour:4});g.deps.env=f.deps.env;
+ assert.equal((await runAutomaticOutreach({deps:g.deps})).sent,1);
+ const h=fixture({rows,hour:5});h.deps.env=f.deps.env;assert.equal((await runAutomaticOutreach({deps:h.deps})).sent,0);
+ const k=fixture({rows,today:50});k.deps.env=f.deps.env;assert.equal((await runAutomaticOutreach({deps:k.deps})).sent,0);
+ const j=fixture({rows});j.deps.env=f.deps.env;let attempts=0;j.deps.send=async()=>{attempts++;throw Error('provider-timeout')};await runAutomaticOutreach({deps:j.deps});assert.equal(attempts,5);
+});
 test('replies, duplicate recipients and failed verification block transmission',async()=>{
  for(const options of [{blocked:'inbound-reply'},{verify:false},{locked:false}]){const f=fixture(options);await runAutomaticOutreach({deps:f.deps});assert.equal(f.state.sends.length,0)}
- const a=prospect('a'),b={...prospect('b'),contactEmail:a.contactEmail};const f=fixture({rows:[a,b]});const r=await runAutomaticOutreach({deps:f.deps});assert.equal(r.sent,1);assert.equal(r.skipped[0].reason,'duplicate-recipient');
+ const a=prospect('a'),b={...prospect('b'),contactEmail:a.contactEmail};const f=fixture({rows:[a,b]});const r=await runAutomaticOutreach({deps:f.deps});assert.equal(r.sent,1);assert.equal(r.selection.selected.length,1);
 });
 test('reply arriving during verification is checked again before sending',async()=>{
  const f=fixture();let checks=0;f.deps.blocked=async()=>++checks===1?'':'inbound-reply';const r=await runAutomaticOutreach({deps:f.deps});assert.equal(r.sent,0);assert.equal(checks,2);
