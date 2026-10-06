@@ -31,7 +31,7 @@ export default function AgentCenter(){
         <div><h3>Sosyal Medya / Creator</h3>{creatorRecent.length?creatorRecent.map(x=><div key={x.id} className="panel" style={{padding:10,marginBottom:8}}><b>{x.displayName||x.handle}</b><small style={{display:"block",opacity:.7}}>{[x.platform,x.country,x.niche].filter(Boolean).join(" · ")}</small><small style={{display:"block",opacity:.7}}>Fırsat skoru: {x.opportunityScore??0} · Durum: {x.status||"yeni"}</small></div>):<small>Henüz kayıt yok.</small>}</div>
       </div>
     </section>
-    <SystemHealthMap/>
+    
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
         <div><h2 style={{marginTop:0}}>Global Av Canlı Durum</h2><p style={{marginBottom:0,opacity:.72}}>Ajanların gerçek çalışma durumunu tek ekrandan izle. GitHub veya Vercel loguna girmen gerekmez.</p></div>
@@ -81,6 +81,8 @@ export default function AgentCenter(){
       {(data?.events||[]).length===0?<p>Henüz ortak pano kaydı yok. Yeni ajan döngüsüyle kayıtlar burada oluşacak.</p>:
       <div style={{display:"grid",gap:8}}>{data.events.slice(0,30).map(e=><div key={e.id} className="panel" style={{padding:12}}><div style={{display:"flex",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}><b>{e.agent} → {e.helperAgent}</b><small>{fmt(e.createdAt)}</small></div><div style={{marginTop:5}}>{e.title}</div>{e.detail?<small style={{display:"block",opacity:.7,marginTop:4}}>{e.detail}</small>:null}</div>)}</div>}
     </section>
+
+    <SystemHealthMap/>
 
     <section className="panel">
       <h2 style={{marginTop:0}}>Geçmiş Günlük Raporlar</h2>
