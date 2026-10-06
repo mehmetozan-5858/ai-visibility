@@ -11,6 +11,11 @@ function markets(m){return Array.isArray(m?.markets)?m.markets:[]}
 
 export default function AgentCenter(){
   const [data,setData]=useState(null),[error,setError]=useState("");
+  const [hunting,setHunting]=useState(false),[huntResult,setHuntResult]=useState(null);
+  async function startHunt(){
+    setHunting(true);setHuntResult(null);setError("");
+    try{const r=await fetch("/api/global-hunt",{method:"POST"}),d=await r.json();if(!r.ok)throw Error(d.error||"Tarama başlatılamadı");setHuntResult(d);await load();const [b,c]=await Promise.all([fetch("/api/prospects",{cache:"no-store"}).then(r=>r.json()),fetch("/api/creator-hunt-leads",{cache:"no-store"}).then(r=>r.json())]);setBusinessRecent((b.prospects||[]).slice(0,8));setCreatorRecent((c.leads||[]).slice(0,8))}catch(e){setError(e.message)}finally{setHunting(false)}
+  }
   const [businessRecent,setBusinessRecent]=useState([]),[creatorRecent,setCreatorRecent]=useState([]),[selected,setSelected]=useState(null);
   const load=()=>fetch("/api/agent-center",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Yüklenemedi");return r.json()}).then(setData).catch(e=>setError(e.message));
   useEffect(()=>{load();Promise.all([fetch("/api/prospects",{cache:"no-store"}).then(r=>r.json()),fetch("/api/creator-hunt-leads",{cache:"no-store"}).then(r=>r.json())]).then(([b,c])=>{setBusinessRecent((b.prospects||[]).slice(0,8));setCreatorRecent((c.leads||[]).slice(0,8))}).catch(()=>{})},[]);
@@ -23,6 +28,7 @@ export default function AgentCenter(){
   const parallel=markets(latest?.market);
   const successRate=latest?.scanned?Math.round((Number(latest.completed||0)/Number(latest.scanned))*100):0;
   return <div>
+    <section className="panel" style={{marginBottom:18}}><h2>Global müşteri taraması</h2><p>İşletme ve creator ajanları farklı ülke ve sektörlerde kamusal kaynaklardan aday bulur. Bütçe sınırları korunur; iletişim taslakları inceleme kuyruğuna alınır.</p><button className="primary" onClick={startHunt} disabled={hunting}>{hunting?"Ajanlar tarıyor…":"Global taramayı şimdi başlat"}</button>{huntResult&&<div role="status">{[["İşletme",huntResult.business],["Creator",huntResult.creator]].map(([label,r])=><p key={label}><b>{label}:</b> {r.skipped?`Atlandı: ${r.skipped}`:r.ok?`${r.found} aday bulundu · ${r.saved} kayıt eklendi`:"Tarama tamamlanamadı"}{r.errorCount>0?` · ${r.errorCount} hata`:""}</p>)}</div>}{error&&<p role="alert">{error}</p>}</section>
     <section className="panel" style={{marginBottom:18}}><h2 style={{marginTop:0}}>Aktif Ülke / Şehir</h2><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>{parallel.length?parallel.map((m,i)=><div key={`${m.country}-${m.city}-${i}`} className="panel" style={{padding:10}}><small style={{opacity:.65}}>Pazar {i+1}</small><div style={{fontWeight:800}}>{m.city}, {m.country}</div></div>):<small>Henüz aktif pazar kaydı yok.</small>}</div></section>
     <section className="panel" style={{marginBottom:18}}>
       <h2 style={{marginTop:0}}>Son Bulunanlar</h2>

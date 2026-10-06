@@ -1,4 +1,5 @@
 import {saveCreatorHuntLeads} from "../../../lib/creator-hunt";
+import {budgetFetch as fetch,withRequestBudget} from "../../../lib/request-budget";
 export const runtime="nodejs"; export const maxDuration=300;
 const PLATFORMS=["youtube","instagram","tiktok","x","linkedin","facebook"];
 const NICHES=["fashion","beauty","fitness","food","travel","technology","education","finance","gaming","parenting","automotive","health","business","lifestyle"];
@@ -15,7 +16,8 @@ async function gemini(prompt,key){
  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.1,responseMimeType:"application/json"}})});
  if(!r.ok)throw new Error(`gemini-${r.status}: ${(await r.text()).slice(0,180)}`);const d=await r.json();return d?.candidates?.[0]?.content?.parts?.[0]?.text||""
 }
-export async function GET(req){
+export async function GET(req){return withRequestBudget(75000,()=>runHunt(req))}
+async function runHunt(req){
  if(!ok(req))return Response.json({ok:false,error:"unauthorized"},{status:401});
  const slot=Math.floor(Date.now()/3600000);
  const width=Math.max(2,Math.min(Number(process.env.PARALLEL_CREATOR_HUNT_CELLS)||3,5));
