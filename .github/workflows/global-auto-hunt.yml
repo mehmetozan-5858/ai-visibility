@@ -474,3 +474,14 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || exit 1
           curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error "https://www.aivisibilityworks.com/api/commercial-truth-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  inbox-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Process received replies
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || exit 1
+          curl --fail-with-body --connect-timeout 10 --max-time 90 --silent --show-error "https://www.aivisibilityworks.com/api/inbox-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"

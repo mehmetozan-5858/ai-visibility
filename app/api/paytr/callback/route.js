@@ -26,6 +26,7 @@ export async function POST(req){
     }
 
     if(status==="success"){
+      if(payment.currency!=="TRY")return new Response("PAYTR notification failed: currency mismatch",{status:400});
       const receivedCents=Number(total_amount);
       const expectedCents=Math.round(((Number(payment.setupAmount)||0)+(Number(payment.monthlyAmount)||0))*100);
       if(!Number.isFinite(receivedCents)||receivedCents<expectedCents){

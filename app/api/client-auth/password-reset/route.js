@@ -1,4 +1,4 @@
-import {getClientCredentialByEmail,createOrUpdateClientCredential} from "../../../../lib/client-credentials";
+import {getClientCredentialByEmail,resetClientPassword} from "../../../../lib/client-credentials";
 import {createVerificationCode,sendVerificationEmail,verifyEmailCode} from "../../../../lib/email-verification";
 import {checkRateLimit,enforceSameOrigin} from "../../../../lib/api-security";
 
@@ -22,7 +22,7 @@ export async function POST(req){
       if(String(body?.password||"").length<10)return Response.json({error:"Yeni şifre en az 10 karakter olmalıdır."},{status:400});
       const verified=await verifyEmailCode(credential.clientId,email,String(body?.code||""));
       if(!verified)return Response.json({error:"Kod geçersiz veya süresi dolmuş."},{status:400});
-      await createOrUpdateClientCredential(credential.clientId,email,body.password);
+      await resetClientPassword(credential.clientId,email,body.password);
       return Response.json({ok:true,message:"Şifreniz yenilendi. Artık giriş yapabilirsiniz."});
     }
     return Response.json({error:"Geçersiz işlem."},{status:400});

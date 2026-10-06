@@ -12,7 +12,7 @@ export async function PATCH(req){
   try{
     const body=await req.json();
     if(!body?.id)return Response.json({error:"Ödeme kaydı gerekli."},{status:400});
-    const payment=await confirmPayment(body.id,{plan:body.plan,setupAmount:body.setupAmount,monthlyAmount:body.monthlyAmount});
+    const payment=await confirmPayment(body.id);
     if(!payment)return Response.json({error:"Ödeme onaylanamadı."},{status:409});
     return Response.json({payment});
   }catch(e){return Response.json({error:"Ödeme onaylanamadı.",detail:String(e?.message||e).slice(0,220)},{status:500})}

@@ -19,6 +19,7 @@ export async function POST(req){
     if(payment.status==="paid")return Response.json({error:"Bu ödeme zaten tamamlandı."},{status:409});
     await recordPaymentConsent(payment.id,"2026-10-02");
 
+    if(payment.currency!=="TRY")return Response.json({error:"PayTR yalnız TRY para birimindeki kayıtlar için kullanılabilir."},{status:409});
     const user_name=clean(body?.name,60),email=clean(body?.email,100),user_phone=clean(body?.phone,20),user_address=clean(body?.address,400);
     if(!user_name||!email||!email.includes("@")||!user_phone||!user_address)return Response.json({error:"Ad soyad, e-posta, telefon ve adres zorunlu."},{status:400});
 

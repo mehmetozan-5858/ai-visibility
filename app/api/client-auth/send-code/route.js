@@ -1,3 +1,4 @@
+import {getClientCredential} from "../../../../lib/client-credentials";
 import {verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
 import {createVerificationCode,sendVerificationEmail} from "../../../../lib/email-verification";
@@ -10,6 +11,7 @@ export async function POST(req){
     const body=await req.json();
     const access=await verifyPaymentAccessToken(body?.token||"");
     if(!access)return Response.json({error:"Bağlantı geçersiz veya süresi dolmuş."},{status:401});
+    if(await getClientCredential(access.clientId))return Response.json({error:"Hesap zaten oluşturulmuş. Şifre sıfırlamayı kullanın."},{status:409});
     const account=await getClientAccount(access.clientId);
     if(!account||(account.payments||[]).every(x=>x.status!=="paid"))return Response.json({error:"Ödeme onayı gerekli."},{status:403});
     const v=await createVerificationCode(access.clientId,body?.email);

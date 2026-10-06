@@ -1,3 +1,5 @@
+import {shopierProduct,paymentMatchesPlan} from "../../../lib/hosted-checkout";
+import {getClientCredential} from "../../../lib/client-credentials";
 import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById,recordPaymentConsent,getClientAccount} from "../../../lib/repository";
 import {getClientProfile} from "../../../lib/client-profile";
 import {verifyPaymentAccessToken} from "../../../lib/admin-auth";
@@ -27,7 +29,7 @@ export async function GET(req){
     const client=account?.client||null;
     if(!client)return Response.json({error:"Müşteri bulunamadı."},{status:404});
     const profile=await getClientProfile(client.id).catch(()=>null);
-    const selectedCountry=String(profile?.country||url.searchParams.get("country")||"Türkiye").trim();
+    const selectedCountry=String(profile?.country||"Türkiye").trim();
     const lang=languageFrom(req);
     const tokenService=String(access?.service||"");
     const requestedService=tokenService||String(url.searchParams.get("service")||"business-diagnosis");
@@ -35,11 +37,14 @@ export async function GET(req){
     const service=SERVICE_CODES.includes(requestedService)?requestedService:"business-diagnosis";
     const plan=formatPlan(servicePrice({service,country:selectedCountry,language:lang}),lang);
     const catalog=pricingCatalog({country:selectedCountry,language:lang}).map(x=>formatPlan(x,lang));
-    const paidPayment=(account?.payments||[]).find(x=>x.status==="paid")||null;
-    const payment=paidPayment||await getOrCreatePaymentIntent(client.id,plan.name,plan.setupAmount,plan.monthlyAmount,plan.currency);
+    const canonicalPlan=servicePrice({service,country:selectedCountry,language:"tr"});
+    const paidPayment=(account?.payments||[]).find(x=>x.status==="paid"&&paymentMatchesPlan(x,canonicalPlan))||null;
+    const payment=paidPayment||await getOrCreatePaymentIntent(client.id,canonicalPlan.name,plan.setupAmount,plan.monthlyAmount,plan.currency);
     const tryRail=plan.currency==="TRY";
     return Response.json({
       client,
+      accountCreated:Boolean(await getClientCredential(client.id)),
+      hostedReady:Boolean(tokenService&&shopierProduct({...plan,code:service})),
       profile:{country:selectedCountry,city:profile?.city||"",sector:profile?.sector||""},
       plan,
       pricingCatalog:catalog,
@@ -63,6 +68,7 @@ export async function POST(req){
     if(access.service&&!SERVICE_CODES.includes(access.service))return Response.json({error:"Ödeme bağlantısındaki hizmet geçersiz."},{status:400});
     const current=await getPaymentById(body.paymentId);
     if(!current||current.clientId!==access.clientId)return Response.json({error:"Bu ödeme bağlantısı bu kayıt için geçerli değil."},{status:403});
+    if(access.service){const profile=await getClientProfile(access.clientId),plan=servicePrice({service:access.service,country:profile?.country||"Türkiye",language:"tr"});if(!paymentMatchesPlan(current,plan))return Response.json({error:"Ödeme kaydı bağlantıdaki hizmetle eşleşmiyor."},{status:403});}
     await recordPaymentConsent(body.paymentId,"2026-10-02");
     const payment=await reportPayment(body.paymentId);
     if(!payment)return Response.json({error:"Ödeme bildirimi alınamadı veya daha önce bildirildi."},{status:409});

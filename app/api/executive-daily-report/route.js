@@ -1,3 +1,4 @@
+import {reportDay,reportMarkets} from "../../../lib/reporting";
 import {requireAdmin} from "../../../lib/api-security";
 import {listDailyAgentReports,listSharedAgentEvents,listMarketLearning,listPredictiveAlerts,listAutonomousActions,listStrategyLearning,getProfitControlSnapshot,listProviderHealth} from "../../../lib/agent-coordination";
 import {listCreatorHuntLeads} from "../../../lib/creator-hunt";
@@ -7,13 +8,14 @@ import {listNextBestActions,getExperimentPerformance,listOpportunityForecasts} f
 export async function GET(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  try{
-  const url=new URL(req.url);const date=url.searchParams.get("date")||new Date().toISOString().slice(0,10);
+  const url=new URL(req.url);const date=url.searchParams.get("date")||reportDay();
   const [runs,events,creators,funnel,risks,marketLearning,predictiveAlerts,autonomousActions,strategyLearning,nextBestActions,experimentPerformance,opportunityForecasts,profitControl,providerHealth]=await Promise.all([listDailyAgentReports(90),listSharedAgentEvents(200),listCreatorHuntLeads(300),getExecutiveFunnelSnapshot(),getPredictiveRiskSignals(),listMarketLearning(20),listPredictiveAlerts(30),listAutonomousActions(30),listStrategyLearning(30),listNextBestActions(50),getExperimentPerformance(),listOpportunityForecasts(50),getProfitControlSnapshot(),listProviderHealth()]);
-  const dayRuns=runs.filter(x=>String(x.reportDate).slice(0,10)===date);
-  const dayEvents=events.filter(x=>String(x.createdAt||"").slice(0,10)===date);
-  const dayCreators=creators.filter(x=>String(x.createdAt||"").slice(0,10)===date||String(x.updatedAt||"").slice(0,10)===date);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return Response.json({error:"Geçersiz rapor tarihi."},{status:400});
+  const dayRuns=runs.filter(x=>reportDay(x.finishedAt)===date);
+  const dayEvents=events.filter(x=>reportDay(x.createdAt)===date);
+  const dayCreators=creators.filter(x=>reportDay(x.createdAt)===date||reportDay(x.updatedAt)===date);
   const totals=dayRuns.reduce((a,x)=>({discovered:a.discovered+(x.discovered||0),newProspects:a.newProspects+(x.newProspects||0),scanned:a.scanned+(x.scanned||0),completed:a.completed+(x.completed||0),errors:a.errors+(x.errorCount||0)}),{discovered:0,newProspects:0,scanned:0,completed:0,errors:0});
-  const markets=[...new Map(dayRuns.map(x=>[JSON.stringify(x.market),x.market])).values()];
+  const markets=reportMarkets(dayRuns);
   const agents=[...new Set(dayEvents.map(x=>x.agent).filter(Boolean))];
   const p=funnel.prospects||{},conversion={qualifiedRate:p.total?Math.round((p.qualified||0)*100/p.total):0,replyRate:p.contacted?Math.round((p.replies||0)*100/p.contacted):0,winRate:p.proposals?Math.round((p.won||0)*100/p.proposals):0};
   return Response.json({date,generatedAt:new Date().toISOString(),totals,funnel,conversion,risks,predictiveAlerts,autonomousActions,strategyLearning,nextBestActions,experimentPerformance,opportunityForecasts,profitControl,providerHealth,marketLearning,markets,creator:{found:dayCreators.length,highOpportunity:dayCreators.filter(x=>(x.opportunityScore||0)>=75).length,platforms:[...new Set(dayCreators.map(x=>x.platform))]},agents,events:dayEvents.slice(0,80),runs:dayRuns});

@@ -3,7 +3,7 @@ import {getDatabaseUrl} from "../../../../lib/db";
 import {withRequestBudget} from "../../../../lib/request-budget";
 import {discoverBusinesses,runProviderCheck,findPublicBusinessContact,personalizeProspectOutreach,buildProspectProposal} from "../../../../lib/providers";
 import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact,saveProspectPersonalization,saveProspectProposal,prepareProspectCommunication,listPendingAutomationProspects,getLatestProspectAnalysis} from "../../../../lib/prospects";
-import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning,refreshMarketEconomics,listLearnedPolicies,listResourceAllocations,getRuntimeControl} from "../../../../lib/agent-coordination";
+import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning,refreshMarketEconomics,listLearnedPolicies,listResourceAllocations,getRuntimeControl,refreshBudgetGuard} from "../../../../lib/agent-coordination";
 
 export const runtime="nodejs";
 export const maxDuration=300;
@@ -53,10 +53,13 @@ export async function GET(req){
 }
 async function runCycle(req){
   if(!authorized(req)){logCycle("unauthorized");return Response.json({ok:false,error:"unauthorized"},{status:401,headers:{"cache-control":"no-store"}})}
-  const startedMs=Date.now(),startedAt=new Date().toISOString(),markets=await marketsForCurrentHour();
+  const startedMs=Date.now(),startedAt=new Date().toISOString();
+  const guard=await refreshBudgetGuard();
+  if(guard.mode==="emergency")return Response.json({ok:true,skipped:"ai-budget-exhausted",budget:guard},{headers:{"cache-control":"no-store"}});
+  const markets=(await marketsForCurrentHour()).slice(0,guard.multiplier<1?1:6);
   const budgetMs=Math.max(45000,Math.min(Number(process.env.DAILY_CYCLE_BUDGET_MS)||75000,80000));
   const hasBudget=(reserve=30000)=>Date.now()-startedMs<budgetMs-reserve;
-  const report={ok:true,startedAt,market:{mode:"parallel",markets},discovered:0,newProspects:0,scanned:0,completed:0,truncated:false,stopReason:"",errors:[]};
+  const report={ok:true,startedAt,market:{mode:"parallel",markets},budget:guard,discovered:0,newProspects:0,scanned:0,completed:0,truncated:false,stopReason:"",errors:[]};
   logCycle("parallel-started",{markets});
   await share({agent:"Global Baş Amir Ajan",eventType:"cycle-start",title:`Paralel global av başladı: ${markets.length} pazar`,detail:markets.map(x=>`${x.country}/${x.city}`).join(" · "),payload:{markets}});
   try{

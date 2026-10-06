@@ -1,4 +1,4 @@
-import {createOrUpdateClientCredential} from "../../../../lib/client-credentials";
+import {createClientCredential} from "../../../../lib/client-credentials";
 import {createClientToken,verifyPaymentAccessToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
 import {isEmailVerified} from "../../../../lib/email-verification";
@@ -17,13 +17,14 @@ export async function POST(req){
     if(!paid)return Response.json({error:"Müşteri hesabı yalnızca ödeme onaylandıktan sonra oluşturulabilir."},{status:403});
     const verified=await isEmailVerified(access.clientId,body?.email);
     if(!verified)return Response.json({error:"Önce e-posta adresinizi doğrulama koduyla doğrulayın."},{status:403});
-    const credential=await createOrUpdateClientCredential(access.clientId,body?.email,body?.password);
+    const credential=await createClientCredential(access.clientId,body?.email,body?.password);
     const session=await createClientToken(access.clientId);
     const res=Response.json({ok:true,clientId:access.clientId,email:credential.email});
     res.headers.append("Set-Cookie",`ai_client=${session}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`);
     return res;
   }catch(e){
     const m=String(e?.message||"");
+    if(m==="credential-already-exists")return Response.json({error:"Bu hesap zaten oluşturulmuş. Giriş yapın veya şifre sıfırlamayı kullanın."},{status:409});
     if(m==="invalid-email")return Response.json({error:"Geçerli bir e-posta adresi girin."},{status:400});
     if(m==="password-too-short")return Response.json({error:"Şifre en az 10 karakter olmalıdır."},{status:400});
     return Response.json({error:"Müşteri hesabı oluşturulamadı."},{status:500});

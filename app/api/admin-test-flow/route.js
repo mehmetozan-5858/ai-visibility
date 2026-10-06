@@ -1,3 +1,4 @@
+import {servicePrice} from "../../../lib/regional-pricing";
 import {addClient,findClientByIdentity,createScan,completeScan,getLatestCompletedScan,getOrCreatePaymentIntent,recordPaymentConsent,reportPayment,confirmPayment} from "../../../lib/repository";
 import {createPaymentAccessToken} from "../../../lib/admin-auth";
 import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
@@ -27,11 +28,11 @@ export async function POST(req){
       }]);
     }
 
-    const payment=await getOrCreatePaymentIntent(client.id,"Test",1,1);
+    const payment=await getOrCreatePaymentIntent(client.id,servicePrice({service:"business-diagnosis",country:"Türkiye"}).name,servicePrice({service:"business-diagnosis",country:"Türkiye"}).setupAmount,0,"TRY");
     await recordPaymentConsent(payment.id,"test-flow-2026-10-03");
     if(payment.status==="pending")await reportPayment(payment.id);
-    const paid=await confirmPayment(payment.id,{plan:"Test",setupAmount:1,monthlyAmount:1});
-    const token=await createPaymentAccessToken(client.id,7200);
+    const paid=await confirmPayment(payment.id);
+    const token=await createPaymentAccessToken(client.id,7200,"business-diagnosis");
 
     return Response.json({
       ok:true,
