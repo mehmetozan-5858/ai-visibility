@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 function fmt(v){if(!v)return "-";try{return new Date(v).toLocaleString("tr-TR")}catch{return String(v)}}
 export default function SystemHealthMap(){
  const [data,setData]=useState(null),[error,setError]=useState("");
- const load=()=>fetch("/api/system-health-map",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Yüklenemedi");return r.json()}).then(x=>{setData(x);setError("")}).catch(e=>setError(e.message));
+ const load=()=>fetch("/api/agent-center",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Yüklenemedi");return r.json()}).then(x=>{const h=x.health||[],c=x.healthSummary||{};setData({components:h,counts:{healthy:c.healthy||0,warning:c.warning||0,delayed:h.filter(y=>y.state==="warning"&&y.ageMinutes!==null&&y.ageMinutes>Number(y.expectedIntervalMinutes||60)*2).length,critical:c.critical||0,quarantined:h.filter(y=>y.quarantineUntil&&new Date(y.quarantineUntil)>new Date()).length});setError("")}).catch(e=>setError(e.message));
  useEffect(()=>{load();const id=setInterval(load,60000);return()=>clearInterval(id)},[]);
  const items=data?.components||[];
  const label=x=>({healthy:"ÇALIŞIYOR",warning:"UYARI",delayed:"GECİKMİŞ",critical:"KRİTİK",quarantined:"KARANTİNA"}[x]||x);
