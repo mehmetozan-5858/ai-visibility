@@ -4,10 +4,7 @@ import {sendBrandedOutreach} from "../../../lib/outreach-email";
 import {databasePool} from "../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../lib/db";
 export const runtime="nodejs";
-export async function GET(req){
- const denied=await requireAdmin(req);if(denied)return denied;
- const emailId=req.headers.get("x-delivery-id")||new URL(req.url).searchParams.get("emailId");
- if(emailId){
+async function deliveryStatus(emailId){
   if(!/^[0-9a-f-]{36}$/i.test(emailId))return Response.json({error:"Geçersiz gönderim kaydı."},{status:400});
   try{const row=(await databasePool(getDatabaseUrl()).query("SELECT provider_id,payload FROM email_deliveries WHERE provider_id=$1 AND delivery_key LIKE 'prospect-first/%'",[emailId])).rows[0];
    if(!row)return Response.json({error:"Gönderim kaydı bulunamadı."},{status:404});
@@ -16,7 +13,11 @@ export async function GET(req){
    const d=await r.json();if(d.id!==emailId)return Response.json({error:"Gönderim kimliği uyuşmuyor."},{status:502});
    return Response.json({id:emailId,event:d.last_event||"unknown"},{headers:{"cache-control":"no-store"}});
   }catch{return Response.json({error:"Teslimat henüz doğrulanamadı."},{status:503})}
- }
+}
+export async function GET(req){
+ const denied=await requireAdmin(req);if(denied)return denied;
+ const emailId=req.headers.get("x-delivery-id")||new URL(req.url).searchParams.get("emailId");
+ if(emailId)return deliveryStatus(emailId);
  const from=process.env.OUTREACH_EMAIL_FROM||process.env.EMAIL_FROM||process.env.RESEND_FROM_EMAIL||"";
  const configured=Boolean(process.env.RESEND_API_KEY&&from&&!/@resend\.dev\b/i.test(from));
  let recent=[];try{recent=(await databasePool(getDatabaseUrl()).query("SELECT d.provider_id AS id,p.name,d.payload->'to' AS recipients FROM email_deliveries d LEFT JOIN prospects p ON p.id::text=split_part(d.delivery_key,'/',2) WHERE d.delivery_key LIKE 'prospect-first/%' AND d.status='completed' ORDER BY d.completed_at DESC LIMIT 20")).rows}catch{}
@@ -25,7 +26,7 @@ export async function GET(req){
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;const originError=enforceSameOrigin(req);if(originError)return originError;
  try{
-  const {prospectId,draft,action,emailId}=await req.json();if(action==="delivery-status"){const headers=new Headers(req.headers);headers.set("x-delivery-id",String(emailId||"invalid"));return GET(new Request(req.url,{headers}))}if(!prospectId)return Response.json({error:"Aday gerekli."},{status:400});
+  const {prospectId,draft,action,emailId}=await req.json();if(action==="delivery-status")return deliveryStatus(String(emailId||"invalid"));if(!prospectId)return Response.json({error:"Aday gerekli."},{status:400});
   if(draft!==undefined&&(typeof draft!=="string"||draft.trim().length<30||draft.length>6000))return Response.json({error:"Mesaj 30–6000 karakter olmalı."},{status:400});
   const x=await getCommunicationProspect(prospectId);if(!x)return Response.json({error:"Aday bulunamadı."},{status:404});
   if(x.communicationStatus!=="ready-for-review"||x.contactStatus!=="verified"||!x.contactEmail)return Response.json({error:"Gönderim güvenlik koşulları sağlanmıyor."},{status:409});
