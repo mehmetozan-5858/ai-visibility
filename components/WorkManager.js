@@ -30,6 +30,7 @@ export default function WorkManager(){
       setCompletion(null);await load();
     }catch(e){setMsg(e.message)}finally{setBusy("")}
   }
+  async function reconcile(id){setBusy(id);setMsg('');try{const r=await fetch('/api/cms/drafts',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({workId:id})}),d=await r.json();if(!r.ok)throw Error(d.error);setMsg(d.status==='not-found-review-required'?'WordPress kaydı bulunamadı. Çift içerik oluşmaması için otomatik yeniden teslim yapılmadı.':d.published?'WordPress içeriği yayında görünüyor. Görevi tamamlamak için uygulama kanıtını ayrıca kaydedin.':d.status==='draft-created'?'WordPress taslağı bulundu ve teslim kaydı eşleştirildi.':'İçerik WordPress üzerinde inceleme veya yayın bekliyor.');await load()}catch(e){setMsg(e.message)}finally{setBusy('')}}
   async function deliver(id){setBusy(id);setMsg("");try{const r=await fetch("/api/cms/drafts",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({workId:id,approved:true})});const d=await r.json();if(!r.ok)throw new Error(d.error);setMsg(d.status==="draft-created"?"WordPress taslağı oluşturuldu. Yayın için müşteri incelemesi gerekiyor.":"Önceki teslimi WordPress üzerinde kontrol edin.");await load()}catch(e){setMsg(e.message);await load()}finally{setBusy("")}}
   return <section className="panel">
     <div className="section-title"><div><h2>İş ve Onay Merkezi</h2><small>Uygulama Ajanı görevlerinin gerçek durumu</small></div></div>
@@ -42,6 +43,7 @@ export default function WorkManager(){
       <span>{labels[x.status]||x.status}</span>
       {x.status==='completed'&&<details><summary>Uygulama kanıtı</summary><p style={{whiteSpace:'pre-wrap'}}>{x.completionEvidence||'Eski kayıt: uygulama kanıtı bulunmuyor.'}</p>{x.evidenceUrl&&<p>{x.evidenceUrl}</p>}<small>Yönetici kontrol kaydı · {x.evidenceRecordedAt?new Date(x.evidenceRecordedAt).toLocaleString('tr-TR'):'Tarih yok'}</small></details>}
       {deliveries[x.id]?.editUrl?<a href={deliveries[x.id].editUrl} target="_blank" rel="noopener noreferrer">WordPress taslağını incele</a>:deliveries[x.id]?<small>Teslim kontrolü gerekiyor</small>:x.status==="ready"&&/content|içerik|icerik|faq|soru|location|lokasyon/i.test(x.title)&&<button disabled={busy===x.id} onClick={()=>deliver(x.id)}>WordPress taslağı oluştur</button>}
+      {deliveries[x.id]&&<button type="button" disabled={busy===x.id} onClick={()=>reconcile(x.id)}>WordPress teslimini kontrol et</button>}
       <select value={x.status} disabled={busy===x.id} onChange={e=>e.target.value==='completed'?setCompletion(x):setStatus(x,e.target.value)} style={{background:"#071923",color:"#fff",border:"1px solid #24506a",borderRadius:10,padding:"9px"}}>
         <option value="ready">Hazır</option>
         <option value="approval-required">Müşteri onayı bekliyor</option>
