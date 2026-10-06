@@ -1,4 +1,4 @@
-import {evaluateOutreachPool} from "../../../../lib/outreach-selection";
+import {evaluateOutreachPool,needsProspectPreparation} from "../../../../lib/outreach-selection";
 import {nicheSearchSector} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../../lib/db";
@@ -80,7 +80,7 @@ async function runCycle(req){
     for(const prospect of seeded){try{await qualifyProspect(prospect.id)}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
     const assessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
     report.poolReview={evaluated:assessment.evaluated,qualifiedForContact:assessment.qualified,awaitingAnalysis:assessment.awaitingAnalysis};
-    const qualified=assessment.ranked.filter(x=>x.qualificationLevel!=="low"&&x.communicationStatus!=="ready-for-review");
+    const qualified=assessment.ranked.filter(needsProspectPreparation);
     await share({agent:"Qualification + Opportunity Agents",eventType:"pool-review",title:`Genel aday değerlendirmesi: ${assessment.evaluated} işletme`,detail:`Uzmanlık, analizdeki ihtiyaç, uygulanabilir çözüm ve kurumsal iletişim karşılaştırıldı. İletişime hazır ${assessment.qualified}; analiz bekleyen ${assessment.awaitingAnalysis}.`,payload:report.poolReview,status:"completed"});
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
     const deepLimit=Math.max(1,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||1,2));

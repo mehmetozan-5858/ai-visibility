@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {evaluateOutreachPool} from '../lib/outreach-selection.js';
+import {evaluateOutreachPool,needsProspectPreparation} from '../lib/outreach-selection.js';
 const ready=(id,score=80)=>({id:String(id),domain:`company${id}.com`,contactEmail:`info@company${id}.com`,contactSourceUrl:`https://company${id}.com/contact`,contactStatus:'verified',qualificationScore:80,communicationStatus:'ready-for-review',outreachStatus:'drafted',proposalStatus:'drafted',scanScore:score,scanProvider:'Perplexity',scanFindings:['Product pages need clear structured technical descriptions.'],scanRecommendations:['Add product schema and buyer questions to product pages.']});
+test('unavailable contacts cannot monopolize the deep-analysis queue',()=>{
+ assert.equal(needsProspectPreparation({status:'analyzed',contactStatus:'not-found',qualificationLevel:'hot'}),false);
+ assert.equal(needsProspectPreparation({status:'new',qualificationLevel:'hot'}),true);
+ assert.equal(needsProspectPreparation({...ready(1),status:'analyzed'}),false);
+ assert.equal(needsProspectPreparation({status:'analyzed',contactStatus:'verified',qualificationLevel:'hot'}),true);
+});
 test('all 500 candidates are compared before selecting strongest 50, independent of input order',()=>{
  const rows=Array.from({length:500},(_,i)=>ready(i,i>=450?20:80));
  const a=evaluateOutreachPool(rows),b=evaluateOutreachPool([...rows].reverse());
