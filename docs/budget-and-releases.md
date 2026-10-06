@@ -4,11 +4,11 @@
 
 The owner has authorized a Vercel Pro platform budget of USD 20 per month. No additional deploying seats, paid add-ons, paid integrations, or higher plans are authorized. Increased revenue does not authorize an automatic upgrade; the owner will decide when to expand capacity.
 
-Pro usage beyond its included credit is separately billed. Before upgrading, configure Spend Management with the lowest available on-demand budget and explicitly enable Pause Production Deployments. Verify the selected threshold with the owner if it permits additional charges. A notification alone does not stop spending.
+Pro usage beyond its included credit is separately billed. The owner authorized USD 1 of additional metered usage per billing cycle and saved it with Pause Production Deployments enabled on October 6, 2026. A notification alone does not stop spending. Do not raise this budget automatically.
 
 Spend Management is not an absolute invoice ceiling: checks may be delayed, and platform charges, additional seats, add-ons and separate provider bills are excluded. Pausing affects the entire team's production deployments. AI Gateway and v0 usage require separate controls. Direct Gemini, Perplexity, email, database and other provider bills must be checked independently.
 
-Status: the Pro purchase and Billing/Spend Management controls have not been completed or verified. Do not report the account as protected until the dashboard confirms them.
+Status as of October 6, 2026: the owner’s dashboard shows Pro Active and the successful budget-update confirmation; the budget table shows USD 1. The pause action was explicitly enabled and included in the saved confirmation. The dashboard also shows AI Gateway auto-reload off and Vercel Agent usage billing disabled. Observability Plus was disabled. SMS notification enrollment and custom early-usage alerts remain unverified. Card settlement has not been verified; an upcoming invoice is not proof of settlement. These controls are not a guarantee of a USD 21 total invoice ceiling.
 
 ## Release workflow
 
