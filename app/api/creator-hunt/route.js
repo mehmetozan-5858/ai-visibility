@@ -38,9 +38,16 @@ export async function GET(req){
  const completed=results.map((r,i)=>r.status==="fulfilled"?r.value:{...cells[i],ok:false,found:0,saved:0,errors:[String(r.reason?.message||r.reason)]});
  const seen=new Set(),all=[];
  for(const r of completed)for(const x of r.items||[]){const k=`${String(x.platform||"").toLowerCase()}|${String(x.profileUrl||"").toLowerCase()}`;if(!seen.has(k)){seen.add(k);all.push(x)}}
- const ranked=all.sort((a,b)=>(Number(b.opportunityScore)||0)-(Number(a.opportunityScore)||0)).slice(0,20);
+ const commercialPriority=x=>{
+  const tier=String(x.creatorTier||"").toLowerCase();
+  const tierBoost=["founder-executive","expert-personal-brand","established","niche-authority","educator","local-influencer"].includes(tier)?10:0;
+  const contactBoost=x.publicContact?5:0;
+  return (Number(x.opportunityScore)||0)*0.5+(Number(x.monetizationScore)||0)*0.2+(Number(x.brandReadinessScore)||0)*0.2+tierBoost+contactBoost;
+ };
+ const ranked=all.sort((a,b)=>commercialPriority(b)-commercialPriority(a)).slice(0,20);
+ const hotCreators=ranked.filter(x=>commercialPriority(x)>=65);
  const saved=await saveCreatorHuntLeads(ranked);
  const totalFound=completed.reduce((n,x)=>n+Number(x.found||0),0),errors=completed.flatMap(x=>x.errors||[]);
  console.log(JSON.stringify({source:"creator-hunt",event:"parallel-completed",cells:completed.map(({items,...x})=>x),found:totalFound,deduped:all.length,saved:saved.length,at:new Date().toISOString()}));
- return Response.json({ok:saved.length>0||completed.some(x=>x.ok),mode:"parallel",cells:completed.map(({items,...x})=>x),found:totalFound,deduped:all.length,saved:saved.length,top:saved.slice(0,5),providerErrors:errors});
+ return Response.json({ok:saved.length>0||completed.some(x=>x.ok),mode:"parallel",cells:completed.map(({items,...x})=>x),found:totalFound,deduped:all.length,saved:saved.length,hotCreators:hotCreators.length,top:saved.slice(0,5),providerErrors:errors});
 }
