@@ -6,7 +6,7 @@ import {getDatabaseUrl} from "../../../lib/db";
 export const runtime="nodejs";
 export async function GET(req){
  const denied=await requireAdmin(req);if(denied)return denied;
- const emailId=new URL(req.url).searchParams.get("emailId");
+ const emailId=req.headers.get("x-delivery-id")||new URL(req.url).searchParams.get("emailId");
  if(emailId){
   if(!/^[0-9a-f-]{36}$/i.test(emailId))return Response.json({error:"Geçersiz gönderim kaydı."},{status:400});
   try{const row=(await databasePool(getDatabaseUrl()).query("SELECT provider_id,payload FROM email_deliveries WHERE provider_id=$1 AND delivery_key LIKE 'prospect-first/%'",[emailId])).rows[0];
