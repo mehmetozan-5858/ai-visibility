@@ -5,6 +5,7 @@ export async function GET(req){
  if(!authorized(req))return Response.json({ok:false,error:"unauthorized"},{status:401});
  try{const guard=await refreshBudgetGuard();
   if(guard.mode!=="normal")await addSharedAgentEvent({agent:"Budget Guard",helperAgent:"CEO Ajanı",eventType:"budget-brake",title:`Bütçe koruması: ${guard.mode}`,detail:guard.reason,payload:guard,status:guard.mode==="emergency"?"needs-attention":"completed"}).catch(()=>null);
-  await heartbeatComponent({key:"budget-guard-cycle",type:"cycle",ok:true,expectedIntervalMinutes:60,detail:"Cycle completed"}).catch(()=>null);\n  return Response.json({ok:true,...guard,customerServicePaused:false,financialActionsAutomatic:false});
+  await heartbeatComponent({key:"budget-guard-cycle",type:"cycle",ok:true,expectedIntervalMinutes:60,detail:"Cycle completed"}).catch(()=>null);
+  return Response.json({ok:true,...guard,customerServicePaused:false,financialActionsAutomatic:false});
  }catch(e){await heartbeatComponent({key:"budget-guard-cycle",type:"cycle",ok:false,expectedIntervalMinutes:60,detail:String(e?.message||e)}).catch(()=>null);return Response.json({ok:false,error:String(e?.message||e).slice(0,180)},{status:500})}
 }
