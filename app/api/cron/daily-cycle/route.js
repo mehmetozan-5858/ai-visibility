@@ -57,9 +57,11 @@ export async function GET(req){
     const fresh=seeded.filter(x=>!existingSet.has(String(x.name||"").toLocaleLowerCase("tr-TR")));
     report.newProspects=fresh.length;
     const qualified=[];for(const prospect of fresh.slice(0,16)){if(!hasBudget(70000)){report.truncated=true;report.stopReason="runtime-budget";break}try{const q=await qualifyProspect(prospect.id);qualified.push({...prospect,qualificationScore:q?.qualificationScore||0,qualificationLevel:q?.qualificationLevel||"low"})}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
-    qualified.sort((a,b)=>(b.qualificationScore||0)-(a.qualificationScore||0));
+    qualified.sort((a,b)=>((b.qualificationLevel==="hot")-(a.qualificationLevel==="hot"))||((b.qualificationScore||0)-(a.qualificationScore||0)));
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
     const deepLimit=Math.max(2,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||4,8));
+    const hotCount=qualified.filter(x=>x.qualificationLevel==="hot").length;
+    report.hotProspects=hotCount;
     for(const prospect of qualified.filter(x=>x.qualificationLevel!=="low").slice(0,deepLimit)){
       if(!hasBudget(65000)){report.truncated=true;report.stopReason="runtime-budget";break}
       try{
