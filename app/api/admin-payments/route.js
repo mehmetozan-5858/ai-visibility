@@ -19,10 +19,11 @@ export async function PATCH(req){
       return Response.json({payment:await reversePayment(body.id,reason)});
     }
     if(body.bankVerified!==true)return Response.json({error:"Banka tahsilatı doğrulanmalı."},{status:400});
+    if(!body.bankEvidence||body.bankEvidence.confirmed!==true)return Response.json({error:"Banka kontrol formunu doldurup doğrulayın."},{status:400});
     const invoice=await getPaymentById(body.id);
     if(!invoice||!["TRY","EUR","USD","GBP"].includes(invoice.currency))return Response.json({error:"Geçerli para birimi gerekli; ödeme onaylanamaz."},{status:409});
-    const payment=await confirmPayment(body.id);
+    const payment=await confirmPayment(body.id,{bankEvidence:body.bankEvidence});
     if(!payment)return Response.json({error:"Ödeme onaylanamadı."},{status:409});
     return Response.json({payment});
-  }catch(e){return Response.json({error:"Ödeme onaylanamadı.",detail:String(e?.message||e).slice(0,220)},{status:500})}
+  }catch(e){const messages={'bank-confirmation-required':'Yalnızca banka havalesi kaydı bu formdan onaylanabilir.','invalid-bank-amount':'Tutarı binlik ayırıcı olmadan yazın; örnek: 4990,00.','bank-currency-mismatch':'Para birimi ödeme kaydıyla eşleşmiyor.','bank-amount-mismatch':'Banka tutarı beklenen ödeme tutarıyla eşleşmiyor.','bank-invoice-mismatch':'Açıklama kodu bu ödeme kaydıyla eşleşmiyor.','invalid-bank-reference':'Bankanın işlem referansı gerekli; en az 6 karakter.','invalid-bank-date':'Geçerli bir tahsilat tarihi gerekli; ileri tarih kullanılamaz.','bank-reference-already-used':'Bu banka işlemi başka bir ödeme için kullanılmış.'};return Response.json({error:messages[e.message]||"Ödeme onaylanamadı; işlem kaydı korunarak geri alındı."},{status:messages[e.message]?409:500})}
 }
