@@ -7,7 +7,7 @@ const source=(await readFile(new URL('../lib/automatic-outreach.js',import.meta.
 const {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach}=new Function('evaluateOutreachPool',source+'\nreturn {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach};')(evaluateOutreachPool);
 const prospect=(id='one')=>({id,name:'Example Business '+id,country:'Germany',domain:id+'.business.de',contactSourceUrl:'https://'+id+'.business.de/contact',contactStatus:'verified',contactEmail:'info@'+id+'.business.de',communicationStatus:'ready-for-review',qualificationScore:80,outreachStatus:'drafted',proposalStatus:'drafted',scanScore:40,scanProvider:'Perplexity',scanFindings:['Product descriptions need clear structured markup.'],scanRecommendations:['Add structured product schema and buyer-specific FAQ.']});
 function fixture({today=0,hour=0,locked=true,blocked='',verify=true,rows=[prospect()],follow=[]}={}){
- const state={sends:[],reports:[],unlocked:false,released:false};const client={query:async sql=>{if(sql.includes('unlock'))state.unlocked=true;return {rows:[{acquired:locked}]}},release:()=>{state.released=true}};
+ const state={sends:[],reports:[],unlocked:false,released:false,lockSql:[]};const client={query:async sql=>{state.lockSql.push(sql);if(sql==='ROLLBACK')state.unlocked=true;return {rows:[{acquired:locked}]}},release:()=>{state.released=true}};
  const pool={connect:async()=>client,query:async(sql,p)=>{if(sql.includes('count(*)'))return{rows:[{total:sql.includes("date_trunc('hour'")?hour:today}]};if(sql.includes('INSERT INTO outreach_cycle_reports'))state.reports.push(JSON.parse(p[0]));return{rows:[]}}};
  const deps={env:{OUTREACH_SEND_ENABLED:'true',OUTREACH_DAILY_LIMIT:'20',OUTREACH_CYCLE_LIMIT:'3'},pool,listFirst:async()=>rows,listFollow:async()=>follow,getProspect:async id=>[...rows,...follow].find(x=>x.id===id),blocked:async()=>blocked,verify:async()=>verify,followDelivery:async()=>'',send:async(x,opts)=>{state.sends.push({x,key:opts.key});return{id:'provider'}},pause:async()=>{},noEvents:true};return{deps,state};
 }
@@ -51,6 +51,9 @@ test('replies, duplicate recipients and failed verification block transmission',
 });
 test('reply arriving during verification is checked again before sending',async()=>{
  const f=fixture();let checks=0;f.deps.blocked=async()=>++checks===1?'':'inbound-reply';const r=await runAutomaticOutreach({deps:f.deps});assert.equal(r.sent,0);assert.equal(checks,2);
+});
+test('transaction pool lock is pinned by BEGIN and released even when another run owns it',async()=>{
+ for(const locked of [true,false]){const f=fixture({locked});await runAutomaticOutreach({deps:f.deps});assert.equal(f.state.lockSql[0],'BEGIN');assert.match(f.state.lockSql[1],/pg_try_advisory_xact_lock/);assert.equal(f.state.lockSql.at(-1),'ROLLBACK');assert.equal(f.state.released,true);assert.ok(f.state.lockSql.every(x=>!x.includes('pg_advisory_unlock')))}
 });
 test('follow up needs due time, count below two and verified first delivery',async()=>{
  const row={...prospect(),communicationStatus:'sent',followUpCount:0,followUpAt:'2020-01-01'};const f=fixture({rows:[],follow:[row]});assert.equal((await runAutomaticOutreach({deps:f.deps,mode:'follow'})).followSent,1);assert.equal(f.state.sends[0].key,'prospect-follow/one/0');

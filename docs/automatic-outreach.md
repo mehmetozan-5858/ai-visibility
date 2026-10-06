@@ -2,7 +2,7 @@
 
 Owner authorized activation on October 6, 2026. Creator discovery and drafting remain separate; automatic delivery currently covers business prospects only.
 
-Global Auto Hunt runs hourly. Inbox processing precedes follow-up. First contact runs after business discovery, inbox processing and follow-up. Each automatic pass uses a shared database lock, a shared maximum of five prospect provider attempts per clock hour across first contact, follow-up and reruns, and a combined daily quota of fifty prospect delivery attempts on the Istanbul calendar day. Existing manual sends count toward the day's automatic quota. A quota is a sending ceiling, not an expected number of contacts or sales.
+Global Auto Hunt runs hourly. Inbox processing precedes follow-up. First contact runs after business discovery, inbox processing and follow-up. Each automatic pass uses a transaction-scoped shared database lock (pinned through BEGIN and released through ROLLBACK, including on busy/error exits), a shared maximum of five prospect provider attempts per clock hour across first contact, follow-up and reruns, and a combined daily quota of fifty prospect delivery attempts on the Istanbul calendar day. Existing manual sends count toward the day's automatic quota. A quota is a sending ceiling, not an expected number of contacts or sales.
 
 Production config: OUTREACH_SEND_ENABLED=true, OUTREACH_DAILY_LIMIT=50, OUTREACH_CYCLE_LIMIT=5. Setting the enable flag false and redeploying pauses automated sends.
 
