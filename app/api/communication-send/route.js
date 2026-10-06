@@ -8,10 +8,10 @@ async function deliveryStatus(emailId){
   if(!/^[0-9a-f-]{36}$/i.test(emailId))return Response.json({error:"Geçersiz gönderim kaydı."},{status:400});
   try{const row=(await databasePool(getDatabaseUrl()).query("SELECT provider_id,payload FROM email_deliveries WHERE provider_id=$1 AND delivery_key LIKE 'prospect-first/%'",[emailId])).rows[0];
    if(!row)return Response.json({error:"Gönderim kaydı bulunamadı."},{status:404});
-   const r=await fetch(`https://api.resend.com/emails/${encodeURIComponent(emailId)}`,{headers:{authorization:`Bearer ${process.env.RESEND_API_KEY}`},signal:AbortSignal.timeout(15000)});
-   if(!r.ok)return Response.json({error:"Teslimat bilgisi alınamadı; sağlayıcı okuma yetkisini kontrol edin."},{status:502});
+   const r=await fetch(`https://api.resend.com/emails/${encodeURIComponent(emailId)}`,{headers:{authorization:`Bearer ${process.env.RESEND_RECEIVING_API_KEY||process.env.RESEND_API_KEY}`},signal:AbortSignal.timeout(15000)});
+   if(!r.ok)return Response.json({verified:false,providerStatus:r.status,code:[401,403].includes(r.status)?"read-access-required":"provider-unavailable",error:[401,403].includes(r.status)?"E-posta gönderimi kayıtlı; teslimat sorgusu için Resend okuma yetkisi gerekli.":`Resend teslimat sorgusunu tamamlayamadı (${r.status}); teslimat doğrulanmadı.`},{headers:{"cache-control":"no-store"}});
    const d=await r.json();if(d.id!==emailId)return Response.json({error:"Gönderim kimliği uyuşmuyor."},{status:502});
-   return Response.json({id:emailId,event:d.last_event||"unknown"},{headers:{"cache-control":"no-store"}});
+   return Response.json({id:emailId,verified:true,event:d.last_event||"unknown"},{headers:{"cache-control":"no-store"}});
   }catch{return Response.json({error:"Teslimat henüz doğrulanamadı."},{status:503})}
 }
 export async function GET(req){

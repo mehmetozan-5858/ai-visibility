@@ -21,5 +21,12 @@ test('delivery lookup only queries locally recorded sends and reports provider e
   async()=>null,()=>null,()=>({query:async(sql,params)=>({rows:params?.[0]===id?[{provider_id:id}]:[]})}),()=>'',async()=>{reads++;return Response.json({id,last_event:'delivered'})},{env:{RESEND_API_KEY:'private'}});
  const request=id=>new Request('https://example.com/api/communication-send',{method:'POST',body:JSON.stringify({action:'delivery-status',emailId:id})});
  assert.equal((await api.POST(request('01a11278-c210-7176-bc7f-0196dec182ed'))).status,404);assert.equal(reads,0);
- const response=await api.POST(request(id));assert.equal(response.status,200);assert.deepEqual(await response.json(),{id,event:'delivered'});assert.equal(reads,1);
+ const response=await api.POST(request(id));assert.equal(response.status,200);assert.deepEqual(await response.json(),{id,verified:true,event:'delivered'});assert.equal(reads,1);
+});
+
+test('delivery reads use the existing receiving credential and expose permission errors without false delivery',async()=>{
+ const id='01a11278-c210-7176-bc7f-0196dec182ec';let authorization;
+ const api=new Function('requireAdmin','enforceSameOrigin','databasePool','getDatabaseUrl','fetch','process',source+'\nreturn {GET,POST};')(async()=>null,()=>null,()=>({query:async()=>({rows:[{provider_id:id}]})}),()=>'',async(url,options)=>{authorization=options.headers.authorization;return new Response('',{status:403})},{env:{RESEND_API_KEY:'send-only',RESEND_RECEIVING_API_KEY:'existing-read-key'}});
+ const response=await api.POST(new Request('https://example.com/api/communication-send',{method:'POST',body:JSON.stringify({action:'delivery-status',emailId:id})}));
+ assert.equal(authorization,'Bearer existing-read-key');assert.equal(response.status,200);const data=await response.json();assert.equal(data.verified,false);assert.equal(data.providerStatus,403);assert.equal(data.code,'read-access-required');assert.equal(data.event,undefined);assert.doesNotMatch(JSON.stringify(data),/existing-read-key|send-only/);
 });
