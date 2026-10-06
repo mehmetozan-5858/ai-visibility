@@ -5,12 +5,23 @@ export default function CommunicationCenter(){
  const [rows,setRows]=useState([]),[msg,setMsg]=useState("");
  const [sender,setSender]=useState(null),[drafts,setDrafts]=useState({}),[sending,setSending]=useState(""),[sent,setSent]=useState([]);
  const [deliveryEvents,setDeliveryEvents]=useState({});
+ const [automation,setAutomation]=useState(null),[autoBusy,setAutoBusy]=useState(false);
+ async function loadAutomation(){const r=await fetch('/api/outreach-cycle',{cache:'no-store'}),d=await r.json();if(!r.ok)throw Error(d.error||'Otomatik iletişim bilgisi alınamadı');setAutomation(d)}
+ async function runAutomation(dryRun){setAutoBusy(true);setMsg('');try{const r=await fetch('/api/outreach-cycle',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({dryRun})}),d=await r.json();if(!r.ok)throw Error(d.error||d.errors?.[0]?.error||'Tur tamamlanamadı');setMsg(`${dryRun?'Gönderimsiz kontrol':'İletişim turu'}: ${d.eligible} uygun aday, ${d.firstSent} ilk temas, ${d.followSent} takip. ${d.errors?.length||0} doğrulama hatası. ${d.deferred||d.skippedReason||''}`);await loadAutomation();await load()}catch(e){setMsg(e.message)}finally{setAutoBusy(false)}}
+ useEffect(()=>{loadAutomation().catch(e=>setMsg(e.message))},[]);
  async function checkDelivery(id){try{const r=await fetch("/api/communication-send",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"delivery-status",emailId:id})}),d=await r.json().catch(()=>({error:`Teslimat sorgusu geçerli yanıt vermedi (HTTP ${r.status}); teslimat doğrulanamadı.`}));if(!r.ok||d.error)throw Error(d.error);setDeliveryEvents(e=>({...e,[id]:d.event}))}catch(e){setMsg(e.message)}}
  async function send(x){setSending(x.id);setMsg("");try{const r=await fetch("/api/communication-send",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prospectId:x.id,draft:drafts[x.id]??x.outreachDraft})}),d=await r.json();if(!r.ok)throw Error(d.error+(d.detail?` (${d.detail})`:""));setSent(s=>[...s,{name:x.name,email:x.contactEmail,id:d.delivery?.id}]);await load()}catch(e){setMsg(e.message)}finally{setSending("")}}
  async function load(){try{const r=await fetch("/api/communication-queue",{cache:"no-store"}),d=await r.json();if(!r.ok)throw new Error(d.error||"Kuyruk alınamadı");setRows(d.queue||[])}catch(e){setMsg(e.message)}}
  useEffect(()=>{load();fetch("/api/communication-send",{cache:"no-store"}).then(async r=>{if(!r.ok)throw Error("Gönderici bilgisi alınamadı");return r.json()}).then(d=>{setSender(d);setSent((d.recent||[]).map(x=>({name:x.name,email:x.recipients?.join(", "),id:x.id})))}).catch(e=>setMsg(e.message))},[]);
  return <><InboxManager/><section className="panel"><div className="section-title"><div><h2>İletişim Merkezi</h2><small>Doğrulanmış kanal + kişisel mesaj + teklif tek kontrollü kuyrukta</small></div><b>{rows.length} hazır</b></div>
- {msg&&<p className="client-message">{msg}</p>}
+ {msg&&<p className="client-message" role="status">{msg}</p>}
+ <section aria-label="Saatlik otomatik iletişim"><h3>Saatlik otomatik iletişim</h3>
+ <p>{automation?`${automation.policy.enabled?'Aktif':'Kapalı'} · Günlük en fazla ${automation.policy.dailyLimit}, tur başına ${automation.policy.perCycle} gönderim · Takip: 4 gün + 5 gün, en fazla 2`:'Durum yükleniyor…'}</p>
+ <p>Resmî sayfada doğrulanan işletme adresleriyle ilk temas. Yanıt gelen veya iletişim istemeyen adreslerde takip durur. Creator aramaları ayrı devam eder.</p>
+ <button disabled={autoBusy} onClick={()=>runAutomation(true)}>Gönderimsiz kontrol et</button>{' '}
+ <button disabled={autoBusy||!automation?.policy?.enabled} onClick={()=>runAutomation(false)}>{autoBusy?'Kontrol ediliyor…':'Kontrollü iletişim turunu çalıştır'}</button>
+ {automation?.recent?.map((x,i)=><p key={i}>{new Date(x.createdAt).toLocaleString('tr-TR')} · {x.report.dryRun?'Kontrol':'Tur'} · İlk temas {x.report.firstSent}, takip {x.report.followSent}, uygun {x.report.eligible}, hata {x.report.errors?.length||0} {x.report.deferred?`· ${x.report.deferred}`:''}</p>)}
+ </section>
  <p>{sender?`Gönderici: ${sender.from||"Tanımlanmamış"}`:"Gönderici kontrol ediliyor…"}{sender&&!sender.configured?` · ${sender.reason}`:""}</p>
  {sent.map(x=><div role="status" key={x.id||x.email}><p>{x.name} · {x.email} · E-posta sağlayıcısı kabul etti · Kayıt: {x.id}. {deliveryEvents[x.id]?`Sağlayıcı olayı: ${deliveryEvents[x.id]}`:"Teslimat henüz doğrulanmadı."}</p><button onClick={()=>checkDelivery(x.id)}>Teslimatı kontrol et</button></div>)}
  {!rows.length?<div className="empty">Gönderime hazırlanmış doğrulanmış aday henüz yok.</div>:<div className="client-list">{rows.map(x=><article className="client-row" key={x.id}>

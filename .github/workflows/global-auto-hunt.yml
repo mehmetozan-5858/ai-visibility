@@ -37,6 +37,7 @@ jobs:
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   follow-up-agent-cycle:
+    needs: [inbox-cycle]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -485,3 +486,17 @@ jobs:
         run: |
           test -n "$AUTO_HUNT_SECRET" || exit 1
           curl --fail-with-body --connect-timeout 10 --max-time 90 --silent --show-error "https://www.aivisibilityworks.com/api/inbox-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+
+  first-contact-agent-cycle:
+    needs: [business-agent-cycle, inbox-cycle, follow-up-agent-cycle]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run verified automatic first contact
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
+          curl --fail-with-body --retry 1 --retry-delay 3 --connect-timeout 10 --max-time 110 --silent --show-error \
+            "https://www.aivisibilityworks.com/api/outreach-cycle" \
+            -H "Authorization: Bearer $AUTO_HUNT_SECRET"
