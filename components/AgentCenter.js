@@ -11,8 +11,9 @@ function markets(m){return Array.isArray(m?.markets)?m.markets:[]}
 
 export default function AgentCenter(){
   const [data,setData]=useState(null),[error,setError]=useState("");
+  const [businessRecent,setBusinessRecent]=useState([]),[creatorRecent,setCreatorRecent]=useState([]);
   const load=()=>fetch("/api/agent-center",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Yüklenemedi");return r.json()}).then(setData).catch(e=>setError(e.message));
-  useEffect(()=>{load()},[]);
+  useEffect(()=>{load();Promise.all([fetch("/api/prospects",{cache:"no-store"}).then(r=>r.json()),fetch("/api/creator-hunt-leads",{cache:"no-store"}).then(r=>r.json())]).then(([b,c])=>{setBusinessRecent((b.prospects||[]).slice(0,8));setCreatorRecent((c.leads||[]).slice(0,8))}).catch(()=>{})},[]);
   const latest=data?.latest;
   const lastAt=latest?.finishedAt?new Date(latest.finishedAt).getTime():0;
   const ageMinutes=lastAt?Math.max(0,Math.floor((Date.now()-lastAt)/60000)):null;
@@ -22,6 +23,14 @@ export default function AgentCenter(){
   const parallel=markets(latest?.market);
   const successRate=latest?.scanned?Math.round((Number(latest.completed||0)/Number(latest.scanned))*100):0;
   return <div>
+    <section className="panel" style={{marginBottom:18}}>
+      <h2 style={{marginTop:0}}>Son Bulunanlar</h2>
+      <p style={{opacity:.72}}>Ultra Mega Makine'nin en son bulduğu işletme ve creator adayları.</p>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:12}}>
+        <div><h3>İşletme / Business</h3>{businessRecent.length?businessRecent.map(x=><div key={x.id} className="panel" style={{padding:10,marginBottom:8}}><b>{x.name}</b><small style={{display:"block",opacity:.7}}>{[x.city,x.country,x.sector].filter(Boolean).join(" · ")}</small><small style={{display:"block",opacity:.7}}>Durum: {x.scanStatus||x.status||"yeni"}{x.score!=null?` · Skor: ${x.score}`:""}</small></div>):<small>Henüz kayıt yok.</small>}</div>
+        <div><h3>Sosyal Medya / Creator</h3>{creatorRecent.length?creatorRecent.map(x=><div key={x.id} className="panel" style={{padding:10,marginBottom:8}}><b>{x.displayName||x.handle}</b><small style={{display:"block",opacity:.7}}>{[x.platform,x.country,x.niche].filter(Boolean).join(" · ")}</small><small style={{display:"block",opacity:.7}}>Fırsat skoru: {x.opportunityScore??0} · Durum: {x.status||"yeni"}</small></div>):<small>Henüz kayıt yok.</small>}</div>
+      </div>
+    </section>
     <SystemHealthMap/>
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
