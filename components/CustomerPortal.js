@@ -54,6 +54,11 @@ export default function CustomerPortal(){
  const tabs=[["overview",c.overview,"⌂"],["findings",c.findings,"◆"],...(canWork?[["work",c.work,"⚙"]]:[]),["scans",c.scans,"◎"],["payments",c.payments,"₺"]];
  async function load(){try{const [a,f]=await Promise.all([fetch("/api/client-portal",{cache:"no-store",headers:{"accept-language":lang}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||c.loadFail);return d}),fetch("/api/client-portal/solutions",{cache:"no-store",headers:{"accept-language":lang}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||c.solutionsLoadFail);return d})]);setAccount(a.account);setFindings(f.findings||[])}catch(e){setMsg(e.message)}}
  useEffect(()=>{load()},[lang]);
+ useEffect(()=>{
+  const openHome=()=>setTab("overview");
+  window.addEventListener("customer-portal-home",openHome);
+  return()=>window.removeEventListener("customer-portal-home",openHome);
+ },[]);
  const completed=useMemo(()=>account?.scans?.filter(x=>x.status==="completed"&&Number.isFinite(Number(x.score)))||[],[account]);
  const latest=completed[0]||null,previous=completed[1]||null;const delta=latest&&previous?Number(latest.score)-Number(previous.score):null;
  const critical=findings.filter(x=>x.severity==="critical"||x.severity==="high").length;
