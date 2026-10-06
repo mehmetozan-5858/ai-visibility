@@ -31,6 +31,13 @@ export default function AgentCenter(){
         <div><h3>Sosyal Medya / Creator</h3>{creatorRecent.length?creatorRecent.map(x=><div key={x.id} className="panel" style={{padding:10,marginBottom:8}}><b>{x.displayName||x.handle}</b><small style={{display:"block",opacity:.7}}>{[x.platform,x.country,x.niche].filter(Boolean).join(" · ")}</small><small style={{display:"block",opacity:.7}}>Fırsat skoru: {x.opportunityScore??0} · Durum: {x.status||"yeni"}</small></div>):<small>Henüz kayıt yok.</small>}</div>
       </div>
     </section>
+    <section className="panel" style={{marginBottom:18}}>
+      <h2 style={{marginTop:0}}>Son İşlem / Sonuç</h2>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:12}}>
+        <div className="panel" style={{padding:12}}><b>Business Motoru</b><div style={{marginTop:6}}>Son av: {fmt(latest?.finishedAt)}</div><small style={{display:"block",opacity:.7}}>Bulunan {latest?.discovered??0} · Yeni {latest?.newProspects??0} · Analiz {latest?.completed??0} · Hata {latest?.errorCount??0}</small></div>
+        <div className="panel" style={{padding:12}}><b>Creator Motoru</b><div style={{marginTop:6}}>Son kayıt: {fmt(creatorRecent[0]?.createdAt)}</div><small style={{display:"block",opacity:.7}}>Gösterilen son aday {creatorRecent.length} · En yüksek fırsat skoru {creatorRecent.length?Math.max(...creatorRecent.map(x=>Number(x.opportunityScore)||0)):0}</small></div>
+      </div>
+    </section>
     
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
