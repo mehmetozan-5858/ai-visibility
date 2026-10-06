@@ -5,429 +5,472 @@ on:
   schedule:
     - cron: "0 * * * *"
 
+concurrency:
+  group: global-auto-hunt
+  cancel-in-progress: false
+
 jobs:
   business-agent-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run integrated global business agent cycle
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/cron/daily-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-agent-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run global creator hunt
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/creator-hunt" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   follow-up-agent-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run controlled follow-up agent
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/follow-up-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   implementation-agent-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run paid customer implementation orchestrator
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/implementation-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   remeasurement-agent-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run post implementation remeasurement
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/remeasurement-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   predictive-guard-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run predictive anomaly guard
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/predictive-guard" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   self-healing-decision-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run controlled self healing decision engine
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/self-healing-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   strategy-learning-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh strategic learning memory
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/strategy-learning-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   next-best-action-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh next best actions
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/next-best-action-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   outcome-learning-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Learn from decision outcomes
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/outcome-learning-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   policy-brain-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh evidence gated policies
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/policy-brain-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   opportunity-forecast-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh opportunity forecasts
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/opportunity-forecast-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   resource-orchestrator-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh safe resource allocation
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/resource-orchestrator-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   profit-control-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh cost and profit control
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/profit-control-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   budget-guard-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh budget guard
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/budget-guard-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   provider-health-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check provider reliability memory
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/provider-health-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   truth-guard-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Check evidence and data quality
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/truth-guard-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   system-watchdog-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run system integrity watchdog
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error \
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error \
             -X GET "https://www.aivisibilityworks.com/api/system-watchdog-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   dependency-brain-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Diagnose root causes
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dependency-brain-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dependency-brain-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   mission-control-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run Mega Machine Mission Control
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/mission-control-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/mission-control-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   world-class-scorecard:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Measure world class engineering score
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/world-class-scorecard" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/world-class-scorecard" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   improvement-brain-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh Mega Machine improvement priorities
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/improvement-brain-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/improvement-brain-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   benchmark-intelligence-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Research benchmark intelligence
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/benchmark-intelligence-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/benchmark-intelligence-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   innovation-brain-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Discover white space opportunities
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/innovation-brain-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/innovation-brain-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   dual-engine-command:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Balance business and creator engines
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-command" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-command" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-intelligence-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run creator truth forecast and next best action
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-intelligence-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-intelligence-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-learning-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Learn and predict creator markets
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-learning-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-learning-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-remeasurement-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Remeasure creator intelligence
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-remeasurement-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-remeasurement-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   dual-engine-quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Score business and creator quality
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-quality" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-quality" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-benchmark-innovation:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Research creator benchmark and white space
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-benchmark-innovation" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-benchmark-innovation" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   unified-mission-control:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Run unified business creator mission control
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/unified-mission-control" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/unified-mission-control" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   dual-engine-ceo-report:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Build business creator CEO funnel report
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-ceo-report" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-ceo-report" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-crm-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh creator CRM bridge
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-crm-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-crm-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-outreach-draft-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Prepare creator personalized drafts
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-outreach-draft-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-outreach-draft-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   creator-follow-up-learning:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Prepare safe creator follow ups and learn outcomes
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-follow-up-learning" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/creator-follow-up-learning" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   dual-engine-resource-economics:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Balance business creator resources and budget
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-resource-economics" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-resource-economics" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   dual-engine-unit-economics:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Measure business creator unit economics
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || { echo "AUTO_HUNT_SECRET missing"; exit 1; }
-          curl --fail --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-unit-economics" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error -X GET "https://www.aivisibilityworks.com/api/dual-engine-unit-economics" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   verified-revenue-attribution:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh verified revenue attribution
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || exit 1
-          curl --fail --silent --show-error "https://www.aivisibilityworks.com/api/verified-revenue-attribution" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error "https://www.aivisibilityworks.com/api/verified-revenue-attribution" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   commercial-truth-cycle:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Refresh verified commercial performance
         env:
           AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
         run: |
           test -n "$AUTO_HUNT_SECRET" || exit 1
-          curl --fail --silent --show-error "https://www.aivisibilityworks.com/api/commercial-truth-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
+          curl --fail-with-body --connect-timeout 10 --max-time 110 --silent --show-error "https://www.aivisibilityworks.com/api/commercial-truth-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"

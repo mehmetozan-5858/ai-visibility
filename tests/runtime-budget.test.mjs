@@ -4,7 +4,7 @@ import {withRequestBudget,budgetFetch,remainingBudget} from '../lib/request-budg
 import {initializeSchema} from '../lib/database-runtime.js';
 test('concurrent schema initialization runs one migration and retries failed initialization',async()=>{
  let migrations=0,released=0,fail=true;
- const pool={connect:async()=>({query:async()=>{},release(){released++}})};
+ const pool={connect:async()=>({query:async()=>({rows:[]}),release(){released++}})};
  const ensure=async()=>{migrations++;await new Promise(r=>setTimeout(r,5));if(fail)throw new Error('migration-failure')};
  const failures=await Promise.allSettled([initializeSchema(pool,'test',ensure),initializeSchema(pool,'test',ensure)]);
  assert.ok(failures.every(x=>x.status==='rejected'));assert.equal(migrations,1);fail=false;
