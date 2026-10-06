@@ -17,7 +17,7 @@ export async function POST(req){
  let client,locked=false;
  try{
   client=await databasePool(url).connect();
-  locked=Boolean((await client.query("SELECT pg_try_advisory_lock(741852965) AS acquired")).rows[0]?.acquired);
+  locked=Boolean((await client.query("SELECT pg_try_advisory_lock(741852970) AS acquired")).rows[0]?.acquired);
   if(!locked)return Response.json({error:"Global tarama zaten çalışıyor."},{status:409});
   const guard=await refreshBudgetGuard();
   if(guard.mode==="emergency")return Response.json({error:"AI bütçesi doldu; tarama başlatılmadı."},{status:409});
@@ -31,5 +31,5 @@ export async function POST(req){
   const [business,creator]=await Promise.all(results.map(summarize));
   return Response.json({ok:business.ok&&creator.ok,business,creator,automaticSending:false},{headers:{"cache-control":"no-store"}});
  }catch{return Response.json({error:"Global tarama tamamlanamadı. Ajan durumunu kontrol edin."},{status:503})}
- finally{if(locked)await client.query("SELECT pg_advisory_unlock(741852965)").catch(()=>{});client?.release()}
+ finally{if(locked)await client.query("SELECT pg_advisory_unlock(741852970)").catch(()=>{});client?.release()}
 }
