@@ -1,3 +1,4 @@
+import {answerEvidenceStatus} from "../../../../lib/answer-evidence-status";
 import {runAutomaticAnswerEvidence} from "../../../../lib/answer-evidence-automation";
 import {evaluateOutreachPool,needsProspectPreparation,selectPreparationCandidates} from "../../../../lib/outreach-selection";
 import {nicheSearchSector} from "../../../../lib/niche-targeting";
@@ -141,9 +142,11 @@ async function runCycle(req){
     }
     report.poolAfter={evaluated:contactAssessment.evaluated,awaitingAnalysis:contactAssessment.awaitingAnalysis};
   }catch(e){report.ok=false;report.errors.push({stage:"parallel-cycle",error:String(e?.message||e).slice(0,220)})}
+  if(hasBudget(5000)){try{const status=await answerEvidenceStatus();report.answerMonitoring={counts:status.counts,reviewed:status.reviewed,hourlyUsed:status.hourlyUsed,serverNow:status.serverNow,limited:status.limited}}catch{report.answerMonitoring={error:'status-unavailable'}}}
   const finishedAt=new Date().toISOString(),finalReport={...report,finishedAt,durationMs:Date.now()-startedMs};
   logCycle("parallel-finished",{markets:markets.length,discovered:report.discovered,newProspects:report.newProspects,scanned:report.scanned,completed:report.completed,errorCount:report.errors.length});
   try{const saved=await saveDailyAgentReport(finalReport);if(!saved)throw new Error("report-not-persisted");await learnFromMarketRun(finalReport)}catch(e){finalReport.ok=false;finalReport.errors.push({stage:"report-save",error:String(e?.message||e).slice(0,180)});console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
-  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:report.mode==="backlog-preparation"?`Yeni keşif yerine mevcut adaylar işlendi. Kaydedilen analiz ${report.completed}, hazırlanan iletişim paketi ${report.contactPrepared||0}, hata ${report.errors.length}.`:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
+  const monitoringNote=report.answerMonitoring?.counts?` Anlık yanıt ölçümü: ${report.answerMonitoring.counts.ready} uygun, ${report.answerMonitoring.counts.cooldown} aralık bekleyen, ${report.answerMonitoring.counts.blocked} koşulu eksik / kapsam dışı.`:"";
+  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:report.mode==="backlog-preparation"?`Yeni keşif yerine mevcut adaylar işlendi. Kaydedilen analiz ${report.completed}, hazırlanan iletişim paketi ${report.contactPrepared||0}, hata ${report.errors.length}.${monitoringNote}`:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.${monitoringNote}`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
   return Response.json(finalReport,{status:finalReport.ok?200:500,headers:{"cache-control":"no-store"}});
 }
