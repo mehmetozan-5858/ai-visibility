@@ -5,6 +5,7 @@ const LanguageContext=createContext(null);
 
 const dictionaries={
   tr:{
+    mainNavigation:"Ana gezinme",more:"Diğer",moreSections:"Diğer bölümler",closeNavigation:"Menüyü kapat",leadFinder:"Müşteri Bul",answerEvidence:"Yanıt Kanıtları",pendingWork:"Bekleyen İşler",
     home:"Ana Sayfa",clients:"Müşteriler",business:"İşletme",scans:"Taramalar",reports:"Raporlar",agents:"Ajanlar",settings:"Ayarlar",
     liveProtected:"● CANLI / KORUMALI",adminPanel:"GEO / AEO YÖNETİM PANELİ",customerPanel:"MÜŞTERİ PANELİ",
     logout:"Çıkış",loggingOut:"Çıkılıyor…",language:"Dil",turkish:"Türkçe",english:"English",
@@ -17,6 +18,7 @@ const dictionaries={
     contentPlanFailed:"İçerik planı üretilemedi.",implementationFailed:"Uygulama paketi hazırlanamadı."
   },
   en:{
+    mainNavigation:"Main navigation",more:"More",moreSections:"More sections",closeNavigation:"Close navigation",leadFinder:"Find prospects",answerEvidence:"Answer Evidence",pendingWork:"Pending Work",
     home:"Home",clients:"Clients",business:"Business",scans:"Scans",reports:"Reports",agents:"Agents",settings:"Settings",
     liveProtected:"● LIVE / PROTECTED",adminPanel:"GEO / AEO MANAGEMENT PANEL",customerPanel:"CUSTOMER PORTAL",
     logout:"Log out",loggingOut:"Logging out…",language:"Language",turkish:"Türkçe",english:"English",

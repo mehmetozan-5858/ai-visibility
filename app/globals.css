@@ -158,3 +158,24 @@
 .customer-report-viewer{padding-bottom:0!important;overflow:hidden}
 .report-viewer-toolbar{padding-top:calc(12px + env(safe-area-inset-top))!important;flex-wrap:wrap}
 .report-viewer-toolbar a{flex-shrink:0}
+
+/* Shared admin navigation: one row on phones, with accessible overflow. */
+.admin-bottom-nav{grid-template-columns:repeat(8,minmax(0,1fr));height:auto;min-height:72px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));}
+.admin-bottom-nav a,.admin-bottom-nav .nav-more{min-width:0;min-height:52px;justify-content:center;gap:4px;padding:5px 2px;border-radius:10px;text-align:center;}
+.admin-bottom-nav .nav-more{display:flex;flex-direction:column;background:transparent;color:#829aaa;font:inherit;font-size:11px;font-weight:400;border:0;}
+.admin-bottom-nav b{font-size:21px;line-height:24px;}
+.admin-bottom-nav span{font-size:11px;line-height:14px;}
+.admin-bottom-nav .nav-more.active span{color:#74c9ff;font-weight:800;}
+.admin-bottom-nav .nav-more.active b{color:#35dfb2;}
+.admin-bottom-nav a:focus-visible,.admin-bottom-nav button:focus-visible,.admin-nav-dialog button:focus-visible,.admin-nav-dialog a:focus-visible{outline:3px solid #35dfb2;outline-offset:-3px;}
+.admin-nav-dialog{position:fixed;inset:auto 12px calc(12px + env(safe-area-inset-bottom));width:min(520px,calc(100% - 24px));max-height:calc(90dvh - env(safe-area-inset-bottom));margin:0 auto;padding:18px;overflow-y:auto;border:1px solid #24536a;border-radius:22px;background:#081b28;color:#f3f7fb;box-shadow:0 14px 50px #0008;}
+.admin-nav-dialog::backdrop{background:#0009;backdrop-filter:blur(3px);}
+.admin-nav-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.admin-nav-dialog h2{font-size:20px;margin:0;}
+.admin-nav-dialog header button{min-width:44px;min-height:44px;padding:0;background:#123447;font-size:28px;}
+.admin-nav-links{display:grid;gap:8px;}
+.admin-nav-links a{display:grid;grid-template-columns:30px minmax(0,1fr) 18px;gap:10px;align-items:center;min-height:52px;padding:10px 12px;background:#0c2839;border:1px solid #1b4359;border-radius:12px;}
+.admin-nav-links a.active{border-color:#22cfaa;color:#56e7c3;}
+.admin-nav-links b{font-size:21px;}
+@media(max-width:720px){.admin-bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr));}.admin-bottom-nav .nav-secondary{display:none;}.admin-bottom-nav span{font-size:10px;}.admin-bottom-nav b{font-size:21px;}}
+@media print{.admin-bottom-nav,.admin-nav-dialog{display:none!important;}}

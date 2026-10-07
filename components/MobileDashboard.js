@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {readDashboardSnapshot,measuredScans} from "../lib/dashboard-snapshot";
+import BottomNavigation from "./BottomNavigation";
 import LogoutButton from "./LogoutButton";
 
 const agents=[["research","Araştırma Ajanı","Pazar, rakip ve lead araştırması"],["visibility","Görünürlük Ajanı","GEO / AEO tarama kuyruğu"],["content","İçerik Ajanı","İyileştirme taslakları"],["sales","Satış Ajanı","Dış iletişim insan onaylı"]];
@@ -60,4 +61,4 @@ return <div className="mv">
 <article className="mv-card mv-recent"><div className="mv-title"><h2>Son Taramalar</h2><a href="/taramalar">→</a></div>{recentProviders.map(x=><div className="mv-scan" key={x[1]}><i>{x[0]}</i><span><b>{x[1]}</b><small>{summary?x[2]:"—"} sonuç</small></span><em>{x[2]?"●":"—"}</em><strong>⌁</strong></div>)}</article></section>
 <section className="mv-card mv-agents"><div className="mv-title"><h2>Ajan Merkezi</h2><a href="/ajanlar">Tüm ajanları gör →</a></div><div className="mv-agentgrid">{agents.map(([i,n,d])=><a href="/ajanlar" className="mv-agent" key={n}><div className={"mv-agentpic "+i}/><b>{n}</b><p>{d}</p><small>● Aktif <em>→</em></small></a>)}</div></section>
 <section className="mv-card mv-actions"><div className="mv-title"><h2>Hızlı İşlemler</h2><span>Tüm işlemler →</span></div><div className="mv-actiongrid"><a href="/musteriler"><b>♟＋</b><span>Yeni Müşteri</span></a><a href="/taramalar"><b>⌕</b><span>Tarama Başlat</span></a><a href="/raporlar"><b>▤</b><span>Rapor Oluştur</span></a><a href="/ayarlar"><b>⚙</b><span>Ayarlar</span></a></div></section>
-<nav className="mv-nav">{[["/","⌂","Ana Sayfa"],["/musteriler","♙","Müşteriler"],["/taramalar","⌕","Taramalar"],["/raporlar","▥","Raporlar"],["/ajanlar","⌘","Ajanlar"],["/ayarlar","⚙","Ayarlar"]].map(x=><a href={x[0]} key={x[0]} className={x[0]==="/"?"active":""} aria-current={x[0]==="/"?"page":undefined}><b>{x[1]}</b><span>{x[2]}</span></a>)}</nav></div>}
+<BottomNavigation/></div>}
