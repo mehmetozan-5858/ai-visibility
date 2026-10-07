@@ -1,4 +1,4 @@
-import {measureProspectAnswerEvidence} from "../../../../lib/answer-evidence-store";
+import {runAutomaticAnswerEvidence} from "../../../../lib/answer-evidence-automation";
 import {evaluateOutreachPool,needsProspectPreparation,selectPreparationCandidates} from "../../../../lib/outreach-selection";
 import {nicheSearchSector} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
@@ -110,11 +110,11 @@ async function runCycle(req){
         await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sağlayıcı ön değerlendirmesi kaydedildi; doğrulama bekleyen notlar ile doğrudan sayfa kontrolleri ayrı tutulur.",payload:{prospectId:prospect.id,name:prospect.name,provider:result.provider||""},status:"completed"});
       }catch(e){report.errors.push({stage:"analysis",prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
     }));
-    if(answerCandidates.length&&hasBudget(30000)){
-      try{const run=await measureProspectAnswerEvidence(answerCandidates[0]);report.answerEvidence={id:run.id||null,skipped:run.skipped||'',summary:run.result?.summary||null};
-        if(run.result)await share({agent:"Görünürlük Ajanı",eventType:"answer-evidence",title:`AI yanıt kanıtı kaydedildi: ${answerCandidates[0].name}`,detail:`${run.result.summary.successful} yanıt, ${run.result.summary.failed} hata; genel görünürlük puanı değildir.`,payload:{runId:run.id,summary:run.result.summary},status:run.result.errors.length?"needs-attention":"completed"});
+    if(hasBudget(30000)){
+      try{const run=await runAutomaticAnswerEvidence(answerCandidates);report.answerEvidence={id:run.id||null,kind:run.kind||null,entityId:run.entityId||null,skipped:run.skipped||'',summary:run.result?.summary||null,comparisonPairs:run.result?.comparison?.pairs?.length||0,slotAuditSaved:run.slotAuditSaved??null};
+        if(run.result)await share({agent:"Görünürlük Ajanı",eventType:"answer-evidence",title:`${run.kind==='repeat'?'AI yanıtı yeniden ölçüldü':'AI yanıt kanıtı kaydedildi'}: ${run.entityName}`,detail:`${run.result.summary.successful} yanıt, ${run.result.summary.failed} hata; ${run.result.comparison?.pairs?.length||0} eş koşullu karşılaştırma. Genel görünürlük puanı değildir.`,payload:{runId:run.id,kind:run.kind,summary:run.result.summary,comparisonPairs:run.result.comparison?.pairs?.length||0},status:run.result.errors.length||run.slotAuditSaved===false?"needs-attention":"completed"});
       }catch{report.answerEvidence={skipped:'evidence-run-unavailable'}}
-    }
+    }else report.answerEvidence={skipped:'runtime-budget'};
     // Re-read saved results and current eligibility after concurrent scans.
     const contactAssessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
     const contactCandidates=selectPreparationCandidates(contactAssessment.ranked.filter(x=>!x.analysisRequired),{limit:1,slot});
