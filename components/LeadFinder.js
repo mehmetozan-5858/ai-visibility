@@ -34,6 +34,7 @@ export default function LeadFinder(){
  </>:<p>Tamamlanmış sağlayıcı ön değerlendirmesi yok. Somut ihtiyaç henüz doğrulanmadı.</p>}
 
  {x.evidence?.contactSourceUrl&&<a href={x.evidence.contactSourceUrl} target="_blank" rel="noopener noreferrer">Kurumsal iletişim kaynağını aç ↗</a>}
+ <a href={"/yanit-kanitlari?prospectId="+encodeURIComponent(x.id)}>AI yanıt kanıtlarını incele ↗</a>
  </div></details></article>)}</div>}
 
  {filtered.length>25&&<div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap",marginTop:16}}><button type="button" disabled={currentPage<=1||loading} onClick={()=>setPage(currentPage-1)}>Önceki</button><span>Sayfa {currentPage} / {pages}</span><button type="button" disabled={currentPage>=pages||loading} onClick={()=>setPage(currentPage+1)}>Sonraki</button></div>}

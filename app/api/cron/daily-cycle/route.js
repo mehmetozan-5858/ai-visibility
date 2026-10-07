@@ -1,3 +1,4 @@
+import {measureProspectAnswerEvidence} from "../../../../lib/answer-evidence-store";
 import {evaluateOutreachPool,needsProspectPreparation,selectPreparationCandidates} from "../../../../lib/outreach-selection";
 import {nicheSearchSector} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
@@ -94,6 +95,7 @@ async function runCycle(req){
     report.capacity={analysisLimit:guard.multiplier<1?1:deepLimit,analysisConcurrency:guard.multiplier<1?1:deepLimit,contactLimit:1};
     report.preparedCandidates=[];
     report.evidenceReview=[];
+    const answerCandidates=[];
     const analyses=selectPreparationCandidates(assessment.ranked.filter(x=>x.analysisRequired),{limit:report.capacity.analysisLimit,slot});
     if(analyses.length&&!hasBudget(35000)){report.truncated=true;report.stopReason="runtime-budget"}
     else await Promise.allSettled(analyses.map(async prospect=>{
@@ -103,11 +105,16 @@ async function runCycle(req){
         report.scanned++;
         const result=await withRequestBudget(Math.min(35000,Math.max(1000,budgetMs-(Date.now()-startedMs)-15000)),()=>runProviderCheck(prospect));if(!result)throw new Error("no-provider-result");
         const saved=await completeProspectScan(scan.id,prospect.id,result);if(!saved)throw new Error("scan-not-persisted");
-        report.completed++;
+        report.completed++;answerCandidates.push(prospect);
         report.evidenceReview.push({prospectId:prospect.id,status:result.evidence?.status||"unavailable",sourceUrl:result.evidence?.sourceUrl||"",checkedAt:result.evidence?.checkedAt||null,scope:result.evidence?.scope||"",checks:result.evidence?.checks||[]});
         await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sağlayıcı ön değerlendirmesi kaydedildi; doğrulama bekleyen notlar ile doğrudan sayfa kontrolleri ayrı tutulur.",payload:{prospectId:prospect.id,name:prospect.name,provider:result.provider||""},status:"completed"});
       }catch(e){report.errors.push({stage:"analysis",prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
     }));
+    if(answerCandidates.length&&hasBudget(30000)){
+      try{const run=await measureProspectAnswerEvidence(answerCandidates[0]);report.answerEvidence={id:run.id||null,skipped:run.skipped||'',summary:run.result?.summary||null};
+        if(run.result)await share({agent:"Görünürlük Ajanı",eventType:"answer-evidence",title:`AI yanıt kanıtı kaydedildi: ${answerCandidates[0].name}`,detail:`${run.result.summary.successful} yanıt, ${run.result.summary.failed} hata; genel görünürlük puanı değildir.`,payload:{runId:run.id,summary:run.result.summary},status:run.result.errors.length?"needs-attention":"completed"});
+      }catch{report.answerEvidence={skipped:'evidence-run-unavailable'}}
+    }
     // Re-read saved results and current eligibility after concurrent scans.
     const contactAssessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
     const contactCandidates=selectPreparationCandidates(contactAssessment.ranked.filter(x=>!x.analysisRequired),{limit:1,slot});

@@ -1,8 +1,9 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
 import FindingsManager from "./FindingsManager";
+import AnswerEvidenceManager from "./AnswerEvidenceManager";
 
-const tabs=[["findings","Bulgular"],["content","İçerik Ajanı"],["implementation","Uygulama Ajanı"],["history","Tarama Geçmişi"]];
+const tabs=[["evidence","AI Yanıt Kanıtları"],["findings","Bulgular"],["content","İçerik Ajanı"],["implementation","Uygulama Ajanı"],["history","Tarama Geçmişi"]];
 
 export default function ReportsManager(){
   const [tab,setTab]=useState("findings");
@@ -39,6 +40,8 @@ export default function ReportsManager(){
       {tabs.map(([id,label])=><button key={id} type="button" onClick={()=>setTab(id)} aria-pressed={tab===id} style={{width:"100%",minWidth:0,whiteSpace:"normal",textAlign:"center",opacity:tab===id?1:.62,boxShadow:tab===id?"0 0 0 2px #4aa7ff55":"none"}}>{label}</button>)}
     </div>
 
+    {tab==="evidence"&&<AnswerEvidenceManager/>}
+
     {tab==="findings"&&<FindingsManager/>}
 
     {tab==="content"&&<article className="panel">
@@ -58,7 +61,7 @@ export default function ReportsManager(){
     </article>}
 
     {tab==="history"&&<section className="grid reports-grid">
-      <article className="panel report-summary"><div className="report-heading"><h2>Tarama geçmişi</h2><small>{selectedName}</small></div><div className="report-kpis"><div><span>Tarama</span><strong>{rows.length}</strong></div><div><span>Tamamlanan</span><strong>{completedAll.length}</strong></div><div><span>Ort. skor</span><strong>{avg==null?"—":avg+"/100"}</strong></div></div></article>
+      <article className="panel report-summary"><div className="report-heading"><h2>Tarama geçmişi</h2><p>Bu bölümdeki skorlar sağlayıcı ön değerlendirmesidir. Kaydedilmiş gerçek sorgu yanıtları AI Yanıt Kanıtları sekmesinde ayrı gösterilir.</p><small>{selectedName}</small></div><div className="report-kpis"><div><span>Tarama</span><strong>{rows.length}</strong></div><div><span>Tamamlanan</span><strong>{completedAll.length}</strong></div><div><span>Ort. sağlayıcı tahmini</span><strong>{avg==null?"—":avg+"/100"}</strong></div></div></article>
       <article className="panel"><label className="report-select">Müşteri<select value={filter} onChange={e=>resetAgentState(e.target.value)}><option value="all">Tüm müşteriler</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><button onClick={download} disabled={!rows.length}>▤ PDF raporu indir</button><div className="report-compact-list">{completedAll.slice(0,20).map(x=>{const results=Array.isArray(x.results)?x.results:[];return <details className="report-preview compact" key={x.id}><summary><span><strong>{x.clientName}</strong><small>{new Date(x.completedAt||x.createdAt).toLocaleString("tr-TR")}</small></span><b>{x.score}/100</b></summary><div className="report-detail"><div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>{results.map((r,i)=><span key={i} style={{padding:"6px 9px",border:"1px solid #28516a",borderRadius:10}}>{r.provider||"AI"} · {r.score??"—"}/100</span>)}</div>{results.map((r,i)=><div key={i} style={{marginBottom:14}}><b>{r.provider||"AI"}</b>{r.summary&&<p>{r.summary}</p>}{Array.isArray(r.recommendations)&&r.recommendations.length>0&&<ul>{r.recommendations.slice(0,2).map((v,j)=><li key={j}>{v}</li>)}</ul>}</div>)}</div></details>})}</div></article>
     </section>}
   </section>;
