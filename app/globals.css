@@ -215,3 +215,8 @@
 .answer-evidence-status-counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:12;}
 @media(max-width:720px){.answer-evidence-workspace .section-title{flex-wrap:wrap;gap:10px;}}
 @media(max-width:420px){.answer-evidence-status-counts{grid-template-columns:minmax(0,1fr);}.answer-evidence-workspace .panel{padding:14px;}}
+
+.work-workspace,.work-workspace *{min-width:0;box-sizing:border-box;}
+.work-workspace input:not([type="checkbox"]),.work-workspace textarea,.work-workspace select{width:100%;max-width:100%;min-height:44px;font-size:16px;}
+.work-workspace button{min-height:44px;max-width:100%;white-space:normal;}
+.work-workspace form>div{flex-wrap:wrap;}

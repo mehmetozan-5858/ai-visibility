@@ -1,9 +1,12 @@
 import {listWorkItems,updateWorkItem} from "../../../lib/repository";
 import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
+import {getDatabaseUrl} from "../../../lib/db";
+const headers={"cache-control":"no-store"};
 export async function GET(req){
   const denied=await requireAdmin(req);if(denied)return denied;
-  try{return Response.json({items:await listWorkItems(200)})}
-  catch(e){return Response.json({error:"İş listesi okunamadı.",detail:String(e?.message||e).slice(0,220)},{status:500})}
+  if(!getDatabaseUrl())return Response.json({error:"İş listesi için veritabanı bağlantısı gerekli."},{status:503,headers});
+  try{return Response.json({items:await listWorkItems(200)},{headers})}
+  catch{return Response.json({error:"İş listesi okunamadı."},{status:503,headers})}
 }
 export async function PATCH(req){
   const denied=await requireAdmin(req);if(denied)return denied;
