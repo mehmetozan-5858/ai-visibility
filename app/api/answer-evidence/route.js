@@ -24,5 +24,6 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
    const previous=await getAnswerEvidenceRun(body.repeatRunId);if(!previous)return Response.json({error:'Önceki ölçüm bulunamadı.'},{status:404});
    try{options=repeatEvidenceOptions(entity,previous,answerProviders())}catch{return Response.json({error:'İşletme kimliği veya sağlayıcı yapılandırması değişmiş; bu tur aynı koşullarda tekrarlanamıyor.'},{status:409})}
   }
+  options.measurementOrigin='admin';
   const run=await measureAnswerEvidence(entity,options);return Response.json({run},{status:run.skipped?409:200});
  }catch{return Response.json({error:'Yanıt kanıtı turu tamamlanamadı. Yapılandırmayı kontrol edip tekrar deneyin.'},{status:503})}}
