@@ -1,3 +1,4 @@
+import {clientBaselineOptions} from '../../../lib/answer-evidence-baseline';
 import {answerEvidenceStatus} from '../../../lib/answer-evidence-status';
 import {repeatEvidenceOptions} from '../../../lib/answer-evidence-comparison';
 import {requireAdmin,enforceSameOrigin} from '../../../lib/api-security';
@@ -15,10 +16,12 @@ export async function GET(req){const denied=await requireAdmin(req);if(denied)re
 export async function POST(req){const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;
  try{
   const body=await req.json();if(!['prospect','client'].includes(body.entityType)||!uuid(body.entityId))return Response.json({error:'Geçerli bir işletme seçin.'},{status:400});
+  if(body.baseline!==undefined&&(body.baseline!==true||body.entityType!=='client'||body.repeatRunId!==undefined))return Response.json({error:'Başlangıç ölçümü yalnız müşteri için yeni bir tur olabilir.'},{status:400});
   const row=body.entityType==='prospect'?await getProspect(body.entityId):await getClient(body.entityId);if(!row)return Response.json({error:'İşletme bulunamadı.'},{status:404});
   const profile=body.entityType==='client'?await getClientProfile(body.entityId):null,entity={...row,...(profile?{sector:profile.sector,city:profile.city,country:profile.country}:{}),entityType:body.entityType};
   const language=body.language==='en'?'en':'tr';let queries;try{queries=body.repeatRunId!==undefined?[]:evidenceQueries(entity,body.queries??[],language).map(x=>x.query)}catch{return Response.json({error:'En fazla 2 sorgu yazın (8–500 karakter). Otomatik sorgu için sektör ve konum gerekli.'},{status:400})}
   let options={queries,language};
+  if(body.baseline===true){try{options=clientBaselineOptions(entity,queries,language,answerProviders())}catch{return Response.json({error:'Başlangıç ölçümü için markayı/alan adını içermeyen tek sorgu ve bağlı sağlayıcı gerekir.'},{status:400})}}
   if(body.repeatRunId!==undefined){
    if(!uuid(body.repeatRunId)||body.queries!==undefined)return Response.json({error:'Tekrar ölçüm için yalnız kayıt kimliği gönderin.'},{status:400});
    const previous=await getAnswerEvidenceRun(body.repeatRunId);if(!previous)return Response.json({error:'Önceki ölçüm bulunamadı.'},{status:404});
