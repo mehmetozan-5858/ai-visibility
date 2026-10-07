@@ -2,13 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {shopierProduct,paymentMatchesPlan} from '../lib/hosted-checkout.js';
 import {servicePrice} from '../lib/regional-pricing.js';
-import {reportDay,reportMarkets} from '../lib/reporting.js';
+import {reportDay,reportMarkets,reportAgentGroups} from '../lib/reporting.js';
 import {wordpressTarget,draftContent} from '../lib/wordpress-validation.js';
 test('Istanbul midnight and parallel markets are represented correctly',()=>{
  assert.equal(reportDay('2026-10-06T21:01:00Z'),'2026-10-07');
  assert.equal(reportDay('2026-10-06T20:59:00Z'),'2026-10-06');
  assert.equal(reportDay('invalid'),'');
  assert.deepEqual(reportMarkets([{market:{mode:'parallel',markets:[{country:'Germany',city:'Berlin'}]}},{market:{country:'Germany',city:'Berlin'}}]),[{country:'Germany',city:'Berlin'}]);
+});
+test('creator-heavy activity keeps business and shared records separately visible',()=>{
+ const events=[...Array.from({length:20},(_,i)=>({id:i,agent:'Creator Intelligence Brain'})),{id:20,agent:'Görünürlük Ajanı'},{id:21,agent:'Communication Agent'},{id:22,agent:'CEO Ajanı'},{id:23,agent:'Unknown'}];
+ const groups=reportAgentGroups(events);
+ assert.deepEqual(groups.map(x=>x.events.length),[2,20,2]);
+ assert.deepEqual(groups[0].events.map(x=>x.id),[20,21]);
+ assert.equal(groups.flatMap(x=>x.events).length,events.length);
+ assert.ok(reportAgentGroups().every(x=>x.events.length===0));
 });
 test('hosted checkout binds product to exact service, amount and currency',()=>{
  const plan=servicePrice({service:'business-diagnosis',country:'Germany'});

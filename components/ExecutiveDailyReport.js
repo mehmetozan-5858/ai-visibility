@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
+import {reportAgentGroups} from "../lib/reporting";
 
 const number=value=>Number(value||0).toLocaleString("tr-TR");
 export default function ExecutiveDailyReport(){
@@ -18,6 +19,7 @@ export default function ExecutiveDailyReport(){
  const revenue=(pay.revenueByCurrency||[]).map(x=>["TRY","EUR","USD","GBP"].includes(x.currency)?new Intl.NumberFormat("tr-TR",{style:"currency",currency:x.currency}).format(x.amount):`${number(x.amount)} (para birimi eksik)`).join(" · ")||"Henüz gelir yok";
  const cards=[["Bulunan aday",p.total],["Nitelikli aday",p.qualified],["Temas",p.contacted],["Cevap",p.replies],["Teklif",p.proposals],["Satış",p.won],["Ödeme adedi",pay.paid],["Gelir",revenue],["Tamamlanan çözüm",work.completed],["Bloke iş",work.blocked],["İyileşen",re.improved],["Ort. skor değişimi",Number(re.avgDelta||0).toFixed(1)]];
  const rates=[["Nitelikli aday",d?.conversion?.qualifiedRate],["Temasa cevap",d?.conversion?.replyRate],["Tekliften satış",d?.conversion?.winRate]];
+ const agentGroups=reportAgentGroups(d?.events||[]);
  const tags=(items,empty)=>items?.length?<div className="er-tags">{items.map((x,i)=><span key={i}>{x}</span>)}</div>:<p className="er-muted">{empty}</p>;
  return <section className="executive-daily-report" aria-labelledby="executive-report-title">
   <div className="executive-report-controls er-toolbar"><span>YÖNETİCİ RAPORU</span><div><button onClick={load} disabled={loading}>{loading?"Yükleniyor…":"Yenile"}</button><button className="er-print" onClick={()=>window.print()} disabled={!d||!!err}>Yazdır / PDF</button><button ref={closeButton} className="er-close" onClick={()=>setClosed(true)} aria-label="Yönetici raporunu kapat" title="Raporu kapat">×</button></div></div>
@@ -34,7 +36,8 @@ export default function ExecutiveDailyReport(){
   <div className="er-context"><h3>Çalışan ajanlar ve amirler</h3>{tags(d.agents,"Henüz ajan hareketi yok.")}</div>
   {d.profitControl?.currencies?.some(x=>x.unknownCostEntries>0)&&<p className="er-note">AI maliyet kayıtlarında fiyatı bilinmeyen çağrılar var. Sıfır maliyet veya net kâr olarak değerlendirilmez.</p>}
   <div className="er-section-title"><span>05</span><h2>Son ajan hareketleri</h2></div>
-  <div className="er-timeline">{d.events?.length?d.events.slice(0,12).map((x,i)=><article key={x.id||i}><span className="er-dot"/><div><small>{x.agent}</small><h3>{x.title}</h3><p>{x.detail}</p></div></article>):<p className="er-muted">Bugün için kayıtlı ajan hareketi bulunmuyor.</p>}</div>
+  <p className="er-muted">Aşağıdaki hareketler kayıtlı faaliyetleri gösterir. Hareket kaydı, her ajanın tüm işlerini tamamladığı anlamına gelmez.</p>
+  {agentGroups.map(group=><section className="er-context" key={group.id}><h3>{group.label} · {number(group.events.length)} hareket kaydı</h3><div className="er-timeline">{group.events.length?group.events.slice(0,6).map((x,i)=><article key={x.id||i}><span className="er-dot"/><div><small>{x.agent} · {new Date(x.createdAt).toLocaleTimeString("tr-TR",{timeZone:"Europe/Istanbul",hour:"2-digit",minute:"2-digit"})}</small><h3>{x.title}</h3><p>{x.detail}</p></div></article>):<p className="er-muted">Bu grupta bugün için hareket kaydı bulunmuyor.</p>}</div></section>)}
   </>}
   <footer className="er-footer"><div><b>AI VISIBILITY</b><span>Yönetici Günlük Faaliyet Raporu</span></div><span>{d?.generatedAt?`Oluşturma: ${new Date(d.generatedAt).toLocaleString("tr-TR",{timeZone:"Europe/Istanbul"})}`:""}</span></footer>
   <style>{`
