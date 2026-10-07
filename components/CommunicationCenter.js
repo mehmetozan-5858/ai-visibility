@@ -1,4 +1,5 @@
 "use client";
+import PreparationQueueStatus from "./PreparationQueueStatus";
 import InboxManager from "./InboxManager";
 import {useEffect,useState} from "react";
 export default function CommunicationCenter(){
@@ -13,7 +14,7 @@ export default function CommunicationCenter(){
  async function send(x){setSending(x.id);setMsg("");try{const r=await fetch("/api/communication-send",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({prospectId:x.id,draft:x.outreachDraft})}),d=await r.json();if(!r.ok)throw Error(d.error+(d.detail?` (${d.detail})`:""));setSent(s=>[...s,{name:x.name,email:x.contactEmail,id:d.delivery?.id}]);await load()}catch(e){setMsg(e.message)}finally{setSending("")}}
  async function load(){try{const r=await fetch("/api/communication-queue",{cache:"no-store"}),d=await r.json();if(!r.ok)throw new Error(d.error||"Kuyruk alınamadı");setRows(d.queue||[])}catch(e){setMsg(e.message)}}
  useEffect(()=>{load();fetch("/api/communication-send",{cache:"no-store"}).then(async r=>{if(!r.ok)throw Error("Gönderici bilgisi alınamadı");return r.json()}).then(d=>{setSender(d);setSent((d.recent||[]).map(x=>({name:x.name,email:x.recipients?.join(", "),id:x.id})))}).catch(e=>setMsg(e.message))},[]);
- return <><InboxManager/><section className="panel"><div className="section-title"><div><h2>İletişim Merkezi</h2><small>Doğrulanmış kanal ve sektöre uygun ilk temas mesajı</small></div><b>{rows.length} hazır</b></div>
+ return <><PreparationQueueStatus/><InboxManager/><section className="panel"><div className="section-title"><div><h2>İletişim Merkezi</h2><small>Doğrulanmış kanal ve sektöre uygun ilk temas mesajı</small></div><b>{rows.length} hazır</b></div>
  {msg&&<p className="client-message" role="status">{msg}</p>}
  <section aria-label="Saatlik otomatik iletişim"><h3>Saatlik otomatik iletişim</h3>
  <p>{automation?`${automation.policy.enabled?'Aktif':'Kapalı'} · Günlük en fazla ${automation.policy.dailyLimit}, tur başına ${automation.policy.perCycle} gönderim · Takip: 4 gün + 5 gün, en fazla 2`:'Durum yükleniyor…'}</p>
@@ -23,6 +24,7 @@ export default function CommunicationCenter(){
  <button disabled={autoBusy} onClick={()=>runAutomation(true)}>Gönderimsiz kontrol et</button>{' '}
  <button disabled={autoBusy||!automation?.policy?.enabled} onClick={()=>runAutomation(false)}>{autoBusy?'Kontrol ediliyor…':'Kontrollü iletişim turunu çalıştır'}</button>
  {automation?.recent?.map((x,i)=><p key={i}>{new Date(x.createdAt).toLocaleString('tr-TR')} · {x.report.dryRun?'Kontrol':'Tur'} · İlk temas {x.report.firstSent}, takip {x.report.followSent}, uygun {x.report.eligible}, hata {x.report.errors?.length||0} {x.report.deferred?`· ${x.report.deferred}`:''}</p>)}
+ {automation?.recent?.some(x=>x.report.errors?.length>0)&&<details><summary>Son iletişim doğrulama hataları</summary>{automation.recent.filter(x=>x.report.errors?.length>0).slice(0,5).map((x,i)=><div key={i}><b>{new Date(x.createdAt).toLocaleString('tr-TR')}</b><ul>{x.report.errors.map((error,j)=><li key={j}>{error.name||x.report.selection?.selected?.find(row=>row.id===error.id)?.name||error.id||error.prospectId||'İşletme'} · {String(error.error||error.reason||'Doğrulama tamamlanamadı').slice(0,180)}</li>)}</ul></div>)}</details>}
  </section>
  <p>{sender?`Gönderici: ${sender.from||"Tanımlanmamış"}`:"Gönderici kontrol ediliyor…"}{sender&&!sender.configured?` · ${sender.reason}`:""}</p>
  {sent.map(x=><div role="status" key={x.id||x.email}><p>{x.name} · {x.email} · E-posta sağlayıcısı kabul etti · Kayıt: {x.id}. {deliveryEvents[x.id]?`Sağlayıcı olayı: ${deliveryEvents[x.id]}`:"Teslimat henüz doğrulanmadı."}</p><button onClick={()=>checkDelivery(x.id)}>Teslimatı kontrol et</button></div>)}

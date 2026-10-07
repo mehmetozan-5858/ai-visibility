@@ -1,15 +1,16 @@
+import {enqueuePreparation} from '../../../../lib/preparation-queue';
 import {implementationReport} from '../../../../lib/implementation-report';
 import {dailyAnswerEvidence} from "../../../../lib/answer-evidence-daily";
 import {reportDay} from "../../../../lib/reporting";
 import {answerEvidenceStatus} from "../../../../lib/answer-evidence-status";
 import {runAutomaticAnswerEvidence} from "../../../../lib/answer-evidence-automation";
-import {evaluateOutreachPool,needsProspectPreparation,selectPreparationCandidates} from "../../../../lib/outreach-selection";
+import {evaluateOutreachPool,needsProspectPreparation} from "../../../../lib/outreach-selection";
 import {nicheSearchSector} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../../lib/db";
 import {withRequestBudget} from "../../../../lib/request-budget";
-import {discoverBusinesses,runProviderCheck,findPublicBusinessContact,personalizeProspectOutreach,buildProspectProposal} from "../../../../lib/providers";
-import {getProspectNames,seedProspects,qualifyProspect,queueProspectScan,completeProspectScan,saveProspectContact,saveProspectPersonalization,saveProspectProposal,prepareProspectCommunication,listOutreachEvaluationCandidates,getLatestProspectAnalysis} from "../../../../lib/prospects";
+import {discoverBusinesses} from "../../../../lib/providers";
+import {getProspectNames,seedProspects,qualifyProspect,listOutreachEvaluationCandidates} from "../../../../lib/prospects";
 import {addSharedAgentEvent,saveDailyAgentReport,learnFromMarketRun,listMarketLearning,refreshMarketEconomics,listLearnedPolicies,listResourceAllocations,getRuntimeControl,refreshBudgetGuard} from "../../../../lib/agent-coordination";
 
 export const runtime="nodejs";
@@ -93,63 +94,22 @@ async function runCycle(req){
     const qualified=assessment.ranked.filter(needsProspectPreparation);
     await share({agent:"Qualification + Opportunity Agents",eventType:"pool-review",title:`Genel aday değerlendirmesi: ${assessment.evaluated} işletme`,detail:`Uzmanlık, doğrudan sayfa kontrolleri ve kurumsal iletişim karşılaştırıldı. Tahmini skor ölçüm sayılmadı. İletişime hazır ${assessment.qualified}; analiz bekleyen ${assessment.awaitingAnalysis}.`,payload:report.poolReview,status:"completed"});
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
-    const deepLimit=Math.max(1,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||2,2));
-    const hotCount=qualified.filter(x=>x.qualificationLevel==="hot").length;
-    report.hotProspects=hotCount;
-    report.capacity={analysisLimit:guard.multiplier<1?1:deepLimit,analysisConcurrency:guard.multiplier<1?1:deepLimit,contactLimit:1};
-    report.preparedCandidates=[];
-    report.evidenceReview=[];
+    report.hotProspects=qualified.filter(x=>x.qualificationLevel==="hot").length;
+    report.capacity={mode:"persistent-preparation-queue",analysisLimit:0,contactLimit:0};
+    report.preparation={reviewed:await enqueuePreparation(assessment.ranked),stages:["preflight","analysis","contact"]};
     const answerCandidates=[];
-    const analyses=selectPreparationCandidates(assessment.ranked.filter(x=>x.analysisRequired),{limit:report.capacity.analysisLimit,slot});
-    if(analyses.length&&!hasBudget(35000)){report.truncated=true;report.stopReason="runtime-budget"}
-    else await Promise.allSettled(analyses.map(async prospect=>{
-      report.preparedCandidates.push({id:prospect.id,name:prospect.name,stage:"analysis"});
-      try{
-        const scan=await queueProspectScan(prospect.id);if(scan.status==="demo-only")throw new Error("database-unavailable");
-        report.scanned++;
-        const result=await withRequestBudget(Math.min(35000,Math.max(1000,budgetMs-(Date.now()-startedMs)-15000)),()=>runProviderCheck(prospect));if(!result)throw new Error("no-provider-result");
-        const saved=await completeProspectScan(scan.id,prospect.id,result);if(!saved)throw new Error("scan-not-persisted");
-        report.completed++;answerCandidates.push(prospect);
-        report.evidenceReview.push({prospectId:prospect.id,status:result.evidence?.status||"unavailable",sourceUrl:result.evidence?.sourceUrl||"",checkedAt:result.evidence?.checkedAt||null,scope:result.evidence?.scope||"",checks:result.evidence?.checks||[]});
-        await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sağlayıcı ön değerlendirmesi kaydedildi; doğrulama bekleyen notlar ile doğrudan sayfa kontrolleri ayrı tutulur.",payload:{prospectId:prospect.id,name:prospect.name,provider:result.provider||""},status:"completed"});
-      }catch(e){report.errors.push({stage:"analysis",prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
-    }));
     if(hasBudget(30000)){
       try{const run=await runAutomaticAnswerEvidence(answerCandidates);report.answerEvidence={id:run.id||null,kind:run.kind||null,entityId:run.entityId||null,entityType:run.entityType||null,implementationWorkId:run.result?.implementationContext?.workId||null,implementationPlans:run.implementationPlans??null,skipped:run.skipped||'',summary:run.result?.summary||null,comparisonPairs:run.result?.comparison?.pairs?.length||0,slotAuditSaved:run.slotAuditSaved??null};
         if(run.result)await share({agent:"Görünürlük Ajanı",eventType:"answer-evidence",title:`${run.kind==='repeat'?'AI yanıtı yeniden ölçüldü':'AI yanıt kanıtı kaydedildi'}: ${run.entityName}`,detail:`${run.result.summary.successful} yanıt, ${run.result.summary.failed} hata; ${run.result.comparison?.pairs?.length||0} eş koşullu karşılaştırma. Genel görünürlük puanı değildir.`,payload:{runId:run.id,kind:run.kind,summary:run.result.summary,comparisonPairs:run.result.comparison?.pairs?.length||0},status:run.result.errors.length||run.slotAuditSaved===false?"needs-attention":"completed"});
       }catch{report.answerEvidence={skipped:'evidence-run-unavailable'}}
     }else report.answerEvidence={skipped:'runtime-budget'};
-    // Re-read saved results and current eligibility after concurrent scans.
-    const contactAssessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
-    const contactCandidates=selectPreparationCandidates(contactAssessment.ranked.filter(x=>!x.analysisRequired),{limit:1,slot});
-    for(const prospect of contactCandidates){
-      if(!hasBudget(25000)){report.truncated=true;report.stopReason="contact-deferred";break}
-      report.preparedCandidates.push({id:prospect.id,name:prospect.name,stage:"contact-package"});
-      try{
-        const result=await getLatestProspectAnalysis(prospect.id);if(!result)throw new Error("saved-analysis-required");
-        const foundContact=prospect.contactStatus==="verified"?{email:prospect.contactEmail,sourceUrl:prospect.contactSourceUrl,status:"verified"}:await findPublicBusinessContact(prospect);
-        const savedContact=await saveProspectContact(prospect.id,foundContact);
-        const contact={email:savedContact?.contactEmail||"",sourceUrl:savedContact?.contactSourceUrl||"",contactUrl:savedContact?.contactUrl||"",status:savedContact?.contactStatus||"not-found"};
-        await share({agent:"Contact Finder",eventType:"handoff",title:`İletişim kontrolü: ${prospect.name}`,detail:contact.status==="verified"?"Doğrulanmış kamusal kurumsal iletişim kanalı bulundu.":"Doğrulanabilir kamusal kurumsal iletişim kanalı bulunamadı.",payload:{prospectId:prospect.id,status:contact.status,sourceUrl:contact.sourceUrl||""},status:contact.status==="verified"?"completed":"needs-attention"});
-        if(contact.status==="verified"){
-          if(!hasBudget(12000)){report.truncated=true;report.stopReason="personalization-deferred";break}
-          const personalized=await personalizeProspectOutreach(prospect,result,contact);await saveProspectPersonalization(prospect.id,personalized);
-          await share({agent:"Personalization Agent",eventType:"handoff",title:`Kişisel iletişim taslağı hazır: ${prospect.name}`,detail:personalized.reason,payload:{prospectId:prospect.id,status:"drafted"},status:"completed"});
-          const proposal=await buildProspectProposal(prospect,result,personalized);await saveProspectProposal(prospect.id,proposal);
-          const prepared=await prepareProspectCommunication(prospect.id);if(!prepared)throw new Error("communication-not-prepared");
-          report.contactPrepared=(report.contactPrepared||0)+1;
-          await share({agent:"Communication Center",eventType:"handoff",title:`İletişim paketi incelemeye hazır: ${prospect.name}`,detail:"Doğrulanmış kanal, kişisel mesaj ve sabit fiyatlı teklif kontrollü kuyruğa alındı.",payload:{prospectId:prospect.id,status:"ready-for-review"},status:"completed"});
-          await share({agent:"Proposal Agent",eventType:"handoff",title:`Teklif taslağı hazır: ${prospect.name}`,detail:`${proposal.package} · ${proposal.amount} ${proposal.currency}`,payload:{prospectId:prospect.id,...proposal},status:"completed"});
-        }
-      }catch(e){report.errors.push({stage:"contact-personalization",prospectId:prospect.id,error:String(e?.message||e).slice(0,180)})}
-    }
-    report.poolAfter={evaluated:contactAssessment.evaluated,awaitingAnalysis:contactAssessment.awaitingAnalysis};
+    report.poolAfter={evaluated:assessment.evaluated,awaitingAnalysis:assessment.awaitingAnalysis};
   }catch(e){report.ok=false;report.errors.push({stage:"parallel-cycle",error:String(e?.message||e).slice(0,220)})}
   if(hasBudget(5000)){try{const status=await answerEvidenceStatus();report.answerMonitoring={counts:status.counts,reviewed:status.reviewed,hourlyUsed:status.hourlyUsed,serverNow:status.serverNow,limited:status.limited};try{const daily=await dailyAnswerEvidence(reportDay(status.serverNow));report.answerMonitoring.daily={date:daily.date,counts:daily.counts,totalRuns:daily.totalRuns,limited:daily.limited}}catch{report.answerMonitoring.daily={available:false}}try{const customer=await implementationReport();report.answerMonitoring.customer={counts:customer.counts,reasons:customer.reasons,reviewed:customer.reviewed,limited:customer.limited,asOf:customer.asOf,snapshotType:customer.snapshotType}}catch{report.answerMonitoring.customer={error:'customer-status-unavailable'}}}catch{report.answerMonitoring={error:'status-unavailable'}}}
   const finishedAt=new Date().toISOString(),finalReport={...report,finishedAt,durationMs:Date.now()-startedMs};
   logCycle("parallel-finished",{markets:markets.length,discovered:report.discovered,newProspects:report.newProspects,scanned:report.scanned,completed:report.completed,errorCount:report.errors.length});
   try{const saved=await saveDailyAgentReport(finalReport);if(!saved)throw new Error("report-not-persisted");await learnFromMarketRun(finalReport)}catch(e){finalReport.ok=false;finalReport.errors.push({stage:"report-save",error:String(e?.message||e).slice(0,180)});console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
   const monitoringNote=report.answerMonitoring?.counts?` Anlık yanıt ölçümü: ${report.answerMonitoring.counts.ready} uygun, ${report.answerMonitoring.counts.cooldown} aralık bekleyen, ${report.answerMonitoring.counts.blocked} koşulu eksik / kapsam dışı.`:"";
-  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:report.mode==="backlog-preparation"?`Yeni keşif yerine mevcut adaylar işlendi. Kaydedilen analiz ${report.completed}, hazırlanan iletişim paketi ${report.contactPrepared||0}, hata ${report.errors.length}.${monitoringNote}`:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.${monitoringNote}`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
+  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:report.mode==="backlog-preparation"?`Yeni keşif yerine mevcut adaylar kalıcı hazırlık kuyruğuna alındı. Ayrı işçiler bu kayıtlardan devam eder. Kaydedilen analiz ${report.completed}, hazırlanan iletişim paketi ${report.contactPrepared||0}, hata ${report.errors.length}.${monitoringNote}`:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.${monitoringNote}`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
   return Response.json(finalReport,{status:finalReport.ok?200:500,headers:{"cache-control":"no-store"}});
 }

@@ -23,6 +23,57 @@ jobs:
             -X GET "https://www.aivisibilityworks.com/api/cron/daily-cycle" \
             -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
+  preparation-preflight:
+    needs: [business-agent-cycle]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Resume persistent preflight queue (no email sending)
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || exit 1
+          for batch in 1 2 3; do
+            curl --fail-with-body --connect-timeout 10 --max-time 90 --silent --show-error \
+              "https://www.aivisibilityworks.com/api/prospect-preparation-cycle?stage=preflight" \
+              -H "Authorization: Bearer $AUTO_HUNT_SECRET" || exit 1
+          done
+
+  preparation-analysis:
+    needs: [preparation-preflight]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Resume persistent analysis queue (no email sending)
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || exit 1
+          for batch in 1 2 3; do
+            curl --fail-with-body --connect-timeout 10 --max-time 90 --silent --show-error \
+              "https://www.aivisibilityworks.com/api/prospect-preparation-cycle?stage=analysis" \
+              -H "Authorization: Bearer $AUTO_HUNT_SECRET" || exit 1
+          done
+
+  preparation-contact:
+    needs: [preparation-analysis]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Resume persistent contact queue (no email sending)
+        env:
+          AUTO_HUNT_SECRET: ${{ secrets.AUTO_HUNT_SECRET }}
+        run: |
+          test -n "$AUTO_HUNT_SECRET" || exit 1
+          for batch in 1 2 3; do
+            curl --fail-with-body --connect-timeout 10 --max-time 90 --silent --show-error \
+              "https://www.aivisibilityworks.com/api/prospect-preparation-cycle?stage=contact" \
+              -H "Authorization: Bearer $AUTO_HUNT_SECRET" || exit 1
+          done
+
   creator-agent-cycle:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -488,7 +539,7 @@ jobs:
           curl --fail-with-body --connect-timeout 10 --max-time 90 --silent --show-error "https://www.aivisibilityworks.com/api/inbox-cycle" -H "Authorization: Bearer $AUTO_HUNT_SECRET"
 
   first-contact-agent-cycle:
-    needs: [business-agent-cycle, inbox-cycle, follow-up-agent-cycle]
+    needs: [preparation-contact, inbox-cycle, follow-up-agent-cycle]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
