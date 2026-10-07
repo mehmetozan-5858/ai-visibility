@@ -114,7 +114,7 @@ async function runCycle(req){
       }catch(e){report.errors.push({stage:"analysis",prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
     }));
     if(hasBudget(30000)){
-      try{const run=await runAutomaticAnswerEvidence(answerCandidates);report.answerEvidence={id:run.id||null,kind:run.kind||null,entityId:run.entityId||null,skipped:run.skipped||'',summary:run.result?.summary||null,comparisonPairs:run.result?.comparison?.pairs?.length||0,slotAuditSaved:run.slotAuditSaved??null};
+      try{const run=await runAutomaticAnswerEvidence(answerCandidates);report.answerEvidence={id:run.id||null,kind:run.kind||null,entityId:run.entityId||null,entityType:run.entityType||null,implementationWorkId:run.result?.implementationContext?.workId||null,implementationPlans:run.implementationPlans??null,skipped:run.skipped||'',summary:run.result?.summary||null,comparisonPairs:run.result?.comparison?.pairs?.length||0,slotAuditSaved:run.slotAuditSaved??null};
         if(run.result)await share({agent:"Görünürlük Ajanı",eventType:"answer-evidence",title:`${run.kind==='repeat'?'AI yanıtı yeniden ölçüldü':'AI yanıt kanıtı kaydedildi'}: ${run.entityName}`,detail:`${run.result.summary.successful} yanıt, ${run.result.summary.failed} hata; ${run.result.comparison?.pairs?.length||0} eş koşullu karşılaştırma. Genel görünürlük puanı değildir.`,payload:{runId:run.id,kind:run.kind,summary:run.result.summary,comparisonPairs:run.result.comparison?.pairs?.length||0},status:run.result.errors.length||run.slotAuditSaved===false?"needs-attention":"completed"});
       }catch{report.answerEvidence={skipped:'evidence-run-unavailable'}}
     }else report.answerEvidence={skipped:'runtime-budget'};

@@ -1,3 +1,4 @@
+import {implementationAnswerOptions} from '../lib/answer-evidence-work-rules.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
@@ -34,7 +35,7 @@ test('maximum two queries per configured provider and no silent substitution of 
  let calls=0;const r=await collectAnswerEvidence(entity,{queries:['Suggest machining companies in Berlin.','Suggest tooling manufacturers in Munich.'],providers:['Gemini'],env:{OPENAI_API_KEY:'fixture',GEMINI_API_KEY:'fixture'},request:async()=>{calls++;throw Error('failure')},recordCost:async()=>{}});assert.equal(calls,2);assert.equal(r.observations.length,0);assert.equal(r.summary.neutralComplete,0);assert.equal(r.errors.length,2);
 });
 const storeSource=(await readFile(new URL('../lib/answer-evidence-store.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
-const {measureAnswerEvidence}=new Function('compareAnswerEvidence',storeSource+';return {measureAnswerEvidence};')(compareAnswerEvidence);
+const {measureAnswerEvidence}=new Function('compareAnswerEvidence','implementationAnswerOptions',storeSource+';return {measureAnswerEvidence};')(compareAnswerEvidence,implementationAnswerOptions);
 function dbFixture({acquired=true,recent=false,insertFail=false,history=[]}={}){const state={calls:[],collect:0,released:false};const tx={query:async(sql,p)=>{state.calls.push({sql,p});if(sql.includes('try_advisory'))return {rows:[{acquired}]};if(sql.startsWith('SELECT id FROM'))return {rows:recent?[{id:'prior'}]:[]};if(sql.includes('ORDER BY created_at DESC LIMIT 20'))return {rows:history};if(sql.startsWith('INSERT')){if(insertFail)throw Error('insert-failed');return {rows:[{id:'new',createdAt:'now'}]}};return {rows:[]}},release(){state.released=true}};return {state,deps:{pool:{connect:async()=>tx},guard:async()=>({mode:'normal'}),collect:async()=>{state.collect++;return {observations:[],errors:[{provider:'Gemini',error:'timeout'}],summary:answerSummary([],[{}])}}}}}
 test('running/recent evidence blocks duplicate calls; successful evidence persists under transaction',async()=>{
  for(const opts of [{acquired:false},{recent:true}]){const f=dbFixture(opts);assert.ok((await measureAnswerEvidence(entity,{},f.deps)).skipped);assert.equal(f.state.collect,0);assert.equal(f.state.released,true);assert.equal(f.state.calls.at(-1).sql,'ROLLBACK')}
