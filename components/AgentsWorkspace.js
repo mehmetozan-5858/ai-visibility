@@ -20,7 +20,7 @@ const businessTabs=[
   ["solutions","Çözüm Masaları"],
   ["crm","Lead / CRM"],
   ["communication","İletişim Merkezi"],
-  ["work","İş / Onay"]
+  ["work","Bekleyen İşler"]
 ];
 const socialTabs=[
   ["center","Ajan Merkezi"],
