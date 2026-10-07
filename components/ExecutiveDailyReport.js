@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useRef,useState} from "react";
+import SystemHealthReportSummary from "./SystemHealthReportSummary";
 import ImplementationReportSummary from "./ImplementationReportSummary";
 import AnswerEvidenceDailySummary from "./AnswerEvidenceDailySummary";
 import {reportAgentGroups} from "../lib/reporting";
@@ -36,9 +37,9 @@ export default function ExecutiveDailyReport(){
   <p><a href="/bekleyen-isler">Bekleyen İşler Merkezi’ni aç →</a></p>
   {d.risks?.length?<div className="er-risks">{d.risks.slice(0,8).map((x,i)=><div key={x.clientId||i}><strong>{x.name}</strong><span>{x.blocked} iş erişim veya onay bekliyor.</span></div>)}</div>:<div className="er-clear">✓ Aktif uygulama blokajı yok.</div>}
   <div className="er-two-columns er-context"><article><h3>Av bölgeleri</h3>{tags((d.markets||[]).map(x=>[x?.country,x?.city].filter(Boolean).join(" / ")).filter(Boolean),"Henüz bölge kaydı yok.")}</article><article><h3>Creator platformları</h3>{tags(d.creator?.platforms,"Henüz platform kaydı yok.")}</article></div>
-  <div className="er-context"><h3>Çalışan ajanlar ve amirler</h3>{tags(d.agents,"Henüz ajan hareketi yok.")}</div>
+  <div className="er-context"><h3>Rapor gününde hareket kaydı bulunan ajanlar ve amirler</h3>{tags(d.agents,"Henüz ajan hareketi yok.")}</div>
   {d.profitControl?.currencies?.some(x=>x.unknownCostEntries>0)&&<p className="er-note">AI maliyet kayıtlarında fiyatı bilinmeyen çağrılar var. Sıfır maliyet veya net kâr olarak değerlendirilmez.</p>}
-  <AnswerEvidenceDailySummary data={d.answerEvidence} date={d.date}/><ImplementationReportSummary data={d.implementationTracking}/>
+  <SystemHealthReportSummary data={d.systemHealth}/><AnswerEvidenceDailySummary data={d.answerEvidence} date={d.date}/><ImplementationReportSummary data={d.implementationTracking}/>
   <div className="er-section-title"><span>06</span><h2>Son ajan hareketleri</h2></div>
   <p className="er-muted">Aşağıdaki hareketler kayıtlı faaliyetleri gösterir. Hareket kaydı, her ajanın tüm işlerini tamamladığı anlamına gelmez.</p>
   {agentGroups.map(group=><section className="er-context" key={group.id}><h3>{group.label} · {number(group.events.length)} hareket kaydı</h3><div className="er-timeline">{group.events.length?group.events.slice(0,6).map((x,i)=><article key={x.id||i}><span className="er-dot"/><div><small>{x.agent} · {new Date(x.createdAt).toLocaleTimeString("tr-TR",{timeZone:"Europe/Istanbul",hour:"2-digit",minute:"2-digit"})}</small><h3>{x.title}</h3><p>{x.detail}</p></div></article>):<p className="er-muted">Bu grupta bugün için hareket kaydı bulunmuyor.</p>}</div></section>)}
