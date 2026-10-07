@@ -7,8 +7,8 @@ const tabs=[["account","İşletme Geçmişi"],["commerce","Commerce Ready + Busi
 
 export default function BusinessWorkspace(){
   const [tab,setTab]=useState("account");
-  return <section>
-    <div role="tablist" aria-label="İşletme çalışma alanı" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginBottom:14}}>
+  return <section className="business-workspace">
+    <div className="business-tabs" role="tablist" aria-label="İşletme çalışma alanı" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:8,marginBottom:14}}>
       {tabs.map(([id,label])=>{
         const active=tab===id;
         return <button

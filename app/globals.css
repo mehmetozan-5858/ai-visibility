@@ -179,3 +179,25 @@
 .admin-nav-links b{font-size:21px;}
 @media(max-width:720px){.admin-bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr));}.admin-bottom-nav .nav-secondary{display:none;}.admin-bottom-nav span{font-size:10px;}.admin-bottom-nav b{font-size:21px;}}
 @media print{.admin-bottom-nav,.admin-nav-dialog{display:none!important;}}
+
+/* Business workspace: readable controls and narrow-screen cards. */
+.business-workspace,.business-workspace .panel,.business-workspace .panel>*,.business-workspace .client-row>*{min-width:0;}
+.business-workspace .panel{overflow-wrap:anywhere;}
+.business-workspace input,.business-workspace select,.business-workspace textarea{width:100%;max-width:100%;min-width:0;min-height:44px;border:1px solid #24506a;border-radius:11px;background:#04111b;color:#f3f7fb;padding:12px;font:inherit;font-size:16px;box-sizing:border-box;}
+.business-workspace input:focus-visible,.business-workspace select:focus-visible,.business-workspace textarea:focus-visible,.business-workspace button:focus-visible,.business-workspace a:focus-visible{outline:2px solid #35dfb2;outline-offset:2px;}
+.business-workspace button{min-height:44px;white-space:normal;}
+.business-workspace .report-kpis{grid-template-columns:repeat(3,minmax(0,1fr));}
+@media(max-width:720px){
+ .business-workspace .report-heading,.business-workspace .section-title{flex-direction:column;align-items:flex-start;gap:8px;}
+ .business-workspace .report-heading small{font-size:12px;line-height:1.5;}
+ .business-workspace .client-row{grid-template-columns:minmax(0,1fr)!important;}
+ .business-workspace .scan-history-row{grid-template-columns:minmax(0,1fr);gap:8px;}
+ .business-workspace .scan-history-row strong{grid-column:auto;}
+ .business-workspace .report-kpis span{font-size:12px;line-height:1.4;}
+ .business-workspace .report-kpis strong{font-size:20px;}
+ .business-workspace .business-tabs button{padding:12px;line-height:1.4;}
+}
+@media(max-width:420px){
+ .business-workspace .report-kpis,.business-workspace .business-tabs{grid-template-columns:minmax(0,1fr)!important;}
+ .business-workspace .scan-form{padding:12px;}
+}
