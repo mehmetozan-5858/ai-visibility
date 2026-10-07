@@ -1,4 +1,4 @@
-import {evaluateOutreachPool,needsProspectPreparation} from "../../../../lib/outreach-selection";
+import {evaluateOutreachPool,needsProspectPreparation,selectPreparationCandidates} from "../../../../lib/outreach-selection";
 import {nicheSearchSector} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../../lib/db";
@@ -66,6 +66,10 @@ async function runCycle(req){
   logCycle("parallel-started",{markets});
   await share({agent:"Global Baş Amir Ajan",eventType:"cycle-start",title:`Paralel global av başladı: ${markets.length} pazar`,detail:markets.map(x=>`${x.country}/${x.city}`).join(" · "),payload:{markets}});
   try{
+    const initialAssessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
+    const preparationFirst=initialAssessment.awaitingAnalysis>=50;
+    report.mode=preparationFirst?"backlog-preparation":"discovery-and-preparation";
+    if(!preparationFirst){
     const existingNames=await getProspectNames();
     const batches=await Promise.allSettled(markets.map(m=>discoverBusinesses({...m,existingNames})));
     const found=[];
@@ -78,22 +82,27 @@ async function runCycle(req){
     report.newProspects=fresh.length;
     // Complete discovery first, then compare the full accumulated business pool.
     for(const prospect of seeded){try{await qualifyProspect(prospect.id)}catch(e){report.errors.push({stage:"qualification",prospectId:prospect.id,error:String(e?.message||e).slice(0,160)})}}
-    const assessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
+    }
+    const assessment=preparationFirst?initialAssessment:evaluateOutreachPool(await listOutreachEvaluationCandidates());
     report.poolReview={evaluated:assessment.evaluated,qualifiedForContact:assessment.qualified,awaitingAnalysis:assessment.awaitingAnalysis};
     const qualified=assessment.ranked.filter(needsProspectPreparation);
     await share({agent:"Qualification + Opportunity Agents",eventType:"pool-review",title:`Genel aday değerlendirmesi: ${assessment.evaluated} işletme`,detail:`Uzmanlık, analizdeki ihtiyaç, uygulanabilir çözüm ve kurumsal iletişim karşılaştırıldı. İletişime hazır ${assessment.qualified}; analiz bekleyen ${assessment.awaitingAnalysis}.`,payload:report.poolReview,status:"completed"});
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
-    const deepLimit=Math.max(1,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||1,2));
+    const deepLimit=Math.max(1,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||2,2));
     const hotCount=qualified.filter(x=>x.qualificationLevel==="hot").length;
     report.hotProspects=hotCount;
-    for(const prospect of qualified.filter(x=>x.qualificationLevel!=="low").slice(0,deepLimit)){
+    for(const prospect of selectPreparationCandidates(assessment.ranked,{limit:deepLimit,slot})){
+      report.preparedCandidates=report.preparedCandidates||[];
+      report.preparedCandidates.push({id:prospect.id,name:prospect.name,stage:prospect.analysisRequired?"analysis":"contact-package"});
       if(!hasBudget(35000)){report.truncated=true;report.stopReason="runtime-budget";break}
       try{
-        let result=prospect.status==="analyzed"?await getLatestProspectAnalysis(prospect.id):null;
+        let result=!prospect.analysisRequired?await getLatestProspectAnalysis(prospect.id):null;
         if(!result){report.scanned++;const scan=await queueProspectScan(prospect.id);if(scan.status==="demo-only")throw new Error("database-unavailable");
           result=await runProviderCheck(prospect);if(!result)throw new Error("no-provider-result");await completeProspectScan(scan.id,prospect.id,result);report.completed++;}
         try{if(!hasBudget(25000)){report.truncated=true;report.stopReason="contact-deferred";continue}
-          const contact=await findPublicBusinessContact(prospect);await saveProspectContact(prospect.id,contact);await share({agent:"Contact Finder",eventType:"handoff",title:`İletişim kontrolü: ${prospect.name}`,detail:contact.status==="verified"?"Doğrulanmış kamusal kurumsal iletişim kanalı bulundu.":"Doğrulanabilir kamusal kurumsal iletişim kanalı bulunamadı.",payload:{prospectId:prospect.id,status:contact.status,sourceUrl:contact.sourceUrl||""},status:contact.status==="verified"?"completed":"needs-attention"});
+          const foundContact=prospect.contactStatus==="verified"?{email:prospect.contactEmail,sourceUrl:prospect.contactSourceUrl,status:"verified"}:await findPublicBusinessContact(prospect);
+          const savedContact=await saveProspectContact(prospect.id,foundContact);
+          const contact={email:savedContact?.contactEmail||"",sourceUrl:savedContact?.contactSourceUrl||"",contactUrl:savedContact?.contactUrl||"",status:savedContact?.contactStatus||"not-found"};await share({agent:"Contact Finder",eventType:"handoff",title:`İletişim kontrolü: ${prospect.name}`,detail:contact.status==="verified"?"Doğrulanmış kamusal kurumsal iletişim kanalı bulundu.":"Doğrulanabilir kamusal kurumsal iletişim kanalı bulunamadı.",payload:{prospectId:prospect.id,status:contact.status,sourceUrl:contact.sourceUrl||""},status:contact.status==="verified"?"completed":"needs-attention"});
           if(contact.status==="verified"&&hasBudget(12000)){const personalized=await personalizeProspectOutreach(prospect,result,contact);await saveProspectPersonalization(prospect.id,personalized);await share({agent:"Personalization Agent",eventType:"handoff",title:`Kişisel iletişim taslağı hazır: ${prospect.name}`,detail:personalized.reason,payload:{prospectId:prospect.id,status:"drafted"},status:"completed"});const proposal=await buildProspectProposal(prospect,result,personalized);await saveProspectProposal(prospect.id,proposal);await prepareProspectCommunication(prospect.id);await share({agent:"Communication Center",eventType:"handoff",title:`İletişim paketi incelemeye hazır: ${prospect.name}`,detail:"Doğrulanmış kanal, kişisel mesaj ve sabit fiyatlı teklif kontrollü kuyruğa alındı.",payload:{prospectId:prospect.id,status:"ready-for-review"},status:"completed"});await share({agent:"Proposal Agent",eventType:"handoff",title:`Teklif taslağı hazır: ${prospect.name}`,detail:`${proposal.package} · ${proposal.amount} ${proposal.currency}`,payload:{prospectId:prospect.id,...proposal},status:"completed"})}
         }catch(contactError){report.errors.push({stage:"contact-personalization",prospectId:prospect.id,error:String(contactError?.message||contactError).slice(0,160)})}
         await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sonuç uzman ve satış ajanlarının ortak kullanımına açıldı.",payload:{prospectId:prospect.id,name:prospect.name,provider:result?.provider||""},status:"completed"});
