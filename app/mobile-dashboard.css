@@ -38,3 +38,15 @@
   -webkit-user-select:none;
 }
 .mv-nav a:active{background:#0b2a3a}
+
+/* Keep the sign-out control inside the phone header instead of clipping it. */
+@media(max-width:600px){
+ .mv-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;height:auto;min-height:88px;gap:6px 9px;padding:10px 0;}
+ .mv-menu{grid-column:1;grid-row:1;}
+ .mv-brand{grid-column:2;grid-row:1;min-width:0;margin-right:0;}
+ .mv-brand>div{min-width:0;overflow-wrap:anywhere;}
+ .mv-brand b{font-size:14px;}
+ .mv-safe{grid-column:2 / 4;grid-row:2;justify-self:start;max-width:100%;overflow-wrap:anywhere;}
+ .mv-avatar{grid-column:3;grid-row:1;width:auto;height:auto;background:none;border-radius:0;}
+ .mv-avatar button{min-height:44px;max-width:100%;white-space:normal;}
+}

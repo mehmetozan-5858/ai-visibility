@@ -201,3 +201,17 @@
  .business-workspace .report-kpis,.business-workspace .business-tabs{grid-template-columns:minmax(0,1fr)!important;}
  .business-workspace .scan-form{padding:12px;}
 }
+
+/* Answer evidence: constrain intrinsic select widths and wrap record identifiers. */
+.answer-evidence-workspace,.answer-evidence-workspace *{min-width:0;box-sizing:border-box;}
+.answer-evidence-workspace .panel{max-width:100%;overflow-wrap:anywhere;}
+.answer-evidence-workspace form{grid-template-columns:minmax(0,1fr);}
+.answer-evidence-workspace form label{display:block;line-height:1.5;}
+.answer-evidence-workspace select,.answer-evidence-workspace textarea{display:block;width:100%;max-width:100%;min-height:44px;margin-top:6px;padding:12px;border:1px solid #24506a;border-radius:11px;background:#04111b;color:#f3f7fb;font:inherit;font-size:16px;}
+.answer-evidence-workspace input[type="checkbox"]{width:20px;height:20px;vertical-align:middle;}
+.answer-evidence-workspace button{min-height:44px;max-width:100%;white-space:normal;}
+.answer-evidence-workspace pre,.answer-evidence-workspace summary,.answer-evidence-workspace small{overflow-wrap:anywhere;}
+.answer-evidence-workspace select:focus-visible,.answer-evidence-workspace textarea:focus-visible,.answer-evidence-workspace button:focus-visible,.answer-evidence-workspace summary:focus-visible{outline:2px solid #35dfb2;outline-offset:2px;}
+.answer-evidence-status-counts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(140px,100%),1fr));gap:12;}
+@media(max-width:720px){.answer-evidence-workspace .section-title{flex-wrap:wrap;gap:10px;}}
+@media(max-width:420px){.answer-evidence-status-counts{grid-template-columns:minmax(0,1fr);}.answer-evidence-workspace .panel{padding:14px;}}
