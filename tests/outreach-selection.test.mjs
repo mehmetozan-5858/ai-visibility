@@ -8,10 +8,10 @@ test('unavailable contacts cannot monopolize the deep-analysis queue',()=>{
  assert.equal(needsProspectPreparation({...ready(1),status:'analyzed'}),false);
  assert.equal(needsProspectPreparation({status:'analyzed',contactStatus:'verified',qualificationLevel:'hot'}),true);
 });
-test('all 500 candidates are compared before selecting strongest 50, independent of input order',()=>{
+test('all candidates compared without rewarding low unverified estimates, independent of input order',()=>{
  const rows=Array.from({length:500},(_,i)=>ready(i,i>=450?20:80));
  const a=evaluateOutreachPool(rows),b=evaluateOutreachPool([...rows].reverse());
- assert.equal(a.evaluated,500);assert.equal(a.selected.length,50);assert.ok(a.selected.every(x=>Number(x.id)>=450));assert.deepEqual(a.selected.map(x=>x.id),b.selected.map(x=>x.id));
+ assert.equal(a.evaluated,500);assert.equal(a.selected.length,50);assert.equal(a.ranked.find(x=>x.id==='450').selectionPriority,a.ranked.find(x=>x.id==='1').selectionPriority);assert.deepEqual(a.selected.map(x=>x.id),b.selected.map(x=>x.id));
 });
 test('discovery scores cannot substitute for actual analysis and actionable recommendations',()=>{
  const rows=[{...ready(1),scanScore:null},{...ready(2),scanProvider:'Test Provider'},{...ready(3),scanRecommendations:[]},{...ready(4),qualificationScore:100,scanFindings:[]},{...ready(5),selectionBlocked:'email-business-mismatch'},ready(6)];

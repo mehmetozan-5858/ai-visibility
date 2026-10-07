@@ -46,8 +46,8 @@ export default function SalesManager(){
     <div className="client-list">{rows.map(x=><div key={x.id}>
       <article className="client-row">
         <div className="client-avatar">₺</div>
-        <div><b>{x.name}</b><small>{x.domain||"Web sitesi yok"} · son skor {x.score}/100</small></div>
-        <span>{x.score<=30?"Yüksek fırsat":x.score<=55?"Orta fırsat":"Takip"} · {Math.max(0,Math.min(100,100-(Number(x.score)||0)))}/100</span>
+        <div><b>{x.name}</b><small>{x.domain||"Web sitesi yok"} · sağlayıcı tahmini {x.score}/100</small></div>
+        <span>İhtiyaç doğrulaması bekliyor · Tahmini skor satış fırsatı kanıtı değildir.</span>
         <button onClick={()=>prepare(x.id)} disabled={busy===x.id}>{busy===x.id?"Hazırlanıyor…":"Teklif hazırla"}</button>
       </article>
       {offer?.client?.id===x.id&&<OfferCard o={offer}/>}

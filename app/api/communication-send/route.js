@@ -1,3 +1,4 @@
+import {permissionEnquiry,safeFirstContact} from "../../../lib/outreach-quality";
 import {requireAdmin,enforceSameOrigin} from "../../../lib/api-security";
 import {getCommunicationProspect,markProspectCommunicationSent} from "../../../lib/prospects";
 import {sendBrandedOutreach} from "../../../lib/outreach-email";
@@ -32,7 +33,9 @@ export async function POST(req){
   if(x.communicationStatus!=="ready-for-review"||x.contactStatus!=="verified"||!x.contactEmail)return Response.json({error:"Gönderim güvenlik koşulları sağlanmıyor."},{status:409});
   const sender=process.env.OUTREACH_EMAIL_FROM||process.env.EMAIL_FROM||process.env.RESEND_FROM_EMAIL||"";
   if(/@resend\.dev\b/i.test(sender))return Response.json({error:"Doğrulanmış kurumsal gönderici alan adı gerekli."},{status:409});
-  let row;const sent=await sendBrandedOutreach({...x,firstContact:true,...(draft!==undefined?{outreachDraft:draft.trim()}:{})},{key:`prospect-first/${x.id}`,finalize:async id=>{row=await markProspectCommunicationSent(x.id,id)}});
+  const outgoing={...x,firstContact:true,outreachDraft:draft!==undefined?draft.trim():permissionEnquiry(x)};
+  if(!safeFirstContact(outgoing))return Response.json({error:"İlk temasta yalnız kanıtsız ihtiyaç, skor veya sonuç iddiası içermeyen standart izin mesajı gönderilebilir. Taslağı yenileyin."},{status:409});
+  let row;const sent=await sendBrandedOutreach(outgoing,{key:`prospect-first/${x.id}`,finalize:async id=>{row=await markProspectCommunicationSent(x.id,id)}});
   return Response.json({ok:true,delivery:sent,prospect:row});
  }catch(e){return Response.json({error:"E-posta gönderilemedi.",detail:String(e?.message||e).slice(0,180)},{status:500})}
 }

@@ -144,7 +144,7 @@ export default function ProspectsManager(){
    <div className="client-list">{visibleRows.slice(0,20).map(x=><article className="client-row prospect-row" key={x.id}>
      <div className="client-avatar">⌕</div>
      <div><b>{x.name}</b><small>{[x.sector,x.city,x.country,x.domain].filter(Boolean).join(" · ")}</small></div>
-     <span>{x.score==null?(x.scanStatus==="awaiting-provider"?"Kuyrukta":"Tarama bekliyor"):x.score+"/100"}</span>
+     <span>{x.score==null?(x.scanStatus==="awaiting-provider"?"Kuyrukta":"Tarama bekliyor"):"Sağlayıcı tahmini: "+x.score+"/100"}</span>
    </article>)}</div>}
  </section>;
 }

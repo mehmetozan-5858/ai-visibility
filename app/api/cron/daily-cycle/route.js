@@ -86,13 +86,14 @@ async function runCycle(req){
     const assessment=preparationFirst?initialAssessment:evaluateOutreachPool(await listOutreachEvaluationCandidates());
     report.poolReview={evaluated:assessment.evaluated,qualifiedForContact:assessment.qualified,awaitingAnalysis:assessment.awaitingAnalysis};
     const qualified=assessment.ranked.filter(needsProspectPreparation);
-    await share({agent:"Qualification + Opportunity Agents",eventType:"pool-review",title:`Genel aday değerlendirmesi: ${assessment.evaluated} işletme`,detail:`Uzmanlık, analizdeki ihtiyaç, uygulanabilir çözüm ve kurumsal iletişim karşılaştırıldı. İletişime hazır ${assessment.qualified}; analiz bekleyen ${assessment.awaitingAnalysis}.`,payload:report.poolReview,status:"completed"});
+    await share({agent:"Qualification + Opportunity Agents",eventType:"pool-review",title:`Genel aday değerlendirmesi: ${assessment.evaluated} işletme`,detail:`Uzmanlık, doğrudan sayfa kontrolleri ve kurumsal iletişim karşılaştırıldı. Tahmini skor ölçüm sayılmadı. İletişime hazır ${assessment.qualified}; analiz bekleyen ${assessment.awaitingAnalysis}.`,payload:report.poolReview,status:"completed"});
     await share({agent:"Lead Finder",eventType:"handoff",title:`${report.newProspects} yeni aday paralel avdan geldi`,detail:`${report.discovered} benzersiz işletme bulundu; pahalı analiz yalnız öncelikli ilk adaylara uygulanıyor.`,payload:{markets,discovered:report.discovered,newProspects:report.newProspects}});
     const deepLimit=Math.max(1,Math.min(Number(process.env.DEEP_SCAN_LIMIT)||2,2));
     const hotCount=qualified.filter(x=>x.qualificationLevel==="hot").length;
     report.hotProspects=hotCount;
     report.capacity={analysisLimit:guard.multiplier<1?1:deepLimit,analysisConcurrency:guard.multiplier<1?1:deepLimit,contactLimit:1};
     report.preparedCandidates=[];
+    report.evidenceReview=[];
     const analyses=selectPreparationCandidates(assessment.ranked.filter(x=>x.analysisRequired),{limit:report.capacity.analysisLimit,slot});
     if(analyses.length&&!hasBudget(35000)){report.truncated=true;report.stopReason="runtime-budget"}
     else await Promise.allSettled(analyses.map(async prospect=>{
@@ -103,7 +104,8 @@ async function runCycle(req){
         const result=await withRequestBudget(Math.min(35000,Math.max(1000,budgetMs-(Date.now()-startedMs)-15000)),()=>runProviderCheck(prospect));if(!result)throw new Error("no-provider-result");
         const saved=await completeProspectScan(scan.id,prospect.id,result);if(!saved)throw new Error("scan-not-persisted");
         report.completed++;
-        await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Kaydedilen analiz uzman ve satış ajanlarının ortak kullanımına açıldı.",payload:{prospectId:prospect.id,name:prospect.name,provider:result.provider||""},status:"completed"});
+        report.evidenceReview.push({prospectId:prospect.id,status:result.evidence?.status||"unavailable",sourceUrl:result.evidence?.sourceUrl||"",checkedAt:result.evidence?.checkedAt||null,scope:result.evidence?.scope||"",checks:result.evidence?.checks||[]});
+        await share({agent:"Görünürlük Ajanı",eventType:"handoff",title:`Tarama tamamlandı: ${prospect.name}`,detail:"Sağlayıcı ön değerlendirmesi kaydedildi; doğrulama bekleyen notlar ile doğrudan sayfa kontrolleri ayrı tutulur.",payload:{prospectId:prospect.id,name:prospect.name,provider:result.provider||""},status:"completed"});
       }catch(e){report.errors.push({stage:"analysis",prospectId:prospect.id,name:prospect.name,error:String(e?.message||e).slice(0,180)})}
     }));
     // Re-read saved results and current eligibility after concurrent scans.

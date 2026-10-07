@@ -67,7 +67,7 @@ export default function SalesCommandCenter(){
           const priority=Number(x.score)<=30?"Yüksek":Number(x.score)<=55?"Orta":"Takip";
           return <div className="client-row" key={x.id} style={{display:"block",padding:14}}>
             <b style={{display:"block",fontSize:17,lineHeight:1.25,overflowWrap:"break-word"}}>{x.name}</b>
-            <small style={{display:"block",marginTop:6,lineHeight:1.35,overflowWrap:"anywhere"}}>{x.domain||"Web sitesi yok"} · skor {x.score}/100</small>
+            <small style={{display:"block",marginTop:6,lineHeight:1.35,overflowWrap:"anywhere"}}>{x.domain||"Web sitesi yok"} · sağlayıcı tahmini {x.score}/100</small>
             <span style={{display:"inline-flex",width:"auto",marginTop:10,padding:"6px 10px",borderRadius:999}}>{priority}</span>
           </div>;
         })}</div>}
