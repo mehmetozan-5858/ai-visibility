@@ -1,0 +1,7 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {prospectEvidence,safeEvidenceUrl} from '../lib/prospect-evidence.js';
+const x={domain:'example.com',source:'specialist-evidence: Manufacturer of precision tools for global industrial buyers | https://example.com/about',scanScore:25,scanProvider:'Gemini',scanFindings:['Missing structured data on service pages'],scanRecommendations:['Add service structured data to the site'],scanCompletedAt:'2026-10-07T09:00:00Z'};
+test('evidence distinguishes official source, measured need and suggested solution',()=>{const e=prospectEvidence(x);assert.equal(e.officialSource,true);assert.equal(e.analyzed,true);assert.equal(e.score,25);assert.deepEqual(e.findings,x.scanFindings);assert.equal(e.sourceUrl,'https://example.com/about')});
+test('qualification alone, test providers and missing analysis never imply verified need',()=>{for(const changes of [{scanScore:null},{scanProvider:'Test Provider'},{scanFindings:[]},{scanRecommendations:[]},{scanScore:101}]){const e=prospectEvidence({...x,qualificationScore:100,...changes});assert.equal(e.analyzed,false);assert.equal(e.score,null);assert.deepEqual(e.findings,[])}});
+test('unrelated and unsafe URLs are not represented as official source evidence',()=>{assert.equal(prospectEvidence({...x,source:x.source.replace('https://example.com/about','https://example.com.evil.test/about')}).officialSource,false);for(const u of ['javascript:alert(1)','http://example.com','https://user:secret@example.com'])assert.equal(safeEvidenceUrl(u),'')});
