@@ -1,5 +1,6 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useState} from "react";
+import {businessRunState} from "../lib/agent-activity-rules.js";
 import SystemHealthMap from "./SystemHealthMap";
 
 function fmt(v){if(!v)return "-";try{return new Date(v).toLocaleString("tr-TR")}catch{return String(v)}}
@@ -10,20 +11,21 @@ function marketText(m){
 function markets(m){return Array.isArray(m?.markets)?m.markets:[]}
 
 export default function AgentCenter(){
-  const [data,setData]=useState(null),[error,setError]=useState("");
+  const [data,setData]=useState(null),[error,setError]=useState(""),[clock,setClock]=useState(Date.now());
+  useEffect(()=>{const timer=setInterval(()=>setClock(Date.now()),60000);return()=>clearInterval(timer)},[]);
   const [hunting,setHunting]=useState(false),[huntResult,setHuntResult]=useState(null);
   async function startHunt(){
     setHunting(true);setHuntResult(null);setError("");
     try{const r=await fetch("/api/global-hunt",{method:"POST"}),d=await r.json();if(!r.ok)throw Error(d.error||"Tarama başlatılamadı");setHuntResult(d);await load();const [b,c]=await Promise.all([fetch("/api/prospects",{cache:"no-store"}).then(r=>r.json()),fetch("/api/creator-hunt-leads",{cache:"no-store"}).then(r=>r.json())]);setBusinessRecent((b.prospects||[]).slice(0,8));setCreatorRecent((c.leads||[]).slice(0,8))}catch(e){setError(e.message)}finally{setHunting(false)}
   }
   const [businessRecent,setBusinessRecent]=useState([]),[creatorRecent,setCreatorRecent]=useState([]),[selected,setSelected]=useState(null);
-  const load=()=>fetch("/api/agent-center",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Yüklenemedi");return r.json()}).then(setData).catch(e=>setError(e.message));
+  const load=()=>fetch("/api/agent-center",{cache:"no-store"}).then(async r=>{if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Yüklenemedi");return r.json()}).then(d=>{setData(d);setError("")}).catch(e=>{setData(null);setError(e.message)});
   useEffect(()=>{load();Promise.all([fetch("/api/prospects",{cache:"no-store"}).then(r=>r.json()),fetch("/api/creator-hunt-leads",{cache:"no-store"}).then(r=>r.json())]).then(([b,c])=>{setBusinessRecent((b.prospects||[]).slice(0,8));setCreatorRecent((c.leads||[]).slice(0,8))}).catch(()=>{})},[]);
   const latest=data?.latest;
   const lastAt=latest?.finishedAt?new Date(latest.finishedAt).getTime():0;
-  const ageMinutes=lastAt?Math.max(0,Math.floor((Date.now()-lastAt)/60000)):null;
-  const health=useMemo(()=>!latest?"🟡 BEKLENİYOR":latest.errorCount>0?"🔴 HATA":ageMinutes!==null&&ageMinutes<=90?"🟢 ONLINE":"🟡 GECİKMİŞ",[latest,ageMinutes]);
-  const nextAt=lastAt?new Date(lastAt+60*60*1000):null;
+  const ageMinutes=Number.isFinite(lastAt)&&lastAt>0&&lastAt<=clock?Math.floor((clock-lastAt)/60000):null;
+  const health=businessRunState(latest,clock);
+  const nextAt=ageMinutes!==null?new Date(lastAt+60*60*1000):null;
   const world=data?.worldNetwork;
   const parallel=markets(latest?.market);
   const successRate=latest?.scanned?Math.round((Number(latest.completed||0)/Number(latest.scanned))*100):0;
@@ -49,13 +51,13 @@ export default function AgentCenter(){
     
     <section className="panel" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap"}}>
-        <div><h2 style={{marginTop:0}}>Global Av Canlı Durum</h2><p style={{marginBottom:0,opacity:.72}}>Ajanların gerçek çalışma durumunu tek ekrandan izle. GitHub veya Vercel loguna girmen gerekmez.</p></div>
+        <div><h2 style={{marginTop:0}}>Business av turunun son kaydı</h2><p style={{marginBottom:0,opacity:.72}}>Bu bölüm son kaydedilen Business av turunu gösterir; tüm ajanların anlık çalışma durumunu doğrulamaz.</p></div>
         <button onClick={load}>Yenile</button>
       </div>
       {error?<p style={{color:"crimson"}}>{error}</p>:null}
       {!data?<p>Yükleniyor…</p>:<>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginTop:16}}>
-          {[["Sistem",health],["Son av",fmt(latest?.finishedAt)],["Sonraki av",nextAt?fmt(nextAt):"-"],["Pazar",marketText(latest?.market)],["Bulunan",latest?.discovered??0],["Yeni aday",latest?.newProspects??0],["Taranan",latest?.scanned??0],["Tamamlanan",latest?.completed??0],["Hata",latest?.errorCount??0]].map(([k,v])=><div key={k} className="panel" style={{padding:12}}><small style={{opacity:.65}}>{k}</small><div style={{fontWeight:800,fontSize:18,marginTop:4}}>{v}</div></div>)}
+          {[["Business tur kaydı",health],["Son av",fmt(latest?.finishedAt)],["Tahmini sonraki av",nextAt?fmt(nextAt):"-"],["Pazar",marketText(latest?.market)],["Bulunan",latest?.discovered??0],["Yeni aday",latest?.newProspects??0],["Taranan",latest?.scanned??0],["Tamamlanan",latest?.completed??0],["Hata",latest?.errorCount??0]].map(([k,v])=><div key={k} className="panel" style={{padding:12}}><small style={{opacity:.65}}>{k}</small><div style={{fontWeight:800,fontSize:18,marginTop:4}}>{v}</div></div>)}
         </div>
         {parallel.length>0?<div className="panel" style={{marginTop:14,padding:14}}>
           <h3 style={{margin:"0 0 10px"}}>Bu Turda Paralel Av</h3>
@@ -68,7 +70,7 @@ export default function AgentCenter(){
             <div><small style={{opacity:.65}}>Analiz başarısı</small><div style={{fontWeight:800,fontSize:20}}>%{successRate}</div></div>
           </div>
         </div>:null}
-        <p style={{fontSize:13,opacity:.65,marginBottom:0}}>Saatlik hedef: 60 dk · ONLINE ölçütü: son başarılı rapor 90 dk içinde. {ageMinutes!==null?`Son rapor ${ageMinutes} dk önce.`:"Henüz başarılı çalışma raporu yok."}</p>
+        <p style={{fontSize:13,opacity:.65,marginBottom:0}}>Saatlik hedef: 60 dk · Güncel tur kaydı: hatasız rapor 90 dk içinde. Bu eşik anlık çalışma kanıtı değildir. {ageMinutes!==null?`Son rapor ${ageMinutes} dk önce.`:"Tur zamanı doğrulanmadı."}</p>
       </>}
     </section>
 

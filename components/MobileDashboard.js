@@ -2,10 +2,11 @@
 import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {readDashboardSnapshot,measuredScans} from "../lib/dashboard-snapshot";
+import DashboardAgentActivity from "./DashboardAgentActivity";
 import BottomNavigation from "./BottomNavigation";
 import LogoutButton from "./LogoutButton";
 
-const agents=[["research","Araştırma Ajanı","Pazar, rakip ve lead araştırması"],["visibility","Görünürlük Ajanı","GEO / AEO tarama kuyruğu"],["content","İçerik Ajanı","İyileştirme taslakları"],["sales","Satış Ajanı","Dış iletişim insan onaylı"]];
+
 
 export default function MobileDashboard(){
   const [summary,setSummary]=useState(null);
@@ -59,6 +60,6 @@ return <div className="mv">
 <section className="mv-stats">{stats.map(([i,n,v,cta,h],k)=><a href={h} className={"mv-stat s"+k} key={n}><i>{i==="user"?"♟":i==="cash"?"▰":i==="search"?"⌕":"✓"}</i><span>{n}</span><strong>{v}</strong><small>{cta} →</small></a>)}</section>
 <section className="mv-duo"><article className="mv-card mv-score"><h2>AI Görünürlük Skorunuz <small>ⓘ</small></h2><div className="mv-scorebody"><div className="mv-ring"><strong>{summary&&avgScore!==null?avgScore:"—"}</strong><span>/100</span></div><div className="mv-bench"><span>Canlı sağlayıcı</span><strong>{summary?providers.filter(x=>x.status==="connected").length:"—"}<small>/3</small></strong><div><i style={{width:(providers.filter(x=>x.status==="connected").length/3*100)+"%"}}/></div><b>{summary?completed.length:"—"} tamamlanan tarama</b><small>{!summary?"Veri bekleniyor":completed.length?"Tamamlanan taramalardan hesaplandı":"Henüz ölçüm yok"}</small></div></div><a href="/taramalar" className="mv-button">Detaylı analiz yap →</a></article>
 <article className="mv-card mv-recent"><div className="mv-title"><h2>Son Taramalar</h2><a href="/taramalar">→</a></div>{recentProviders.map(x=><div className="mv-scan" key={x[1]}><i>{x[0]}</i><span><b>{x[1]}</b><small>{summary?x[2]:"—"} sonuç</small></span><em>{x[2]?"●":"—"}</em><strong>⌁</strong></div>)}</article></section>
-<section className="mv-card mv-agents"><div className="mv-title"><h2>Ajan Merkezi</h2><a href="/ajanlar">Tüm ajanları gör →</a></div><div className="mv-agentgrid">{agents.map(([i,n,d])=><a href="/ajanlar" className="mv-agent" key={n}><div className={"mv-agentpic "+i}/><b>{n}</b><p>{d}</p><small>● Aktif <em>→</em></small></a>)}</div></section>
+<DashboardAgentActivity/>
 <section className="mv-card mv-actions"><div className="mv-title"><h2>Hızlı İşlemler</h2><span>Tüm işlemler →</span></div><div className="mv-actiongrid"><a href="/musteriler"><b>♟＋</b><span>Yeni Müşteri</span></a><a href="/taramalar"><b>⌕</b><span>Tarama Başlat</span></a><a href="/raporlar"><b>▤</b><span>Rapor Oluştur</span></a><a href="/ayarlar"><b>⚙</b><span>Ayarlar</span></a></div></section>
 <BottomNavigation/></div>}

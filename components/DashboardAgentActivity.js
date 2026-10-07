@@ -1,0 +1,13 @@
+"use client";
+import {useEffect,useRef,useState} from 'react';
+import {activityState,readAgentActivity,dashboardAgents} from '../lib/agent-activity-rules.js';
+const descriptions={research:'Pazar, rakip ve lead araştırması',visibility:'GEO / AEO tarama kuyruğu',content:'İyileştirme taslakları',sales:'Satış ve iletişim iş akışı'};
+const colors={unknown:'#8ea6b4',attention:'#f0b66b',old:'#f0b66b',recorded:'#31d8b0'};
+const fmt=v=>new Date(v).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul'});
+export default function DashboardAgentActivity(){
+ const [data,setData]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[now,setNow]=useState(Date.now()),version=useRef(0),controller=useRef(null);
+ async function load(){const current=++version.current;controller.current?.abort();const c=new AbortController();controller.current=c;const timeout=setTimeout(()=>c.abort(),15000);setLoading(true);try{const r=await fetch('/api/agent-activity',{cache:'no-store',signal:c.signal});if(!r.ok)throw Error('unavailable');const next=readAgentActivity(await r.json());if(current===version.current){setData(next);setError('');setNow(Date.now())}}catch{if(current===version.current){setData(null);setError('Ajan hareketleri alınamadı; durumlar bilinmiyor.')}}finally{clearTimeout(timeout);if(current===version.current)setLoading(false)}}
+ useEffect(()=>{load();const timer=setInterval(()=>{setNow(Date.now());load()},60000);return()=>{version.current++;controller.current?.abort();clearInterval(timer)}},[]);
+ const agents=data?.agents||dashboardAgents;
+ return <section className="mv-card mv-agents"><div className="mv-title"><h2>Ajan Merkezi</h2><a href="/ajanlar">Tüm ajanları gör →</a></div><button type="button" onClick={load} disabled={loading}>{loading?'Kayıtlar yükleniyor…':'Kayıtları yenile'}</button>{error&&<p role="alert">{error}</p>}{data&&<p style={{fontSize:12,color:'#8ea6b4'}}>{data.scope}<br/>Son yükleme: {fmt(data.generatedAt)}{loading?' · Yeni kontrol bekleniyor; önceki kayıtlar gösteriliyor.':''}</p>}<div className="mv-agentgrid">{agents.map(a=>{const status=activityState(a.record,now);return <a href="/ajanlar" className="mv-agent" key={a.id}><div className={'mv-agentpic '+a.id}/><b>{a.name}</b><p>{descriptions[a.id]}</p><small style={{color:colors[status.state]}}>{loading&&!data?'Yükleniyor…':status.label} <em>→</em></small>{a.record?<small style={{display:'block',marginTop:8,color:'#8ea6b4'}}>Son hareket: {fmt(a.record.createdAt)}{status.ageMinutes!==null?' · '+status.ageMinutes+' dk önce':''}</small>:data?<small style={{display:'block',marginTop:8,color:'#8ea6b4'}}>Son 200 harekette doğrudan kayıt yok.</small>:null}</a>})}</div></section>;
+}
