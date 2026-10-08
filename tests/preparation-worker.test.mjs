@@ -1,8 +1,9 @@
+import {reviewedGuidance} from '../lib/source-review.js';
 import {validEnquiryEvidence} from '../lib/verified-enquiry.js';
 import {evaluateOutreachPool} from '../lib/outreach-selection.js';
 import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';
 const source=(await readFile(new URL('../lib/preparation-worker.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'').replace(/const dependencies=\{[^;]+;/,'const dependencies={};');
-const {runPreparation,validSavedAnalysis}=new Function('PREPARATION_STAGES','evaluateOutreachPool','validEnquiryEvidence',source+';return {runPreparation,validSavedAnalysis}')(['preflight','analysis','contact'],evaluateOutreachPool,validEnquiryEvidence);
+const {runPreparation,validSavedAnalysis}=new Function('PREPARATION_STAGES','evaluateOutreachPool','validEnquiryEvidence','reviewedGuidance',source+';return {runPreparation,validSavedAnalysis}')(['preflight','analysis','contact'],evaluateOutreachPool,validEnquiryEvidence,reviewedGuidance);
 const analysis={score:40,provider:'Gemini',findings:['Observed provider assessment'],recommendations:['Check structured service information']};
 async function run(stage,{cached=null,contact=true,guard={mode:'normal',multiplier:1,dailyBudget:0},reserved=true,eligible=true,failedScan=false,official=true}={}){
  const calls=[],finishes=[],next=[];let count=0;

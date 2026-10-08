@@ -41,3 +41,11 @@ test('previous failed attempts yield to unattempted work and older attempts retr
  const rows=[candidate('newer','2026-10-07T07:00:00Z'),candidate('older','2026-10-06T07:00:00Z'),candidate('fresh',null)];
  assert.deepEqual(selectPreparationCandidates(rows,{limit:2}).map(x=>x.id),['fresh','older']);
 });
+
+test('review hold excludes even previously ready candidates without inventing a scan',()=>{
+ const review={method:'manual-source-review-v2',facts:[{sourceUrl:'https://example.com',excerpt:'Official published service description.'}],assessment:{decision:'needs-review',findings:[{text:'Commercial buyer requires additional review.',factIndexes:[0]}],actions:[{text:'Verify commercial suitability before contact.',factIndexes:[0]}],uncertainties:['Visibility has not been measured.']}};
+ const x={id:'held',domain:'example.com',qualificationScore:90,scanScore:30,scanProvider:'Gemini',scanFindings:['Provider assessment available'],scanRecommendations:['Review the service pages'],contactStatus:'verified',contactEmail:'info@example.com',contactSourceUrl:'https://example.com/contact',communicationStatus:'ready-for-review',outreachStatus:'drafted',proposalStatus:'drafted',sourceReview:review};
+ const held=evaluateOutreachPool([x]);assert.equal(held.selected.length,0);assert.equal(held.ranked[0].sourceReviewBlocked,true);
+ assert.equal(evaluateOutreachPool([{...x,sourceReview:{...review,assessment:{...review.assessment,decision:'prepare'}}}]).selected.length,1);
+ assert.equal(evaluateOutreachPool([{...x,scanScore:null,sourceReview:{...review,assessment:{...review.assessment,decision:'prepare'}}}]).selected.length,0);
+});
