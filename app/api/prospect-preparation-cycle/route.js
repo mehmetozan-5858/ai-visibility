@@ -13,6 +13,6 @@ export async function GET(req){
 }
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;
- // Manual operation is deliberately limited to the no-AI, no-send preflight stage.
- const body=await req.json().catch(()=>({}));if(body.stage!=='preflight')return Response.json({error:'Yalnız resmî site kontrolü bu ekrandan başlatılabilir.'},{status:400,headers});return work('preflight');
+ // Both manual stages only check official sites; neither calls AI or sends mail.
+ const body=await req.json().catch(()=>({}));if(!['preflight','analysis'].includes(body.stage))return Response.json({error:'Yalnız resmî site kontrolü ve eski kuyruk kontrolü başlatılabilir.'},{status:400,headers});return work(body.stage);
 }
