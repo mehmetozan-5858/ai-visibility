@@ -1,3 +1,4 @@
+import {recipientScopeIssue} from '../lib/recipient-scope.js';
 import {permissionEnquiry} from '../lib/outreach-quality.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -5,7 +6,7 @@ import {readFile} from 'node:fs/promises';
 import {evaluateOutreachPool} from '../lib/outreach-selection.js';
 import {publicAddress,contactPageUrl,pageContainsAddress} from '../lib/contact-page-verification.js';
 const source=(await readFile(new URL('../lib/automatic-outreach.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
-const {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach}=new Function('evaluateOutreachPool','permissionEnquiry',source+'\nreturn {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach};')(evaluateOutreachPool,permissionEnquiry);
+const {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach}=new Function('recipientScopeIssue','evaluateOutreachPool','permissionEnquiry',source+'\nreturn {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach};')(recipientScopeIssue,evaluateOutreachPool,permissionEnquiry);
 const prospect=(id='one')=>({id,name:'Example Business '+id,country:'Germany',domain:id+'.business.de',contactSourceUrl:'https://'+id+'.business.de/contact',contactStatus:'verified',contactEmail:'info@'+id+'.business.de',communicationStatus:'ready-for-review',qualificationScore:80,outreachStatus:'drafted',proposalStatus:'drafted',scanScore:40,scanProvider:'Perplexity',scanFindings:['Product descriptions need clear structured markup.'],scanRecommendations:['Add structured product schema and buyer-specific FAQ.']});
 function fixture({today=0,hour=0,locked=true,blocked='',verify=true,rows=[prospect()],follow=[]}={}){
  const state={sends:[],reports:[],unlocked:false,released:false,lockSql:[]};const client={query:async sql=>{state.lockSql.push(sql);if(sql==='ROLLBACK')state.unlocked=true;return {rows:[{acquired:locked}]}},release:()=>{state.released=true}};
