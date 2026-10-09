@@ -1,10 +1,11 @@
-import {enqueuePreparation} from '../../../../lib/preparation-queue';
+import {enqueuePreparation,preparationAvailability} from '../../../../lib/preparation-queue';
 import {implementationReport} from '../../../../lib/implementation-report';
 import {dailyAnswerEvidence} from "../../../../lib/answer-evidence-daily";
 import {reportDay} from "../../../../lib/reporting";
 import {answerEvidenceStatus} from "../../../../lib/answer-evidence-status";
 import {runAutomaticAnswerEvidence} from "../../../../lib/answer-evidence-automation";
 import {evaluateOutreachPool,needsProspectPreparation} from "../../../../lib/outreach-selection";
+import {salesCycleMode} from "../../../../lib/sales-cycle-mode";
 import {nicheSearchSector} from "../../../../lib/niche-targeting";
 import {databasePool} from "../../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../../lib/db";
@@ -73,8 +74,10 @@ async function runCycle(req){
   await share({agent:"Global Baş Amir Ajan",eventType:"cycle-start",title:`Paralel global av başladı: ${markets.length} pazar`,detail:markets.map(x=>`${x.country}/${x.city}`).join(" · "),payload:{markets}});
   try{
     const initialAssessment=evaluateOutreachPool(await listOutreachEvaluationCandidates());
-    const preparationFirst=initialAssessment.awaitingAnalysis>=50;
-    report.mode=preparationFirst?"backlog-preparation":"discovery-and-preparation";
+    const queueAvailability=await preparationAvailability();
+    report.queueAvailability=queueAvailability;
+    report.mode=salesCycleMode({awaitingAnalysis:initialAssessment.awaitingAnalysis,claimableTotal:queueAvailability.claimableTotal});
+    const preparationFirst=report.mode==="backlog-preparation";
     if(!preparationFirst){
     const existingNames=await getProspectNames();
     const batches=await Promise.allSettled(markets.map(m=>discoverBusinesses({...m,existingNames})));
@@ -97,6 +100,7 @@ async function runCycle(req){
     report.hotProspects=qualified.filter(x=>x.qualificationLevel==="hot").length;
     report.capacity={mode:"persistent-preparation-queue",analysisLimit:0,contactLimit:0};
     report.preparation={reviewed:await enqueuePreparation(assessment.ranked),stages:["preflight","analysis","contact"]};
+    report.queueAvailabilityAfter=await preparationAvailability();
     const answerCandidates=[];
     if(hasBudget(30000)){
       try{const run=await runAutomaticAnswerEvidence(answerCandidates);report.answerEvidence={id:run.id||null,kind:run.kind||null,entityId:run.entityId||null,entityType:run.entityType||null,implementationWorkId:run.result?.implementationContext?.workId||null,implementationPlans:run.implementationPlans??null,skipped:run.skipped||'',summary:run.result?.summary||null,comparisonPairs:run.result?.comparison?.pairs?.length||0,slotAuditSaved:run.slotAuditSaved??null};
@@ -110,6 +114,6 @@ async function runCycle(req){
   logCycle("parallel-finished",{markets:markets.length,discovered:report.discovered,newProspects:report.newProspects,scanned:report.scanned,completed:report.completed,errorCount:report.errors.length});
   try{const saved=await saveDailyAgentReport(finalReport);if(!saved)throw new Error("report-not-persisted");await learnFromMarketRun(finalReport)}catch(e){finalReport.ok=false;finalReport.errors.push({stage:"report-save",error:String(e?.message||e).slice(0,180)});console.error(JSON.stringify({source:"daily-agent-cycle",event:"report-save-error",error:String(e?.message||e).slice(0,180)}))}
   const monitoringNote=report.answerMonitoring?.counts?` Anlık yanıt ölçümü: ${report.answerMonitoring.counts.ready} uygun, ${report.answerMonitoring.counts.cooldown} aralık bekleyen, ${report.answerMonitoring.counts.blocked} koşulu eksik / kapsam dışı.`:"";
-  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:report.mode==="backlog-preparation"?`Yeni keşif yerine mevcut adaylar kalıcı hazırlık kuyruğuna alındı. Ayrı işçiler bu kayıtlardan devam eder. Kaydedilen analiz ${report.completed}, hazırlanan iletişim paketi ${report.contactPrepared||0}, hata ${report.errors.length}.${monitoringNote}`:`${markets.length} pazar aynı turda tarandı. Yeni aday ${report.newProspects}, hata ${report.errors.length}.${monitoringNote}`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
+  await share({agent:"CEO Ajanı",eventType:"daily-summary",title:`Paralel av: ${report.discovered} aday / ${report.completed} derin tarama`,detail:report.mode==="backlog-preparation"?`İşlenebilir hazırlık kuyruğu nedeniyle yeni keşif bu turda bekletildi. Ayrı işçiler mevcut kayıtları ilerletiyor. Kuyrukta şimdi işlenebilir ${report.queueAvailability?.claimableTotal||0} iş var; hata ${report.errors.length}.${monitoringNote}`:`${markets.length} pazar tarandı. İşlenebilir hazırlık kuyruğu yeni keşfi engellemedi. Yeni aday ${report.newProspects}, hata ${report.errors.length}.${monitoringNote}`,payload:finalReport,status:report.errors.length?"needs-attention":"completed"});
   return Response.json(finalReport,{status:finalReport.ok?200:500,headers:{"cache-control":"no-store"}});
 }
