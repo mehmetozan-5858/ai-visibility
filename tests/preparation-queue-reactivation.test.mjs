@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {enqueuePreparation} from '../lib/preparation-queue.js';
+import {readFile} from 'node:fs/promises';
+
+const source=(await readFile(new URL('../lib/preparation-queue.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
+const {enqueuePreparation}=new Function(source+';return {enqueuePreparation}')();
 
 function candidate(overrides={}){
   return {
