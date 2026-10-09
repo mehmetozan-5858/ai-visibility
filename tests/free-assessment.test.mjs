@@ -6,6 +6,7 @@ import {createFreeAssessmentToken,verifyFreeAssessmentToken,freeAssessmentUrl} f
 import {permissionEnquiry,outreachApproach,outreachSubject,safeFirstContact} from '../lib/outreach-quality.js';
 import {servicePrice,formatMoney} from '../lib/regional-pricing.js';
 import {verifyAdminToken,verifyClientToken,verifyPaymentAccessToken} from '../lib/admin-auth.js';
+import {recipientScopeIssue} from '../lib/recipient-scope.js';
 const id='12345678-1234-1234-1234-123456789012',now=Date.now(),secret='test-purpose-key';
 const entity={id,domain:'example.com'};
 const observation=(provider,query,brandMentioned=true)=>({provider,query,brandMentioned,brandPrompted:false,truncated:false,model:'model',mode:'search',text:'Recorded response'});
@@ -48,7 +49,7 @@ test('source failures do not fabricate a zero score',async()=>{
  for(const options of [{tables:false},{fail:true}]){const {GET}=apiFixture(options);const r=await GET(req(createFreeAssessmentToken(id,{secret,now})));assert.equal(r.status,503);assert.equal((await r.json()).assessment,undefined)}
 });
 const emailSource=(await readFile(new URL('../lib/outreach-email.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
-const {buildBrandedOutreachEmail,sendBrandedOutreach}=new Function('safeFirstContact','outreachSubject','freeAssessmentUrl','deliverOnce','process','servicePrice','formatMoney',emailSource+';return {buildBrandedOutreachEmail,sendBrandedOutreach};')(safeFirstContact,outreachSubject,id=>freeAssessmentUrl(id,{secret,now,base:'https://example.com'}),async(key,payload,finalize)=>{await finalize('test-provider');return{key,payload}},{env:{RESEND_API_KEY:'test-only',EMAIL_FROM:'info@example.com'}},servicePrice,formatMoney);
+const {buildBrandedOutreachEmail,sendBrandedOutreach}=new Function('safeFirstContact','outreachSubject','freeAssessmentUrl','deliverOnce','process','servicePrice','formatMoney','recipientScopeIssue',emailSource+';return {buildBrandedOutreachEmail,sendBrandedOutreach};')(safeFirstContact,outreachSubject,id=>freeAssessmentUrl(id,{secret,now,base:'https://example.com'}),async(key,payload,finalize)=>{await finalize('test-provider');return{key,payload}},{env:{RESEND_API_KEY:'test-only',EMAIL_FROM:'info@example.com'}},servicePrice,formatMoney,recipientScopeIssue);
 test('future emails include the scoped free screen and sector subject without live transmission',async()=>{
  const x={id,name:'Example <Business>',sector:'Manufacturing',country:'Germany',contactEmail:'info@example.com',firstContact:true};x.outreachDraft=permissionEnquiry(x);
  const result=await sendBrandedOutreach(x,{key:'test-key',finalize:async()=>{}});assert.equal(result.payload.subject,outreachSubject(x));assert.match(result.payload.html,/on-degerlendirme#token=/);assert.match(result.payload.html,/View your free assessment/);assert.doesNotMatch(result.payload.html,/<Business>/);
