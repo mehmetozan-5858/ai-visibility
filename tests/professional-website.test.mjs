@@ -9,3 +9,5 @@ test("responsive layout includes tablet and mobile breakpoints",()=>{const css=r
 test("design previews are excluded from search indexing",()=>{for(const route of ["site-preview","portal-preview"]){const layout=read("app/"+route+"/layout.jsx");assert.match(layout,/index:\s*false/);assert.match(layout,/follow:\s*false/);}});
 
 test("public preview links to real legal and contact routes",()=>{const page=read("app/site-preview/page.jsx");for(const route of ["/iletisim","/gizlilik","/kvkk","/mesafeli-hizmet-sozlesmesi","/iptal-iade"])assert.ok(page.includes(route),route);assert.match(page,/trustItems/);assert.match(page,/Sonuç veya sıralama garantisi verilmez/);});
+
+test("public contact never exposes administrator recovery contacts",()=>{const page=read("app/iletisim/page.js");assert.doesNotMatch(page,/process\.env\.ADMIN_RECOVERY_/);assert.match(page,/PUBLIC_CONTACT_EMAIL/);assert.match(page,/PUBLIC_CONTACT_PHONE/);});
