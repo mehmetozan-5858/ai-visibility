@@ -1,0 +1,1 @@
+Approved visual assets are stored as Git blobs and referenced by the design preview.
