@@ -11,6 +11,11 @@ export default function CustomerShell({title,subtitle,children}){
     window.dispatchEvent(new Event("customer-portal-home"));
     window.scrollTo({top:0,left:0,behavior:"smooth"});
   }
+  function openPortalTab(tab){
+    if(pathname!=="/musteri-panel")return;
+    window.dispatchEvent(new CustomEvent("customer-portal-tab",{detail:{tab}}));
+    window.scrollTo({top:0,left:0,behavior:"smooth"});
+  }
   const displayTitle=title==="Müşteri Paneli"?(lang==="en"?"Customer Portal":"Müşteri Paneli"):title;
   const displaySubtitle=subtitle==="AI görünürlüğünüz, çalışmalarınız, rapor süreciniz ve ödemeleriniz."?(lang==="en"?"Your AI visibility, work, reporting process and payments.":subtitle):subtitle;
   async function logout(){await fetch("/api/client-auth/login",{method:"DELETE"});window.location.replace("/musteri-giris");}
@@ -20,9 +25,9 @@ export default function CustomerShell({title,subtitle,children}){
       <div className="customer-side-status"><span className="customer-status-dot"/>{lang==="en"?"Secure customer area":"Güvenli müşteri alanı"}</div>
       <nav>
         <Link href="/musteri-panel" onClick={openPortalHome} aria-current="page">⌂ {lang==="en"?"Overview":"Genel görünüm"}</Link>
-        <a href="#portal-work">◆ {lang==="en"?"Findings & work":"Bulgular ve çalışmalar"}</a>
-        <a href="#portal-reports">◎ {lang==="en"?"Reports & scans":"Raporlar ve taramalar"}</a>
-        <a href="#portal-account">▣ {lang==="en"?"Plan & payments":"Paket ve ödemeler"}</a>
+        <button type="button" onClick={()=>openPortalTab("findings")}>◆ {lang==="en"?"Findings & work":"Bulgular ve çalışmalar"}</button>
+        <button type="button" onClick={()=>openPortalTab("scans")}>◎ {lang==="en"?"Reports & scans":"Raporlar ve taramalar"}</button>
+        <button type="button" onClick={()=>openPortalTab("payments")}>▣ {lang==="en"?"Plan & payments":"Paket ve ödemeler"}</button>
       </nav>
       <div className="customer-side-foot"><Link href="/hizmetler">{lang==="en"?"Services & pricing":"Hizmetler ve fiyatlar"} ↗</Link><Link href="/iletisim">{lang==="en"?"Support":"Destek"} ↗</Link></div>
     </aside>
