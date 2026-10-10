@@ -1,8 +1,8 @@
 import {createLead,listLeads,updateLeadStatus,getLead} from "../../../lib/leads";
 import {addClient,findClientByIdentity} from "../../../lib/repository";
 import {upsertClientProfile} from "../../../lib/client-profile";
-import {createPaymentAccessToken} from "../../../lib/admin-auth";
-import {verifyAdminToken} from "../../../lib/admin-auth";
+import {createPaymentAccessToken,verifyAdminToken} from "../../../lib/admin-auth";
+import {checkRateLimit,enforceSameOrigin} from "../../../lib/api-security";
 
 async function isAdmin(req){
   const token=req.cookies.get("ai_admin")?.value||"";
@@ -10,6 +10,8 @@ async function isAdmin(req){
 }
 
 export async function POST(req){
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"public-lead",limit:10,windowMs:15*60*1000});if(limited)return limited;
   try{
     const body=await req.json();
     const lead=await createLead(body||{});
