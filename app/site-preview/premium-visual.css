@@ -66,3 +66,24 @@
  .site-preview .next-step-actions{margin-top:12px}
  .site-preview .report-section{gap:22px}
 }
+
+
+/* Approved premium concept translated into real responsive interface components. */
+.site-preview .reference-hero-visual{isolation:isolate;overflow:visible;position:relative;border:1px solid #267c82;background:radial-gradient(ellipse at 50% 45%,#0e5e5e55,transparent 65%),linear-gradient(140deg,#061a2b,#06121f);box-shadow:0 0 0 1px #5ee7c313,0 35px 85px #0008}
+.site-preview .reference-hero-visual:after{content:"";pointer-events:none;position:absolute;inset:-34px;border:1px solid #3bd8c522;border-radius:50%;transform:rotate(-12deg);z-index:-1}
+.site-preview .reference-orbit{position:absolute;inset:-15% -20%;border:1px solid #44e2d53d;border-radius:50%;transform:rotate(-14deg);z-index:-1;box-shadow:0 0 0 35px #35e1cc08,0 0 0 72px #35e1cc04}
+.site-preview .reference-hero-visual .visual-top{position:relative;z-index:2;border-bottom-color:#236273}
+.site-preview .reference-hero-visual .visual-body{position:relative;z-index:2}
+.site-preview .reference-float{position:absolute;z-index:4;display:flex;gap:10px;align-items:center;min-width:150px;max-width:190px;padding:12px 13px;border:1px solid #299ba1;border-radius:14px;background:linear-gradient(135deg,#0b2f3beF,#081d2eF2);box-shadow:0 15px 34px #0009,0 0 22px #15cab21f;backdrop-filter:blur(12px)}
+.site-preview .reference-float>span{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:10px;background:#104b57;color:#76f2d9;font-size:19px}
+.site-preview .reference-float b{display:block;color:#e7fbfa;font-size:11px;line-height:1.35}
+.site-preview .reference-float i{display:block;width:85%;height:4px;border-radius:4px;background:linear-gradient(90deg,#33cbb8,#81f4dd);margin-top:8px}
+.site-preview .rf-search{top:12%;left:-12%}
+.site-preview .rf-evidence{bottom:12%;left:-12%}
+.site-preview .rf-strategy{top:12%;right:-12%}
+.site-preview .rf-actions{bottom:12%;right:-12%}
+.site-preview .reference-hero-visual .score-orb{border-color:#6af0d4;box-shadow:0 0 0 8px #56edcc18,0 0 35px #31d3b450}
+.site-preview .reference-hero-visual .mini-grid>div{border-color:#247d83;background:#092b3a}
+.site-preview .reference-hero-visual .bar-track>div{background:linear-gradient(90deg,#149c9c,#6ef5d3)}
+@media(max-width:1050px){.site-preview .reference-float{min-width:125px;max-width:145px;padding:9px}.site-preview .rf-search,.site-preview .rf-evidence{left:-5%}.site-preview .rf-strategy,.site-preview .rf-actions{right:-5%}}
+@media(max-width:700px){.site-preview .reference-hero-visual{overflow:hidden}.site-preview .reference-hero-visual:after,.site-preview .reference-orbit{display:none}.site-preview .reference-float{position:relative;inset:auto;min-width:0;max-width:none;padding:10px 12px}.site-preview .reference-hero-visual{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:10px}.site-preview .reference-hero-visual .visual-top,.site-preview .reference-hero-visual .visual-body{grid-column:1/-1}.site-preview .reference-hero-visual .visual-top{grid-row:1}.site-preview .reference-hero-visual .visual-body{grid-row:2}.site-preview .rf-search,.site-preview .rf-evidence{grid-column:1}.site-preview .rf-strategy,.site-preview .rf-actions{grid-column:2}.site-preview .rf-search,.site-preview .rf-strategy{grid-row:3}.site-preview .rf-evidence,.site-preview .rf-actions{grid-row:4}.site-preview .reference-float b{font-size:10px}.site-preview .reference-float>span{width:28px;height:28px;font-size:15px}}
