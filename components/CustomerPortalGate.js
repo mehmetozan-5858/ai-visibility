@@ -38,7 +38,7 @@ export default function CustomerPortalGate(){
   },[account]);
 
   const unlocked=useMemo(()=>{
-    return (account?.payments||[]).some(p=>String(p.status||"").toLowerCase()==="paid");
+    return account?.access?.kind==="paid";
   },[account]);
 
   if(error)return <section className="customer-state-card customer-state-error" style={card}><p className="client-message">{error}</p></section>;
