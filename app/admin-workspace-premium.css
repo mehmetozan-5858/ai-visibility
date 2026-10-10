@@ -6,3 +6,14 @@
 .admin-shell-content .panel,.admin-workspace-intro>article{border-color:var(--ai-outline);box-shadow:0 15px 42px #0003}
 .admin-shell-side nav a:focus-visible,.admin-shell-content a:focus-visible{outline:3px solid var(--ai-accent);outline-offset:3px}
 @media(max-width:700px){.admin-shell-content .panel{box-shadow:0 9px 26px #0003}}
+
+
+/* Approved dashboard reference translated into working admin views; no synthetic KPIs. */
+.admin-shell{background:radial-gradient(ellipse at 80% 0,#0c454b55,transparent 45%),linear-gradient(#17404b11 1px,transparent 1px),linear-gradient(90deg,#17404b11 1px,transparent 1px),#05111f;background-size:auto,44px 44px,44px 44px,auto}
+.admin-shell-side{background:linear-gradient(180deg,#061c2c,#06131f);border-right-color:#15535b}
+.admin-shell-logo>span{color:#65f3e0;text-shadow:0 0 28px #5df5d977}
+.admin-shell-side nav a:hover,.admin-shell-side nav a:focus-visible{border-color:#278b89;background:linear-gradient(90deg,#0d444b,#082535)}
+.admin-page-head h1{background:linear-gradient(110deg,#fff 45%,#72ebd6);background-clip:text;-webkit-background-clip:text;color:transparent}
+.admin-page-trust,.admin-shell-note,.admin-shell-content .panel{border-color:#1a6370!important;background:linear-gradient(145deg,#0a2737,#071825)!important;box-shadow:0 12px 35px #0004,0 0 0 1px #4cecd30a!important}
+.admin-shell-top{border-bottom-color:#195563}
+@media(max-width:700px){.admin-shell{background-size:auto,34px 34px,34px 34px,auto}}
