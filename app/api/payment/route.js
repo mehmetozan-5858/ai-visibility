@@ -6,6 +6,7 @@ import {getSalesCandidates,getOrCreatePaymentIntent,reportPayment,getPaymentById
 import {getClientProfile} from "../../../lib/client-profile";
 import {verifyPaymentAccessToken} from "../../../lib/admin-auth";
 import {servicePrice,pricingCatalog,formatMoney,SERVICE_CODES,BUNDLE_DISCOUNT_RANGE} from "../../../lib/regional-pricing";
+import {checkRateLimit,enforceSameOrigin} from "../../../lib/api-security";
 
 function languageFrom(req){
   return String(req.headers.get("accept-language")||"").toLowerCase().startsWith("en")?"en":"tr";
@@ -68,6 +69,8 @@ export async function GET(req){
 }
 
 export async function POST(req){
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"payment-report",limit:6,windowMs:15*60*1000});if(limited)return limited;
   try{
     const body=await req.json();
     if(!body?.paymentId||!body?.token)return Response.json({error:"Ödeme kaydı veya güvenli bağlantı eksik."},{status:400});
