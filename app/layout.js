@@ -13,7 +13,7 @@ const siteUrl=explicit||(vercel?`https://${vercel}`:"https://ai-visibility.verce
 
 export const metadata={
   metadataBase:new URL(siteUrl),
-  title:{default:"AI Visibility",template:"%s | AI Visibility"},
+  title:"AI Visibility",
   description:"AI görünürlüğünü kaynaklarla ölçen, bulguları önceliklendiren ve iyileştirme sürecini yöneten Digital Visibility Intelligence platformu.",
   applicationName:"AI Visibility",
   robots:{index:true,follow:true}
