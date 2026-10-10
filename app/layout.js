@@ -4,6 +4,7 @@ import "./admin-premium.css";
 import "./admin-workspace-premium.css";
 import "./professional-public.css";
 import "./customer-portal-premium.css";
+import "./checkout-premium.css";
 import DemoReportGate from "../components/DemoReportGate";
 import {LanguageProvider} from "../components/LanguageProvider";
 
