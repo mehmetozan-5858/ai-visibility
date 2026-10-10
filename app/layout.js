@@ -9,11 +9,9 @@ export const metadata={
   description:"Markanızın ChatGPT, Google AI ve diğer yapay zekâ platformlarındaki görünürlüğünü ölçün, kanıtlarla doğrulayın ve büyüme fırsatlarını aksiyona dönüştürün.",
   applicationName:"AI Visibility",
   keywords:["AI visibility","GEO","AEO","yapay zekâ görünürlüğü","AI search visibility","brand visibility"],
-  alternates:{canonical:"/"},
   openGraph:{
     title:"AI Visibility | Yapay Zekâ Görünürlük Platformu",
     description:"Markanızın yapay zekâ platformlarındaki görünürlüğünü ölçün, kanıtlarla doğrulayın ve aksiyona dönüştürün.",
-    url:"https://www.aivisibilityworks.com",
     siteName:"AI Visibility",
     locale:"tr_TR",
     type:"website"
