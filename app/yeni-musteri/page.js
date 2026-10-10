@@ -1,7 +1,13 @@
 import {servicePrice} from "../../lib/regional-pricing";
 import Link from "next/link";
 import NewCustomerLeadForm from "../../components/NewCustomerLeadForm";
-export const metadata={title:"Yeni Müşteri | AI Visibility"};
+
+export const metadata={
+  title:"Ücretsiz Ön Değerlendirme",
+  description:"AI Visibility ücretsiz ön değerlendirmesini başlatın; işletmenizin yapay zekâ görünürlüğünü analiz etmek için başvurunuzu oluşturun.",
+  alternates:{canonical:"/yeni-musteri"}
+};
+
 const allowed=new Set(["business-diagnosis","business-solution","business-monitoring"]);
 export default async function NewCustomerPage({searchParams}){
   const p=await searchParams;const service=allowed.has(String(p?.service||""))?String(p.service):"";const country=String(p?.country||"").slice(0,120);
