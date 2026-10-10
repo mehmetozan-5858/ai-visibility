@@ -7,3 +7,5 @@ test("portal preview is clearly labeled and has no outbound sales actions",()=>{
 test("responsive layout includes tablet and mobile breakpoints",()=>{const css=read("app/globals.css");const portal=read("app/portal-preview/page.jsx");assert.match(css,/@media/);const scoped=read("app/site-preview/preview.css");assert.match(scoped,/\.site-preview \.hero/);assert.match(scoped,/@media\(max-width:800px\)/);assert.match(read("app/site-preview/page.jsx"),/import "\.\/preview.css"/);assert.match(portal,/@media\(max-width:760px\)/);assert.match(portal,/overflow-x:auto/);});
 
 test("design previews are excluded from search indexing",()=>{for(const route of ["site-preview","portal-preview"]){const layout=read("app/"+route+"/layout.jsx");assert.match(layout,/index:\s*false/);assert.match(layout,/follow:\s*false/);}});
+
+test("public preview links to real legal and contact routes",()=>{const page=read("app/site-preview/page.jsx");for(const route of ["/iletisim","/gizlilik","/kvkk","/mesafeli-hizmet-sozlesmesi","/iptal-iade"])assert.ok(page.includes(route),route);assert.match(page,/trustItems/);assert.match(page,/Sonuç veya sıralama garantisi verilmez/);});
