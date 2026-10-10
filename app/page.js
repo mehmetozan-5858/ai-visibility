@@ -1,6 +1,12 @@
 import Link from "next/link";
 import styles from "./home.module.css";
 
+export const metadata={
+ title:"AI Visibility | Yapay Zekâ Görünürlük Platformu",
+ alternates:{canonical:"/"},
+ openGraph:{url:"https://www.aivisibilityworks.com"}
+};
+
 const Bar=({label,value,width})=><div className={styles.barRow}><div className={styles.barMeta}><span>{label}</span><b>{value}</b></div><div className={styles.track}><i style={{width}}/></div></div>;
 
 export default function Home(){
@@ -66,7 +72,7 @@ export default function Home(){
    <aside className={styles.trust}><div className={styles.kicker}>Güven ve standartlar</div><h3>Daha şeffaf, daha güvenilir bir AI ekosistemi.</h3><p>Veriye dayalı, kanıtlanabilir ve sorumlu bir yapay zekâ görünürlük yönetimi için tasarlandı.</p><div className={styles.trustGrid}><span>◈ Şeffaf analiz</span><span>▤ Kanıta dayalı</span><span>▣ Veri gizliliği</span><span>✓ Doğrulanmış sistem</span></div></aside>
   </section>
 
-  <div className={styles.logos}><span>Arçelik</span><span>LC WAIKIKI</span><span>FORD OTOSAN</span><span>trendyol</span><span>TÜRK HAVA YOLLARI</span><span>Vodafone</span><span>Hepsiburada</span></div>
+  <div className={styles.logos}><span>ChatGPT</span><span>Gemini</span><span>Perplexity</span><span>AI Search</span><span>GEO</span><span>AEO</span><span>Evidence Intelligence</span></div>
   <footer className={styles.footer}><div><div className={styles.brand}><span className={styles.logo}/><span>AI Visibility</span></div><p>Markanızı yapay zekâ dünyasında daha görünür, daha güvenilir ve daha güçlü kılar.</p><div className={styles.legal}>© 2026 AI Visibility · Tüm hakları saklıdır.</div></div><div className={styles.footerLinks}><div><strong>Ürün</strong><a href="#urun">Genel Bakış</a><Link href="/hizmetler">Fiyatlandırma</Link></div><div><strong>Çözümler</strong><a href="#cozumler">Üretim & İhracat</a><a href="#cozumler">B2B Hizmetler</a></div><div><strong>Kaynaklar</strong><a href="#rapor">Raporlar</a><Link href="/demo">Demo</Link></div><div><strong>Şirket</strong><Link href="/hakkimizda">Hakkımızda</Link><Link href="/iletisim">İletişim</Link><Link href="/gizlilik">Gizlilik</Link></div></div></footer>
  </div></div>;
 }
