@@ -38,7 +38,7 @@ export default function CustomerPortalGate(){
   },[account]);
 
   const unlocked=useMemo(()=>{
-    return account?.access?.kind==="paid";
+    return account?.access?.kind==="paid"||account?.access?.kind==="pilot";
   },[account]);
 
   if(error)return <section className="customer-state-card customer-state-error" style={card}><p className="client-message">{error}</p></section>;
