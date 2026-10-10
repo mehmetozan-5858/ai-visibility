@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./mobile-dashboard.css";
 import "./admin-premium.css";
+import "./admin-workspace-premium.css";
 import "./professional-public.css";
 import "./customer-portal-premium.css";
 import DemoReportGate from "../components/DemoReportGate";
