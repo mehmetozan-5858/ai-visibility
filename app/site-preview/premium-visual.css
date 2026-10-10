@@ -25,3 +25,24 @@
 @media(max-width:980px){.site-preview .sector-rich{grid-template-columns:minmax(170px,40%) 1fr}}
 @media(max-width:700px){.site-preview .sector-rich{grid-template-columns:1fr;min-height:0}.site-preview .sector-art{min-height:175px;padding:14px}.site-preview .sector-diagram{max-width:350px;max-height:190px}.site-preview .sector-copy{padding:20px 22px 24px}.site-preview .premium-contact{padding:24px 18px}.site-preview .trust-item{min-height:0}}
 @media(max-width:430px){.site-preview .sector-art{min-height:160px}.site-preview .sector-diagram{max-height:175px}}
+
+
+/* Clear conversion path: pricing -> actual lead application -> reviewed service scope. */
+.site-preview .next-step-section{padding-top:90px;padding-bottom:90px}
+.site-preview .next-step-heading{display:flex;align-items:end;justify-content:space-between;gap:28px;margin-bottom:28px}
+.site-preview .next-step-heading>div{max-width:770px}
+.site-preview .next-step-heading h2{max-width:760px}
+.site-preview .next-step-heading p:not(.eyebrow){color:#9fb6c4;line-height:1.7}
+.site-preview .next-step-pricing{color:#7de9cc;font-weight:800;white-space:nowrap;text-decoration:underline;text-underline-offset:6px}
+.site-preview .next-step-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.site-preview .next-step-card{position:relative;min-height:225px;padding:26px;border:1px solid #285465;border-radius:18px;background:linear-gradient(145deg,#0f2b37,#0a1825);overflow:hidden}
+.site-preview .next-step-card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,#60dfc1,transparent)}
+.site-preview .next-step-card>span{display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border:1px solid #376c71;border-radius:12px;background:#153d45;color:#78eacc;font-size:12px;font-weight:850}
+.site-preview .next-step-card h3{font-size:20px;line-height:1.3;margin:20px 0 10px}
+.site-preview .next-step-card p{font-size:13px;color:#a4b9c6;line-height:1.65;margin:0}
+.site-preview .next-step-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:30px;margin-top:18px;padding:28px;border:1px solid #327369;border-radius:18px;background:radial-gradient(circle at 92% 10%,#1b5d5459,transparent 45%),linear-gradient(110deg,#102e36,#0b1b28)}
+.site-preview .next-step-actions h3{font-size:22px;margin:0 0 8px}
+.site-preview .next-step-actions p{font-size:12px;color:#a5bdc7;line-height:1.65;margin:0}
+.site-preview .next-step-actions .contact-actions{justify-content:flex-end}
+@media(max-width:980px){.site-preview .next-step-actions{grid-template-columns:1fr}.site-preview .next-step-actions .contact-actions{justify-content:flex-start}}
+@media(max-width:700px){.site-preview .next-step-section{padding-top:60px;padding-bottom:60px}.site-preview .next-step-heading{align-items:start;flex-direction:column;gap:10px}.site-preview .next-step-grid{grid-template-columns:1fr;gap:12px}.site-preview .next-step-card{min-height:0;padding:21px}.site-preview .next-step-actions{padding:22px 18px}.site-preview .next-step-actions .contact-actions{width:100%}}
