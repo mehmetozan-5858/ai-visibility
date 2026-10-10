@@ -171,3 +171,38 @@
  .site-preview .architecture-visual{grid-template-columns:1fr}
  .site-preview .arch-node{max-width:100%}
 }
+
+
+/* Second iPhone pass: content-height demo and compact four-step cards. */
+@media(max-width:700px){
+ .site-preview .hero{align-items:stretch}
+ .site-preview .reference-hero-visual{
+  display:flex!important;flex-direction:column;align-items:stretch;
+  height:auto!important;max-height:none!important;min-height:0!important;
+  overflow:hidden;gap:0;padding:12px
+ }
+ .site-preview .reference-hero-visual .visual-top{
+  display:flex;flex:0 0 auto;order:0;width:100%;padding:10px 6px 13px
+ }
+ .site-preview .reference-hero-visual .visual-body{
+  display:block;flex:0 0 auto;order:1;width:100%;height:auto!important;
+  max-height:none!important;overflow:visible;padding:16px 6px 14px
+ }
+ .site-preview .reference-hero-visual .hero-score{display:flex;align-items:center;gap:15px;min-height:105px}
+ .site-preview .reference-hero-visual .score-orb{flex:0 0 92px;width:92px;height:92px}
+ .site-preview .reference-hero-visual .mini-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+ .site-preview .reference-hero-visual .bars{display:grid}
+ .site-preview .reference-hero-visual .reference-float{
+  order:2;display:flex;position:relative!important;inset:auto!important;
+  width:100%;margin-top:8px;flex:0 0 auto;transform:none!important
+ }
+ .site-preview .platform-grid{display:grid;grid-template-columns:1fr;gap:10px}
+ .site-preview .platform-card{
+  display:grid;grid-template-columns:46px minmax(0,1fr);column-gap:13px;
+  min-height:0!important;padding:15px 16px;border-radius:15px;align-items:center
+ }
+ .site-preview .platform-card .number{grid-column:1/-1;margin-bottom:7px}
+ .site-preview .platform-card .platform-icon{grid-column:1;grid-row:2/4;margin:0;width:44px;height:44px}
+ .site-preview .platform-card h3{grid-column:2;grid-row:2;margin:0;font-size:19px;line-height:1.2}
+ .site-preview .platform-card p{grid-column:2;grid-row:3;margin:5px 0 0;font-size:12px;line-height:1.45}
+}
