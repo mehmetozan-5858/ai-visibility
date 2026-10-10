@@ -9,10 +9,10 @@ const soft={background:"#0c2230",border:"1px solid #1d4a61",borderRadius:18,padd
 
 const copy={
   tr:{
-    loading:"Skorunuz hazırlanıyor…",loadFail:"Skor yüklenemedi.",title:"AI Görünürlük Skorunuz",subtitle:"Ücretsiz ilk değerlendirme",score:"Skor",waiting:"Henüz skor oluşmadı",note:"İlk aşamada yalnızca genel skorunuzu görürsünüz.",locked:"Detaylı rapor ve çözümler kilitli",lockedText:"Eksikleriniz, bulgular, ayrıntılı rapor, çözüm önerileri ve uygulama adımları ödeme tamamlandıktan sonra açılır.",unlock:"Detaylı rapor ve çözümü aç",secure:"Ödeme doğrulandıktan sonra panel otomatik olarak tam erişime açılır.",hidden1:"Eksiklerin ayrıntılı analizi",hidden2:"Önceliklendirilmiş bulgular",hidden3:"Çözüm ve uygulama planı",hidden4:"Rapor ve geçmiş taramalar"
+    loading:"Skorunuz hazırlanıyor…",loadFail:"Skor yüklenemedi.",title:"AI Görünürlük Skorunuz",subtitle:"Ücretsiz ilk değerlendirme",score:"Skor",waiting:"Henüz skor oluşmadı",note:"İlk aşamada yalnızca genel skorunuzu görürsünüz.",locked:"Detaylı rapor ve çözümler kilitli",lockedText:"Eksikleriniz, bulgular, ayrıntılı rapor, çözüm önerileri ve uygulama adımları ödeme tamamlandıktan sonra açılır.",unlock:"Detaylı rapor ve çözümü aç",secure:"Ödeme doğrulandıktan sonra panel otomatik olarak tam erişime açılır.",hidden1:"Eksiklerin ayrıntılı analizi",hidden2:"Önceliklendirilmiş bulgular",hidden3:"Çözüm ve uygulama planı",hidden4:"Rapor ve geçmiş taramalar",status:"Hesap durumu",limited:"Sınırlı erişim",next:"Sonraki adım"
   },
   en:{
-    loading:"Preparing your score…",loadFail:"Unable to load your score.",title:"Your AI Visibility Score",subtitle:"Free initial assessment",score:"Score",waiting:"No score yet",note:"At the first stage, you only see your overall score.",locked:"Detailed report and solutions are locked",lockedText:"Your gaps, findings, detailed report, solution recommendations and implementation steps unlock after payment is completed.",unlock:"Unlock detailed report & solution",secure:"Once payment is verified, the full portal is unlocked automatically.",hidden1:"Detailed gap analysis",hidden2:"Prioritized findings",hidden3:"Solution & implementation plan",hidden4:"Reports & scan history"
+    loading:"Preparing your score…",loadFail:"Unable to load your score.",title:"Your AI Visibility Score",subtitle:"Free initial assessment",score:"Score",waiting:"No score yet",note:"At the first stage, you only see your overall score.",locked:"Detailed report and solutions are locked",lockedText:"Your gaps, findings, detailed report, solution recommendations and implementation steps unlock after payment is completed.",unlock:"Unlock detailed report & solution",secure:"Once payment is verified, the full portal is unlocked automatically.",hidden1:"Detailed gap analysis",hidden2:"Prioritized findings",hidden3:"Solution & implementation plan",hidden4:"Reports & scan history",status:"Account status",limited:"Limited access",next:"Next step"
   }
 };
 
@@ -38,35 +38,35 @@ export default function CustomerPortalGate(){
   },[account]);
 
   const unlocked=useMemo(()=>{
-    return (account?.payments||[]).some(p=>String(p.status||"").toLowerCase()==="paid");
+    return account?.access?.kind==="paid"||account?.access?.kind==="pilot";
   },[account]);
 
-  if(error)return <section style={card}><p className="client-message">{error}</p></section>;
-  if(!account)return <section style={card}><p>{c.loading}</p></section>;
-  if(unlocked)return <CustomerPortal/>;
+  if(error)return <section className="customer-state-card customer-state-error" style={card}><p className="client-message">{error}</p></section>;
+  if(!account)return <section className="customer-state-card customer-state-loading" style={card}><p>{c.loading}</p></section>;
+  if(unlocked)return <div className="customer-dashboard-live"><CustomerPortal/></div>;
 
-  return <section style={{display:"grid",gap:14}}>
-    <article style={card}>
-      <div style={{fontSize:12,opacity:.7,textTransform:"uppercase",letterSpacing:".12em"}}>{c.subtitle}</div>
-      <h2 style={{margin:"7px 0 4px",fontSize:26}}>{c.title}</h2>
-      <p style={{margin:"0 0 18px",opacity:.72}}>{c.note}</p>
-      <div style={{...soft,textAlign:"center",padding:"28px 18px"}}>
-        <div style={{fontSize:13,opacity:.7}}>{c.score}</div>
-        <strong style={{display:"block",fontSize:54,lineHeight:1.05,margin:"8px 0"}}>{latest?.score==null?"—":`${latest.score}/100`}</strong>
-        <small style={{opacity:.7}}>{latest?.score==null?c.waiting:"AI Visibility"}</small>
+  return <section className="customer-locked-grid">
+    <article className="customer-score-card" style={card}>
+      <div className="customer-score-meta"><span>{c.subtitle}</span><span className="customer-status-pill">{c.limited}</span></div>
+      <h2>{c.title}</h2>
+      <p>{c.note}</p>
+      <div className="customer-score-orb-wrap" style={{...soft,textAlign:"center",padding:"28px 18px"}}>
+        <div>{c.score}</div>
+        <strong>{latest?.score==null?"—":`${latest.score}/100`}</strong>
+        <small>{latest?.score==null?c.waiting:"AI Visibility"}</small>
       </div>
     </article>
 
-    <article style={{...card,borderColor:"#3f5266"}}>
-      <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-        <div style={{fontSize:28}}>🔒</div>
-        <div><h3 style={{margin:"0 0 7px"}}>{c.locked}</h3><p style={{margin:0,opacity:.76}}>{c.lockedText}</p></div>
+    <article className="customer-unlock-card" style={{...card,borderColor:"#3f5266"}}>
+      <div className="customer-unlock-heading">
+        <div className="customer-lock-icon">🔒</div>
+        <div><span className="customer-unlock-kicker">{c.next}</span><h3>{c.locked}</h3><p>{c.lockedText}</p></div>
       </div>
-      <div style={{display:"grid",gap:8,margin:"16px 0"}}>
-        {[c.hidden1,c.hidden2,c.hidden3,c.hidden4].map(x=><div key={x} style={{...soft,padding:"11px 13px",opacity:.66}}>🔒 {x}</div>)}
+      <div className="customer-locked-features">
+        {[c.hidden1,c.hidden2,c.hidden3,c.hidden4].map(x=><div key={x} style={{...soft,padding:"11px 13px"}}><span>✓</span>{x}</div>)}
       </div>
-      <Link href="/hizmetler" style={{display:"block",textAlign:"center",padding:"13px 16px",borderRadius:13,textDecoration:"none",fontWeight:800,background:"linear-gradient(90deg,#367cff,#22cfa4)",color:"white"}}>{c.unlock}</Link>
-      <p style={{fontSize:12,opacity:.65,textAlign:"center",margin:"10px 0 0"}}>{c.secure}</p>
+      <Link className="customer-unlock-cta" href="/hizmetler">{c.unlock}<span>↗</span></Link>
+      <p className="customer-secure-note">{c.secure}</p>
     </article>
   </section>;
 }

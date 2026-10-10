@@ -1,27 +1,34 @@
 import Link from "next/link";
 
 export default function PublicPage({title,subtitle,children}){
-  const links=[
-    ["/hizmetler","Hizmetler"],
+  const primary=[
+    ["/hizmetler","Hizmetler ve Fiyatlar"],
     ["/hakkimizda","Hakkımızda"],
-    ["/iletisim","İletişim"],
+    ["/iletisim","İletişim"]
+  ];
+  const legal=[
     ["/gizlilik","Gizlilik"],
     ["/kvkk","KVKK / Aydınlatma"],
     ["/iptal-iade","İptal / İade"],
     ["/mesafeli-hizmet-sozlesmesi","Hizmet Sözleşmesi"]
   ];
-  return <main style={{maxWidth:980,margin:"0 auto",padding:"28px 20px 60px"}}>
-    <header style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"center",flexWrap:"wrap",marginBottom:28}}>
-      <Link href="/hizmetler" style={{textDecoration:"none"}}><strong>AI VISIBILITY</strong></Link>
-      <nav style={{display:"flex",gap:12,flexWrap:"wrap"}}>{links.slice(0,3).map(([h,l])=><Link key={h} href={h}>{l}</Link>)}</nav>
+  return <main className="public-shell">
+    <header className="public-header">
+      <Link href="/" className="public-brand" aria-label="AI Visibility ana sayfa"><span>◈</span><div><strong>AI VISIBILITY</strong><small>GEO / AEO INTELLIGENCE</small></div></Link>
+      <nav className="public-nav" aria-label="Ana navigasyon">{primary.map(([h,l])=><Link key={h} href={h}>{l}</Link>)}</nav>
+      <Link href="/musteri-giris" className="public-login">Müşteri Girişi</Link>
     </header>
-    <section className="panel" style={{padding:28}}>
+    <section className="public-page-head">
+      <p className="public-kicker">AI VISIBILITY</p>
       <h1>{title}</h1>{subtitle&&<p>{subtitle}</p>}
-      <div style={{lineHeight:1.7}}>{children}</div>
     </section>
-    <footer style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:24,fontSize:13}}>
-      {links.map(([h,l])=><Link key={h} href={h}>{l}</Link>)}
-      <Link href="/login">Yönetici Girişi</Link>
+    <section className="public-content">
+      <div className="public-content-inner">{children}</div>
+    </section>
+    <footer className="public-footer">
+      <div className="public-footer-brand"><strong>◈ AI Visibility</strong><p>Şeffaf ölçüm. Kanıta dayalı öneriler. Sonuç garantisi verilmez.</p></div>
+      <nav aria-label="Kurumsal bağlantılar">{primary.concat(legal).map(([h,l])=><Link key={h} href={h}>{l}</Link>)}</nav>
+      <small>© 2026 AI Visibility</small>
     </footer>
   </main>;
 }

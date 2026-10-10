@@ -50,3 +50,19 @@
  .mv-avatar{grid-column:3;grid-row:1;width:auto;height:auto;background:none;border-radius:0;}
  .mv-avatar button{min-height:44px;max-width:100%;white-space:normal;}
 }
+
+/* Desktop-only navigation enhancement: preserve all existing data widgets and phone navigation. */
+.mv-desktop-sidebar{display:none}
+@media(min-width:1200px){
+ .mv{padding-left:282px;padding-right:36px;max-width:none}
+ .mv-desktop-sidebar{display:flex;position:fixed;z-index:25;left:0;top:0;bottom:0;width:252px;padding:30px 18px;background:#0b1c2c;border-right:1px solid #254256;flex-direction:column;gap:18px;overflow-y:auto}
+ .mv-desktop-logo{font-size:21px;font-weight:850;color:#65eac2!important}
+ .mv-desktop-sidebar p{font-size:11px;letter-spacing:2px;color:#8fa6b9;margin:8px 10px 0}
+ .mv-desktop-sidebar nav{display:grid;gap:7px}
+ .mv-desktop-sidebar nav a{display:block;border-radius:10px;padding:13px 15px;font-size:14px;color:#c2d0de;text-decoration:none}
+ .mv-desktop-sidebar nav a:hover,.mv-desktop-sidebar nav a:focus-visible,.mv-desktop-sidebar nav a[aria-current=page]{background:#1b393a;color:#82f1c9;outline-offset:2px}
+ .mv-desktop-sidebar>small{margin-top:auto;font-size:11px;line-height:1.6;color:#8ca5b6}
+ .mv .mv-nav{display:none}
+ .mv .mv-top{max-width:1600px;margin-inline:auto}
+ .mv .mv-hero,.mv .mv-stats,.mv .mv-duo,.mv .mv-actions{max-width:1600px;margin-left:auto;margin-right:auto}
+}
