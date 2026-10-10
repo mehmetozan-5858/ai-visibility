@@ -6,3 +6,22 @@
 @media(max-width:700px){.site-preview .trust-band{grid-template-columns:1fr}.site-preview .architecture-visual{min-height:560px}.site-preview .arch-core{width:145px;height:145px}.site-preview .arch-node{min-width:135px;padding:10px}.site-preview .arch-node.n1{left:4%;top:8%}.site-preview .arch-node.n2{right:4%;top:24%}.site-preview .arch-node.n3{right:4%;bottom:10%}.site-preview .arch-node.n4{left:4%;bottom:24%}.site-preview .arch-node.n5{top:3%}.site-preview .arch-line{display:none}.site-preview .architecture-visual:after{width:200px;height:200px}.site-preview .architecture-legend{gap:11px}.site-preview .product-stage{min-height:0;display:grid;gap:18px}.site-preview .product-screen,.site-preview .product-screen.ps1,.site-preview .product-screen.ps2,.site-preview .product-screen.ps3{position:relative;inset:auto;width:100%;transform:none;opacity:1}.site-preview .product-screen:hover{transform:none}.site-preview .screen-body{grid-template-columns:48px 1fr;min-height:0}.site-preview .screen-main{padding:18px}.site-preview .mock-kpis{grid-template-columns:1fr 1fr 1fr}.site-preview .product-demo-label{position:static;margin-top:2px}.site-preview .sector-rich{grid-template-columns:112px 1fr;min-height:220px}.site-preview .sector-copy{padding:20px}.site-preview .sector-copy strong{font-size:18px}}
 @media(max-width:430px){.site-preview .arch-node{min-width:118px;max-width:140px}.site-preview .arch-node b{font-size:10px}.site-preview .arch-node small{font-size:8px}.site-preview .arch-node>span{width:31px;height:31px}.site-preview .arch-core{width:132px;height:132px}.site-preview .arch-core b{font-size:16px}.site-preview .screen-side{display:none}.site-preview .screen-body{grid-template-columns:1fr}.site-preview .mock-kpis{gap:6px}.site-preview .mock-kpis>div{padding:10px}.site-preview .screen-title{flex-direction:column}.site-preview .sector-rich{grid-template-columns:1fr}.site-preview .sector-art{min-height:150px}}
 @media(prefers-reduced-motion:reduce){.site-preview .arch-core,.site-preview .arch-node,.site-preview .product-screen,.site-preview .sector-rich{transition:none}.site-preview .product-screen:hover,.site-preview .sector-rich:hover{transform:none}}
+
+
+/* Unified product-grade visual language: one grid, one mint/cyan palette, distinct sector data stories. */
+.site-preview .sector-showcase{gap:18px}
+.site-preview .sector-rich{grid-template-columns:minmax(185px,42%) minmax(0,1fr);min-height:236px;border-color:#285465;background:linear-gradient(140deg,#0c2330,#0a1724);box-shadow:0 14px 38px #0003}
+.site-preview .sector-art{min-height:200px;display:grid;place-items:center;padding:15px;background:radial-gradient(circle at 50% 50%,#10404b 0,#0a2231 68%,#091a28)}
+.site-preview .sector-art:before{background-size:28px 28px;opacity:.55}
+.site-preview .sector-diagram{display:block;width:100%;height:auto;max-width:320px;position:relative;z-index:1;filter:drop-shadow(0 16px 22px #0005)}
+.site-preview .sector-copy{align-self:center;padding:24px}
+.site-preview .sector-copy strong{font-size:clamp(17px,1.5vw,21px);line-height:1.2}
+.site-preview .sector-rich:hover{border-color:#58c8b6;box-shadow:0 20px 48px #0006}
+.site-preview .product-screen,.site-preview .report,.site-preview .trust-item{border-color:#285465;background:linear-gradient(145deg,#0e2533,#0b1826);box-shadow:0 15px 48px #0003}
+.site-preview .report{position:relative;overflow:hidden}
+.site-preview .report:before{content:"";position:absolute;inset:0 0 auto;height:3px;background:linear-gradient(90deg,#40b5c0,#6fe8c3,transparent)}
+.site-preview .trust-item{align-items:center;min-height:118px}
+.site-preview .premium-contact{border:1px solid #2a5664;border-radius:24px;background:radial-gradient(circle at 95% 10%,#174b4a66,transparent 45%),linear-gradient(135deg,#0e2935,#0b1927);padding:clamp(24px,4vw,54px);margin-bottom:56px}
+@media(max-width:980px){.site-preview .sector-rich{grid-template-columns:minmax(170px,40%) 1fr}}
+@media(max-width:700px){.site-preview .sector-rich{grid-template-columns:1fr;min-height:0}.site-preview .sector-art{min-height:175px;padding:14px}.site-preview .sector-diagram{max-width:350px;max-height:190px}.site-preview .sector-copy{padding:20px 22px 24px}.site-preview .premium-contact{padding:24px 18px}.site-preview .trust-item{min-height:0}}
+@media(max-width:430px){.site-preview .sector-art{min-height:160px}.site-preview .sector-diagram{max-height:175px}}
