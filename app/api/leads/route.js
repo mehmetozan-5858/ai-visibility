@@ -3,6 +3,7 @@ import {addClient,findClientByIdentity} from "../../../lib/repository";
 import {upsertClientProfile} from "../../../lib/client-profile";
 import {createPaymentAccessToken} from "../../../lib/admin-auth";
 import {verifyAdminToken} from "../../../lib/admin-auth";
+import {checkRateLimit,enforceSameOrigin} from "../../../lib/api-security";
 
 async function isAdmin(req){
   const token=req.cookies.get("ai_admin")?.value||"";
@@ -10,6 +11,8 @@ async function isAdmin(req){
 }
 
 export async function POST(req){
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"public-lead",limit:8,windowMs:30*60*1000});if(limited)return limited;
   try{
     const body=await req.json();
     const lead=await createLead(body||{});
@@ -27,6 +30,7 @@ export async function GET(req){
 }
 
 export async function PATCH(req){
+  const origin=enforceSameOrigin(req);if(origin)return origin;
   if(!await isAdmin(req))return Response.json({error:"Yetkisiz erişim."},{status:401});
   try{
     const body=await req.json();
@@ -37,6 +41,7 @@ export async function PATCH(req){
 }
 
 export async function PUT(req){
+  const origin=enforceSameOrigin(req);if(origin)return origin;
   if(!await isAdmin(req))return Response.json({error:"Yetkisiz erişim."},{status:401});
   try{
     const body=await req.json();const lead=await getLead(body?.id);if(!lead)return Response.json({error:"Lead bulunamadı."},{status:404});
