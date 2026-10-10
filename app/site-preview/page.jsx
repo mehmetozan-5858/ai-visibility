@@ -1,101 +1,75 @@
 "use client";
 import {useState} from "react";
-import "./preview.css";
-import "./premium-visual.css";
+import "./final-preview.css";
 
 const copy={
  tr:{
-  nav:["Platform","Çözümler","Örnek rapor","Güven"],login:"Müşteri girişi",eyebrow:"DIGITAL VISIBILITY INTELLIGENCE",
+  login:"Müşteri girişi",lang:"EN",eyebrow:"DIGITAL VISIBILITY INTELLIGENCE",
   headline:"Yapay zekâda görünür olmak yetmez. Neden görünür olduğunuzu da bilin.",
-  subtitle:"AI Visibility; markanızın yapay zekâ aramalarındaki görünürlüğünü ölçer, bulguları kaynaklarıyla açıklar, sorunları önceliklendirir ve iyileştirme sürecini tek yerde takip etmenizi sağlar.",
-  cta:"Platformu keşfet",secondary:"Örnek raporu incele",proof:"Kanıta dayalı analiz · Şeffaf metodoloji · TR / EN deneyim",
-  platformTitle:"Görünürlükten aksiyona tek platform",platformLead:"Sadece bir skor vermek yerine neyin çalıştığını, neyin eksik olduğunu ve sıradaki en değerli adımı gösteren çalışma akışı.",
-  pillars:["Keşfet","Kanıtla","Önceliklendir","İyileştir"],pillarText:["AI aramalarında marka, konu ve kaynak sinyallerini tarayın.","Her önemli bulguyu kaynak ve ölçüm bağlamıyla ilişkilendirin.","Sorunları iş etkisi ve güven düzeyine göre sıralayın.","Onaylanan geliştirmeleri uygulayın, yeniden ölçün ve değişimi takip edin."],
-  architectureTitle:"Bir skor ekranından fazlası: görünürlük işletim sistemi",architectureLead:"Keşiften kanıta, öncelikten uygulamaya kadar bütün karar zincirini aynı çalışma alanında birleştirin.",
-  architectureNodes:["AI Search Signals","Evidence Graph","Priority Engine","Action Workspace","Executive View"],
-  productTitle:"Ürünü anlatmak yerine, çalışma şeklini gösteriyoruz",productLead:"Yönetici özeti, kanıt ekranı ve aksiyon merkezi aynı veri zincirinden beslenir. Aşağıdaki ekranlar temsili ürün görünümüdür; gerçek müşteri verisi değildir.",
-  productCards:[
-   ["Executive Overview","Yönetici özeti","Skor, değişim, kritik bulgular ve sıradaki aksiyon tek bakışta."],
-   ["Evidence Explorer","Kanıt görünümü","Bulguyu kaynak, tarih, bağlam ve güven düzeyiyle birlikte inceleyin."],
-   ["Action Workspace","Aksiyon merkezi","Önceliklendirilmiş geliştirmeleri durum ve sahiplik bilgisiyle takip edin."]
-  ],
-  outcomesTitle:"Yönetici için netlik. Ekip için yapılacak iş.",outcomes:["Görünürlük durumunu tek ekranda anlayın","Hangi kaynakların markanızı desteklediğini görün","Eksikleri önem sırasına göre yönetin","Tekrarlanan ölçümlerle gelişimi izleyin"],
-  solutions:"İşletmenize göre kullanım alanları",sectors:["Üretim ve ihracat","Uzman B2B hizmetler","E-ticaret ve ürün markaları","Dijital ajanslar"],
-  sectorText:["Ürün ve uzmanlık alanlarınızın AI cevaplarında nasıl temsil edildiğini görün.","Uzmanlığınızı destekleyen kaynakları ve içerik boşluklarını belirleyin.","Ürün verisi, kategori bağlamı ve AI okunabilirliği sinyallerini takip edin.","Müşteri görünürlüğünü kanıt, öncelik ve raporlama disipliniyle yönetin."],
-  reportLabels:["Keşif","Kanıt","Hazırlık"],findingTitle:"Öncelikli bulgu",findingText:"Kanıt, bağlam ve sonraki adım birlikte gösterilir.",reportName:"AI Visibility / Rapor",
-  report:"Karar vermeyi kolaylaştıran rapor",demo:"Temsili örnek — gerçek müşteri verisi değildir",metric:"AI görünürlük değerlendirmesi",note:"Puanlar yalnızca doğrulanmış ölçüm yapıldığında hesaplanır. Belirli sıralama, satış veya gelir sonucu garanti edilmez.",
-  trustBand:["Kaynak bağlantılı bulgular","Şeffaf demo etiketi","TR / EN deneyim","Müşteri ve yönetici alanları ayrılmış"],
-  nextStepsTitle:"İlk başvurudan ölçülebilir aksiyona",nextSteps:[["01","Hizmet ve ülke","Paket kapsamını ve ülkenize göre gösterilen fiyatı inceleyin."],["02","İşletme bilgileri","Gerçek başvuru formunda işletmenizi ve ihtiyacınızı paylaşın."],["03","Doğrulama ve plan","Kapsam, ücret ve sonraki adımlar netleştirilmeden ödeme aşamasına geçilmez."]],applyCta:"Ön değerlendirme başlat",nextStepsNote:"Başvuru ücretsizdir; ücretli hizmet ve ödeme koşulları ayrıca doğrulanır.",
-  contact:"AI görünürlüğünüzü daha sistemli yönetin",contactText:"Hizmet kapsamını, ülkeye göre fiyatlandırmayı ve çalışma yöntemimizi inceleyin. Doğrulanmış iletişim bilgileri iletişim sayfamızda yayımlanır.",
-  footer:"Şeffaf ölçüm. Kanıta dayalı öneriler. Uygulanabilir aksiyon.",trust:"Kurumsal güveni tasarımın parçası değil, ürünün temeli yapıyoruz",
-  trustItems:["Bulgular kaynak bağlantıları ve ölçüm bağlamıyla sunulur","Temsili raporlar ve demo veriler açıkça etiketlenir","Sonuç, sıralama veya gelir garantisi verilmez","Müşteri ve yönetici alanları birbirinden ayrılır","Gizlilik, KVKK, sözleşme ve iade koşulları erişilebilirdir","Yalnızca doğrulanmış özellikler müşteri karşısında aktif gösterilir"],
-  legal:"Yasal bilgiler",privacy:"Gizlilik",kvkk:"KVKK",terms:"Hizmet sözleşmesi",refund:"İptal ve iade",contactLink:"İletişim",contactCta:"İletişim bilgileri",pricing:"Hizmetler ve fiyatlar"
+  lead:"AI Visibility; markanızın yapay zekâ aramalarındaki görünürlüğünü ölçer, kanıtları kaynaklarıyla gösterir, öncelikleri belirler ve uygulanabilir aksiyonlara dönüştürür.",
+  cta:"Platformu keşfet",sample:"Örnek görünümü incele",
+  sec1:"Onayladığımız tasarım dili",sec1lead:"Bu önizlemede artık CSS ile taklit edilen paneller değil, doğrudan onayladığımız gerçek görsel varlıklar kullanılıyor.",
+  sec2:"Görünürlük işletim sistemi",sec2lead:"Keşif, kanıt, öncelik, aksiyon ve yönetici görünümünü tek karar zincirinde birleştiren görsel yapı.",
+  sec3:"Ürün deneyimi",sec3lead:"Yönetici özeti ve ürün ekranlarının gerçek tasarım referansına dayalı görünümü.",
+  trust:"Kanıta dayalı · Şeffaf demo · TR / EN · Müşteri ve yönetici alanları ayrılmış",
+  final:"Önizleme onaylandıktan sonra aynı görsel dil müşteri ve yönetici panellerine uygulanacak.",
+  button:"Ön değerlendirme başlat"
  },
  en:{
-  nav:["Platform","Solutions","Sample report","Trust"],login:"Client sign in",eyebrow:"DIGITAL VISIBILITY INTELLIGENCE",
+  login:"Client sign in",lang:"TR",eyebrow:"DIGITAL VISIBILITY INTELLIGENCE",
   headline:"Visibility in AI is not enough. Know why you are visible.",
-  subtitle:"AI Visibility measures how your brand appears in AI search, explains findings with evidence, prioritizes gaps, and helps you track improvement in one place.",
-  cta:"Explore the platform",secondary:"View sample report",proof:"Evidence-led analysis · Transparent methodology · TR / EN experience",
-  platformTitle:"From visibility to action in one platform",platformLead:"Instead of giving you only a score, the workflow shows what works, what is missing, and the next most valuable action.",
-  pillars:["Discover","Evidence","Prioritize","Improve"],pillarText:["Review brand, topic, and source signals across AI search experiences.","Connect important findings to sources and measurement context.","Rank issues by business relevance and confidence.","Apply approved improvements, remeasure, and track change."],
-  architectureTitle:"More than a scorecard: a visibility operating system",architectureLead:"Bring discovery, evidence, prioritization, action and executive review into one connected workspace.",
-  architectureNodes:["AI Search Signals","Evidence Graph","Priority Engine","Action Workspace","Executive View"],
-  productTitle:"Do not just describe the product. Show how the work flows.",productLead:"Executive summary, evidence review and action management are designed around the same evidence chain. The screens below are illustrative product views, not real customer data.",
-  productCards:[
-   ["Executive Overview","Executive summary","See score, change, critical findings and the next action at a glance."],
-   ["Evidence Explorer","Evidence view","Review each finding with source, date, context and confidence."],
-   ["Action Workspace","Action center","Track prioritized improvements with status and ownership context."]
-  ],
-  outcomesTitle:"Clarity for leaders. Action for teams.",outcomes:["Understand visibility status at a glance","See which sources support your brand presence","Manage gaps by priority","Track progress through repeat measurements"],
-  solutions:"Use cases built around your business",sectors:["Manufacturing & export","Specialist B2B services","E-commerce & product brands","Digital agencies"],
-  sectorText:["See how products and specialist expertise are represented in AI answers.","Identify supporting sources and content gaps around your expertise.","Track product data, category context and AI readability signals.","Manage client visibility with evidence, prioritization and disciplined reporting."],
-  reportLabels:["Discovery","Evidence","Readiness"],findingTitle:"Priority finding",findingText:"Evidence, context and next action are grouped together.",reportName:"AI Visibility / Report",
-  report:"A report designed for decisions",demo:"Illustrative demo — not real customer data",metric:"AI visibility assessment",note:"Scores require verified measurements. No ranking, sales, or revenue outcome is guaranteed.",
-  trustBand:["Source-linked findings","Clearly labeled demos","TR / EN experience","Separated customer and admin areas"],
-  nextStepsTitle:"From first request to a measurable action plan",nextSteps:[["01","Service and region","Review package scope and the price displayed for your market."],["02","Business context","Share your company details and goals in the real application form."],["03","Review and plan","Scope, pricing and next steps are confirmed before any payment stage."]],applyCta:"Request an assessment",nextStepsNote:"Submitting an application is free; paid service and payment terms are confirmed separately.",
-  contact:"Manage AI visibility with more discipline",contactText:"Explore service scope, regional pricing, and our working method. Verified contact details are published on our contact page.",
-  footer:"Transparent measurement. Evidence-based recommendations. Actionable next steps.",trust:"Trust is not a visual layer. It is part of the product.",
-  trustItems:["Findings include source links and measurement context","Illustrative reports and demo data are clearly labeled","No ranking, revenue, or outcome guarantees","Customer and administrator areas remain separated","Privacy, legal terms, and cancellation policies remain accessible","Only verified capabilities are presented as active"],
-  legal:"Legal information",privacy:"Privacy",kvkk:"Data protection",terms:"Service agreement",refund:"Cancellation and refunds",contactLink:"Contact",contactCta:"Contact details",pricing:"Services and pricing"
+  lead:"AI Visibility measures your brand presence in AI search, shows evidence with sources, prioritizes gaps and turns findings into actionable next steps.",
+  cta:"Explore platform",sample:"View sample visual",
+  sec1:"Approved visual language",sec1lead:"This preview now uses the approved visual assets directly instead of recreating them with CSS mockups.",
+  sec2:"Visibility operating system",sec2lead:"A connected visual system for discovery, evidence, priority, action and executive review.",
+  sec3:"Product experience",sec3lead:"Executive and product views based on the approved design reference.",
+  trust:"Evidence-led · Clearly labeled demo · TR / EN · Separate customer and admin areas",
+  final:"After preview approval, the same visual language will be applied to customer and admin workspaces.",
+  button:"Request assessment"
  }
 };
 
-function SectorVisual({kind}){
- const frame=(content)=><svg className="sector-diagram" viewBox="0 0 320 180" role="img" aria-label={["Manufacturing and export flow","Verified B2B expertise network","Commerce product catalog","Agency reporting dashboard"][kind]}><defs><linearGradient id={"sector-gradient-"+kind} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#6df0d0"/><stop offset="1" stopColor="#37a7bf"/></linearGradient></defs><rect x="10" y="10" width="300" height="160" rx="17" fill="#0b202d" stroke="#2a5865"/><path d="M24 51H296M24 94H296M24 137H296M78 24V156M151 24V156M224 24V156" stroke="#285264" strokeOpacity=".32"/>{content}</svg>;
- if(kind===0)return frame(<><path d="M44 128V81L76 62V81L108 62V128Z" fill="#123e4c" stroke="#68dfc4" strokeWidth="2"/><rect x="53" y="97" width="14" height="15" rx="2" fill="#62d4c2"/><rect x="81" y="97" width="14" height="15" rx="2" fill="#62d4c2"/><path d="M116 118H179M179 118L169 109M179 118L169 127" stroke="#71e9ce" strokeWidth="3" fill="none"/><rect x="193" y="80" width="83" height="59" rx="9" fill="#112f3c" stroke="#448c91"/><path d="M205 125V107H219V125M228 125V94H242V125M251 125V101H265V125" fill="#56cbb8"/><path d="M46 42H105" stroke="#68dfc4" strokeWidth="3"/><circle cx="273" cy="48" r="8" fill="#68dfc4"/></>);
- if(kind===1)return frame(<><circle cx="160" cy="84" r="27" fill="#123f4b" stroke="#65dcca" strokeWidth="2"/><circle cx="160" cy="76" r="9" fill="#70e4d2"/><path d="M144 99Q160 82 176 99" fill="none" stroke="#70e4d2" strokeWidth="4" strokeLinecap="round"/>{[[68,53],[253,53],[68,127],[253,127]].map(([x,y],i)=><g key={i}><path d={`M${x<160?x+17:x-17} ${y}L${x<160?135:185} 84`} stroke="#3d8994" strokeDasharray="4 4"/><rect x={x-29} y={y-19} width="58" height="38" rx="8" fill="#12313f" stroke="#4b94a0"/><path d={`M${x-17} ${y-5}h25M${x-17} ${y+4}h34`} stroke="#76cbd5" strokeWidth="3" strokeLinecap="round"/><circle cx={x+18} cy={y-10} r="4" fill="#64e2c3"/></g>)}</>);
- if(kind===2)return frame(<><rect x="35" y="39" width="109" height="103" rx="10" fill="#102f3d" stroke="#4e9c9e"/><rect x="50" y="52" width="79" height="49" rx="7" fill="#1c5a61"/><path d="M77 64L89 58L103 65V86L90 94L77 86Z" fill="none" stroke="#80f0d3" strokeWidth="3"/><path d="M78 115H119M78 125H106" stroke="#72c6cb" strokeWidth="4" strokeLinecap="round"/><path d="M156 90H184M184 90L176 82M184 90L176 98" stroke="#6ee7c8" strokeWidth="3" fill="none"/><rect x="196" y="51" width="88" height="83" rx="10" fill="#103441" stroke="#4b8e97"/><path d="M210 66H270M210 78H250" stroke="#6ac9c6" strokeWidth="4" strokeLinecap="round"/><rect x="211" y="97" width="13" height="24" rx="3" fill="#3d9a9f"/><rect x="230" y="89" width="13" height="32" rx="3" fill="#58c7b9"/><rect x="249" y="81" width="13" height="40" rx="3" fill="#78e6cb"/></>);
- return frame(<><rect x="34" y="43" width="156" height="94" rx="10" fill="#112f3e" stroke="#488d98"/><path d="M48 120L78 94L103 104L132 70L176 82" stroke="#76e4ca" strokeWidth="4" fill="none" strokeLinecap="round" strokeLinejoin="round"/><path d="M49 59H94" stroke="#66b7c1" strokeWidth="4" strokeLinecap="round"/><circle cx="230" cy="91" r="35" stroke="#317d87" strokeWidth="8" fill="#112f3e"/><path d="M230 56A35 35 0 0 1 263 103" stroke="#76e7cd" strokeWidth="8" fill="none" strokeLinecap="round"/><path d="M216 91L226 101L244 81" stroke="#76e7cd" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round"/><rect x="205" y="138" width="62" height="5" rx="2" fill="#4ba3a8"/></>);
-}
+export default function SitePreview(){
+ const [lang,setLang]=useState("tr");
+ const t=copy[lang];
+ return <main className="final-preview">
+  <header className="topbar shell">
+   <a className="brand" href="#top"><span>◈</span>AI Visibility</a>
+   <div className="top-actions"><button onClick={()=>setLang(lang==="tr"?"en":"tr")}>{t.lang}</button><a href="/musteri-giris">{t.login}</a></div>
+  </header>
 
-const reportBars=[72,58,84];
-export default function Home(){
- const [lang,setLang]=useState("tr");const t=copy[lang];
- return <div className="site-preview"><main>
-  <header className="nav wrap"><a href="#top" className="brand"><span className="mark">◈</span><span>AI Visibility</span></a><nav aria-label="Main navigation"><a href="#platform">{t.nav[0]}</a><a href="#solutions">{t.nav[1]}</a><a href="#report">{t.nav[2]}</a><a href="#trust">{t.nav[3]}</a></nav><div className="nav-actions"><button className="language" onClick={()=>setLang(lang==="tr"?"en":"tr")} aria-label="Change language">{lang==="tr"?"EN":"TR"}</button><a className="login" href="/musteri-giris">{t.login}</a></div></header>
-
-  <section id="top" className="hero wrap"><div className="hero-content"><p className="eyebrow"><span className="dot"/> {t.eyebrow}</p><h1>{t.headline}</h1><p className="lead">{t.subtitle}</p><div className="actions"><a className="btn primary" href="#platform">{t.cta} <span aria-hidden>↗</span></a><a className="btn ghost" href="#report">{t.secondary}</a></div><p className="proof-line">{t.proof}</p><p className="disclaimer">{t.note}</p></div>
-   <div className="visual enterprise-visual reference-hero-visual" aria-label={t.demo}><div className="reference-orbit" aria-hidden="true"/><div className="reference-float rf-search"><span>⌕</span><div><b>{lang==="tr"?"AI arama görünürlüğü":"AI search visibility"}</b><i/></div></div><div className="reference-float rf-evidence"><span>◎</span><div><b>{lang==="tr"?"Kanıt analizi":"Evidence review"}</b><i/></div></div><div className="reference-float rf-strategy"><span>↗</span><div><b>{lang==="tr"?"Stratejik öneriler":"Strategic insights"}</b><i/></div></div><div className="reference-float rf-actions"><span>⚡</span><div><b>{lang==="tr"?"Aksiyon planı":"Action plan"}</b><i/></div></div><div className="visual-top"><span>AI Visibility / Executive View</span><span className="demo-tag">DEMO</span></div><div className="visual-body"><div className="hero-score"><div className="score-orb"><strong>72</strong><span>/100</span></div><div><span className="micro">{t.metric}</span><strong className="hero-status">Evidence-backed</strong><small>Source-linked findings</small></div></div><div className="mini-grid"><div><span>Discovery</span><b>12</b><small>signals reviewed</small></div><div><span>Evidence</span><b>8</b><small>linked findings</small></div><div><span>Priority</span><b>3</b><small>next actions</small></div></div><div className="bars">{[68,81,54,76].map((w,i)=><div key={i} className="bar-track"><div style={{width:w+"%"}}/></div>)}</div><p className="sample-label">{t.demo}</p></div></div>
+  <section id="top" className="hero shell">
+   <div className="hero-copy">
+    <p className="eyebrow">{t.eyebrow}</p>
+    <h1>{t.headline}</h1>
+    <p className="lead">{t.lead}</p>
+    <div className="actions"><a className="primary" href="#approved">{t.cta} ↗</a><a className="secondary" href="#system">{t.sample}</a></div>
+    <p className="trustline">{t.trust}</p>
+   </div>
+   <figure className="visual-card hero-visual"><img src="/approved-visuals/homepage-concept.webp" alt="AI Visibility approved homepage concept"/><figcaption>APPROVED VISUAL · DEMO</figcaption></figure>
   </section>
 
-  <section className="trust-band wrap" aria-label="Trust principles">{t.trustBand.map((x,i)=><div key={x}><span>{["↗","◎","TR","⌁"][i]}</span><b>{x}</b></div>)}</section>
+  <section id="approved" className="section shell two-col">
+   <div className="copy-block"><p className="section-no">01 / APPROVED VISUAL</p><h2>{t.sec1}</h2><p>{t.sec1lead}</p></div>
+   <figure className="visual-card"><img src="/approved-visuals/dashboard-concept.webp" alt="Approved AI Visibility dashboard concept"/><figcaption>REAL APPROVED ASSET · NOT CSS RECREATION</figcaption></figure>
+  </section>
 
-  <section id="platform" className="section wrap platform-section"><div className="section-heading"><p className="eyebrow">01 / PLATFORM</p><h2>{t.platformTitle}</h2><p>{t.platformLead}</p></div><div className="platform-grid">{t.pillars.map((s,i)=><article className="platform-card" key={s}><span className="number">0{i+1}</span><div className="platform-icon" aria-hidden>{["⌕","◎","↟","↻"][i]}</div><h3>{s}</h3><p>{t.pillarText[i]}</p></article>)}</div></section>
+  <section id="system" className="section shell two-col reverse-mobile">
+   <figure className="visual-card"><img src="/approved-visuals/platform-map.webp" alt="Approved AI Visibility platform map"/><figcaption>APPROVED SYSTEM MAP</figcaption></figure>
+   <div className="copy-block"><p className="section-no">02 / SYSTEM MAP</p><h2>{t.sec2}</h2><p>{t.sec2lead}</p></div>
+  </section>
 
-  <section className="section wrap architecture-section"><div className="architecture-copy"><p className="eyebrow">02 / SYSTEM MAP</p><h2>{t.architectureTitle}</h2><p>{t.architectureLead}</p><div className="architecture-legend"><span><i/> Evidence</span><span><i/> Priority</span><span><i/> Action</span></div></div><div className="architecture-visual" aria-label={t.demo}><div className="arch-grid"/><div className="arch-core"><span>◈</span><b>AI Visibility</b><small>Intelligence Core</small></div>{t.architectureNodes.map((n,i)=><div key={n} className={`arch-node n${i+1}`}><span>{["⌕","◎","↟","⚙","▤"][i]}</span><div><b>{n}</b><small>{["Collect","Verify","Rank","Execute","Review"][i]}</small></div></div>)}<div className="arch-line l1"/><div className="arch-line l2"/><div className="arch-line l3"/><div className="arch-line l4"/><div className="arch-line l5"/><span className="arch-demo">DEMO SYSTEM MAP</span></div></section>
+  <section className="section shell">
+   <div className="copy-block wide"><p className="section-no">03 / PRODUCT EXPERIENCE</p><h2>{t.sec3}</h2><p>{t.sec3lead}</p></div>
+   <div className="gallery">
+    <figure className="visual-card"><img src="/approved-visuals/homepage-concept.webp" alt="Approved AI Visibility interface"/></figure>
+    <figure className="visual-card"><img src="/approved-visuals/dashboard-concept.webp" alt="Approved AI Visibility dashboard"/></figure>
+    <figure className="visual-card"><img src="/approved-visuals/platform-map.webp" alt="Approved AI Visibility architecture visual"/></figure>
+   </div>
+  </section>
 
-  <section className="section wrap product-showcase"><div className="product-showcase-head"><p className="eyebrow">03 / PRODUCT EXPERIENCE</p><h2>{t.productTitle}</h2><p>{t.productLead}</p></div><div className="product-stage" aria-label={t.demo}>{t.productCards.map((card,i)=><article className={`product-screen ps${i+1}`} key={card[0]}><div className="screen-chrome"><span/><span/><span/><b>AI Visibility / {card[0]}</b><em>DEMO</em></div><div className="screen-body"><div className="screen-side"><span className="screen-logo">◈</span>{[1,2,3,4].map(v=><i key={v}/>)}</div><div className="screen-main"><div className="screen-title"><div><small>{card[0]}</small><strong>{card[1]}</strong></div><span>{i===0?"72/100":i===1?"8 sources":"3 priority"}</span></div>{i===0&&<><div className="mock-kpis"><div><small>Visibility</small><b>72</b></div><div><small>Evidence</small><b>8</b></div><div><small>Priority</small><b>3</b></div></div><div className="mock-chart">{[34,52,46,68,61,76,72].map((v,k)=><i key={k} style={{height:v+"%"}}/>)}</div></>}{i===1&&<div className="mock-evidence">{["Official source","Category context","Knowledge signal"].map((v,k)=><div key={v}><span>{k+1}</span><div><b>{v}</b><small>Source · date · confidence</small></div><em>{["High","High","Review"][k]}</em></div>)}</div>}{i===2&&<div className="mock-actions">{["Structured data review","Priority content gap","Re-measure visibility"].map((v,k)=><div key={v}><span>{["P1","P2","P3"][k]}</span><div><b>{v}</b><small>{["Ready","In review","Queued"][k]}</small></div><i/></div>)}</div>}<p className="screen-caption">{card[2]}</p></div></div></article>)}<span className="product-demo-label">ILLUSTRATIVE PRODUCT VIEWS · NOT CUSTOMER DATA</span></div></section>
+  <section className="cta shell"><div><h2>{t.final}</h2><p>Preview only · canlı site ve müşteri verileri değiştirilmedi.</p></div><a className="primary" href="/on-degerlendirme">{t.button} ↗</a></section>
 
-  <section className="section wrap outcome-section"><div className="outcome-copy"><p className="eyebrow">04 / OUTCOMES</p><h2>{t.outcomesTitle}</h2></div><div className="outcome-list">{t.outcomes.map((item,i)=><div key={item}><span>0{i+1}</span><p>{item}</p></div>)}</div></section>
-
-  <section id="solutions" className="section wrap solutions-rich"><p className="eyebrow">05 / SOLUTIONS</p><h2>{t.solutions}</h2><div className="sector-showcase">{t.sectors.map((s,i)=><a href="/hizmetler" className={`sector-rich sr${i+1}`} key={s}><div className="sector-art"><SectorVisual kind={i}/></div><div className="sector-copy"><small>0{i+1}</small><strong>{s}</strong><p>{t.sectorText[i]}</p><b>{t.pricing} ↗</b></div></a>)}</div></section>
-
-  <section id="report" className="section wrap report-section"><div className="report-copy"><p className="eyebrow">06 / INSIGHTS</p><h2>{t.report}</h2><p>{t.platformLead}</p><a className="text-cta" href="/hizmetler">{t.pricing} ↗</a></div><div className="report"><div className="report-head"><span className="demo-tag">DEMO</span><span className="report-date">{t.reportName}</span></div><h3>{t.metric}</h3><p>{t.demo}</p><div className="report-grid">{t.reportLabels.map((label,i)=><div key={label}><span>{label}</span><strong>{reportBars[i]}%</strong><div className="meter"><i style={{width:reportBars[i]+"%"}}/></div></div>)}</div><div className="finding"><span>01</span><div><b>{t.findingTitle}</b><p>{t.findingText}</p></div></div><small>{t.note}</small></div></section>
-
-  <section id="trust" className="section wrap trust-section" aria-labelledby="trust-heading"><p className="eyebrow">07 / TRUST</p><h2 id="trust-heading">{t.trust}</h2><div className="trust-list">{t.trustItems.map(item=><div className="trust-item" key={item}><span aria-hidden="true">✓</span><p>{item}</p></div>)}</div></section>
-
-  <section id="contact" className="section wrap next-step-section" aria-labelledby="next-step-heading"><div className="next-step-heading"><div><p className="eyebrow">08 / NEXT STEP</p><h2 id="next-step-heading">{t.nextStepsTitle}</h2><p>{t.contactText}</p></div><a className="next-step-pricing" href="/hizmetler">{t.pricing} ↗</a></div><div className="next-step-grid">{t.nextSteps.map(([number,title,description])=><article className="next-step-card" key={number}><span>{number}</span><h3>{title}</h3><p>{description}</p></article>)}</div><div className="next-step-actions"><div><h3>{t.contact}</h3><p>{t.nextStepsNote}</p></div><div className="contact-actions"><a className="btn primary" href="/yeni-musteri?service=business-diagnosis">{t.applyCta} ↗</a><a className="btn ghost" href="/iletisim">{t.contactCta} ↗</a></div></div></section>
-
-  <footer className="wrap footer"><div className="footer-top"><strong>◈ AI Visibility</strong><span>{t.footer}</span></div><nav className="footer-links" aria-label={t.legal}><a href="/hizmetler">{t.pricing}</a><a href="/iletisim">{t.contactLink}</a><a href="/gizlilik">{t.privacy}</a><a href="/kvkk">{t.kvkk}</a><a href="/mesafeli-hizmet-sozlesmesi">{t.terms}</a><a href="/iptal-iade">{t.refund}</a></nav><small>© 2026 AI Visibility</small></footer>
- </main></div>
+  <footer className="footer shell"><strong>◈ AI Visibility</strong><span>© 2026 AI Visibility</span></footer>
+ </main>
 }
