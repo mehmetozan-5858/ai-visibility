@@ -11,3 +11,15 @@
 .customer-dashboard-live article{border-color:var(--ai-outline)!important;box-shadow:0 14px 38px #0003}
 .customer-dashboard-live button:focus-visible,.customer-portal-premium a:focus-visible{outline:3px solid var(--ai-accent);outline-offset:3px}
 @media(max-width:700px){.customer-dashboard-live article{box-shadow:0 9px 26px #0003}}
+
+
+/* Approved dashboard reference: consistent neon-teal grid, refined real-data panels. */
+.customer-portal-premium{background:radial-gradient(ellipse at 75% 4%,#0b47504a,transparent 45%),linear-gradient(#15374512 1px,transparent 1px),linear-gradient(90deg,#15374512 1px,transparent 1px),#051321;background-size:auto,44px 44px,44px 44px,auto}
+.customer-side{background:linear-gradient(180deg,#061c2c,#06131f);border-right-color:#14535b}
+.customer-side-brand>span{color:#62f7e3;text-shadow:0 0 24px #4beedb7a}
+.customer-side nav a:hover,.customer-side nav button:hover,.customer-side nav a[aria-current=page]{background:linear-gradient(90deg,#0d4c53,#082a38);border-left:2px solid #42ebd6;color:#b8fff1}
+.customer-hero h1{background:linear-gradient(110deg,#fff 35%,#5debd5);background-clip:text;-webkit-background-clip:text;color:transparent}
+.customer-hero-trust,.customer-content .panel,.customer-dashboard-live article{border-color:#1a6470!important;background:linear-gradient(145deg,#0a2737,#061825)!important;box-shadow:0 12px 35px #0005,0 0 0 1px #4cecd30a!important}
+.customer-topbar{border-bottom-color:#195563}
+.customer-content .panel:hover,.customer-dashboard-live article:hover{border-color:#278a8b!important}
+@media(max-width:700px){.customer-portal-premium{background-size:auto,34px 34px,34px 34px,auto}}
