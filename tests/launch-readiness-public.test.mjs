@@ -21,6 +21,13 @@ test("robots keeps customer admin api and preview workspaces out of search",()=>
   assert.match(robots,/sitemap:/);
 });
 
+test("robots and sitemap bypass application authentication proxy",()=>{
+  const proxy=read("proxy.js");
+  assert.match(proxy,/\"\/robots\.txt\"/);
+  assert.match(proxy,/\"\/sitemap\.xml\"/);
+  assert.match(proxy,/publicPages\.includes\(pathname\)/);
+});
+
 test("sitemap contains public commercial trust and legal routes only",()=>{
   const sitemap=read("app/sitemap.js");
   for(const path of ["/hizmetler","/hakkimizda","/iletisim","/yeni-musteri","/musteri-giris","/gizlilik","/kvkk","/mesafeli-hizmet-sozlesmesi","/iptal-iade"]){
