@@ -56,8 +56,13 @@ export default function CustomerPortal(){
  useEffect(()=>{load()},[lang]);
  useEffect(()=>{
   const openHome=()=>setTab("overview");
+  const openTab=event=>{
+    const requested=event?.detail?.tab;
+    if(["overview","findings","scans","payments"].includes(requested))setTab(requested);
+  };
   window.addEventListener("customer-portal-home",openHome);
-  return()=>window.removeEventListener("customer-portal-home",openHome);
+  window.addEventListener("customer-portal-tab",openTab);
+  return()=>{window.removeEventListener("customer-portal-home",openHome);window.removeEventListener("customer-portal-tab",openTab)};
  },[]);
  const completed=useMemo(()=>account?.scans?.filter(x=>x.status==="completed"&&Number.isFinite(Number(x.score)))||[],[account]);
  const latest=completed[0]||null,previous=completed[1]||null;const delta=latest&&previous?Number(latest.score)-Number(previous.score):null;
