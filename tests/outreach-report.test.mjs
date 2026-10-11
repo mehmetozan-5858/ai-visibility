@@ -18,12 +18,17 @@ import {readFile} from 'node:fs/promises';
 import {validReportDate} from '../lib/reporting.js';
 const source=(await readFile(new URL('../lib/outreach-daily-report.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
 const dailyOutreachReport=new Function('validReportDate','outreachReportRow',source+';return dailyOutreachReport;')(validReportDate,outreachReportRow);
-test('daily emails use Istanbul day bounds and durable keys, without counting drafts or repeated attempts twice',async()=>{
- let calls=0;const pool={query:async(sql,params)=>{calls++;if(calls===1)return {rows:[{deliveries:'email_deliveries',prospects:'prospects'}]};assert.deepEqual(params,['2026-10-07']);assert.match(sql,/COALESCE\(d.completed_at,d.first_attempt_at\)>=/);assert.match(sql,/COALESCE\(d.completed_at,d.first_attempt_at\)</);assert.match(sql,/AT TIME ZONE 'Europe\/Istanbul'/);assert.match(sql,/prospect-follow\/\%/);assert.match(sql,/LEFT JOIN prospects/);return {rows:[{delivery_key:'prospect-first/a',status:'completed',provider_id:'ack',total:'2',accepted:'1',payload:{text:'original'}},{delivery_key:'prospect-first/b',status:'sending',total:'2',accepted:'1',payload:{text:'uncertain'}}]}}};
- const r=await dailyOutreachReport('2026-10-07',{pool});assert.equal(r.accepted,1);assert.equal(r.uncertain,1);assert.equal(r.rows.length,2);assert.equal(r.rows[0].body,'original');assert.equal(r.rows[1].accepted,false);
- await assert.rejects(dailyOutreachReport('2026-02-31',{pool}));assert.equal(calls,2);
+test('daily emails use Istanbul day bounds and report tagged score-subject outcomes',async()=>{
+ let calls=0;const pool={query:async(sql,params)=>{calls++;
+  if(calls===1)return {rows:[{deliveries:'email_deliveries',prospects:'prospects'}]};
+  assert.deepEqual(params,['2026-10-07']);assert.match(sql,/COALESCE\(d.completed_at,d.first_attempt_at\)>=/);assert.match(sql,/COALESCE\(d.completed_at,d.first_attempt_at\)</);assert.match(sql,/AT TIME ZONE 'Europe\/Istanbul'/);assert.match(sql,/LEFT JOIN prospects/);
+  if(calls===2){assert.match(sql,/prospect-follow\/\%/);return {rows:[{delivery_key:'prospect-first/a',status:'completed',provider_id:'ack',total:'2',accepted:'1',payload:{text:'original'}},{delivery_key:'prospect-first/b',status:'sending',total:'2',accepted:'1',payload:{text:'uncertain'}}]}}
+  assert.match(sql,/data-score-subject-variant/);return {rows:[{score_sent:10,score_replied:3,score_converted:1,curiosity_sent:12,curiosity_replied:2,curiosity_converted:0}]};
+ }};
+ const r=await dailyOutreachReport('2026-10-07',{pool});assert.equal(r.accepted,1);assert.equal(r.uncertain,1);assert.equal(r.rows.length,2);assert.equal(r.rows[0].body,'original');assert.equal(r.rows[1].accepted,false);assert.deepEqual(r.scoreExperiment,{score:{sent:10,replied:3,converted:1},curiosity:{sent:12,replied:2,converted:0}});
+ await assert.rejects(dailyOutreachReport('2026-02-31',{pool}));assert.equal(calls,3);
 });
 test('absent durable table means no records while database failure stays unavailable',async()=>{
- const r=await dailyOutreachReport('2026-10-07',{pool:{query:async()=>({rows:[{}]})}});assert.equal(r.available,true);assert.equal(r.total,0);assert.deepEqual(r.rows,[]);
+ const r=await dailyOutreachReport('2026-10-07',{pool:{query:async()=>({rows:[{}]})}});assert.equal(r.available,true);assert.equal(r.total,0);assert.deepEqual(r.rows,[]);assert.deepEqual(r.scoreExperiment.score,{sent:0,replied:0,converted:0});
  await assert.rejects(dailyOutreachReport('2026-10-07',{pool:{query:async()=>{throw Error('offline')}}}));
 });
