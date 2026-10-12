@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {STRATEGY_LEARNING_REFRESH_SQL} from '../lib/strategy-learning-fast.js';
+import {readFile} from 'node:fs/promises';
+
+const source=await readFile(new URL('../lib/strategy-learning-fast.js',import.meta.url),'utf8');
+const match=source.match(/STRATEGY_LEARNING_REFRESH_SQL=`([\s\S]*?)`;\n/);
+assert.ok(match,'strategy learning SQL constant must remain directly inspectable');
+const SQL=match[1];
 
 test('strategy learning canonicalizes dimensions before grouping and upsert',()=>{
- const sql=STRATEGY_LEARNING_REFRESH_SQL.replace(/\s+/g,' ').toLowerCase();
+ const sql=SQL.replace(/\s+/g,' ').toLowerCase();
  for(const expression of [
   "lower(btrim(coalesce(country,''))) country_key",
   "lower(btrim(coalesce(city,''))) city_key",
@@ -17,7 +22,7 @@ test('strategy learning canonicalizes dimensions before grouping and upsert',()=
 });
 
 test('paid revenue uses the same canonical strategy dimensions as prospect metrics',()=>{
- const sql=STRATEGY_LEARNING_REFRESH_SQL.replace(/\s+/g,' ').toLowerCase();
+ const sql=SQL.replace(/\s+/g,' ').toLowerCase();
  const revenueStart=sql.indexOf('revenue as (');
  const metricsStart=sql.indexOf('metrics as (');
  assert.ok(revenueStart>=0&&metricsStart>revenueStart);
