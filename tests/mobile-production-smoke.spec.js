@@ -1,4 +1,4 @@
-const { test, expect, devices } = require('@playwright/test');
+import { test, expect, devices } from '@playwright/test';
 
 const BASE = process.env.SMOKE_BASE_URL || 'https://www.aivisibilityworks.com';
 const routes = ['/', '/musteri-giris', '/yeni-musteri', '/hizmetler', '/demo'];
