@@ -1,5 +1,5 @@
 import PublicPage from "../../components/PublicPage";
-export const metadata={title:"İptal ve İade | AI Visibility"};
+export const metadata={title:"İptal ve İade"};
 export default function Page(){return <PublicPage title="İptal / İade Politikası">
   <p>AI Visibility; dijital analiz, görünürlük taraması, raporlama, GEO/AEO önerileri ve kapsam dahilinde uygulama desteği sunar.</p>
 
