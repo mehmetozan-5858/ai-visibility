@@ -1,6 +1,6 @@
 import PublicPage from "../../components/PublicPage";
 
-export const metadata={title:"Mesafeli Hizmet Sözleşmesi | AI Visibility"};
+export const metadata={title:"Mesafeli Hizmet Sözleşmesi"};
 
 export default function Page(){
   return <PublicPage title="Mesafeli Hizmet Satış Sözleşmesi">
