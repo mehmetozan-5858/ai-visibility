@@ -28,13 +28,30 @@ for (const route of routes) {
     const title = await page.title();
     expect(title.trim().length, `${route} has an empty title`).toBeGreaterThan(0);
 
-    const overflow = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
+    const overflow = await page.evaluate(() => {
+      const clientWidth = document.documentElement.clientWidth;
+      const offenders = [...document.querySelectorAll('body *')]
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return {
+            tag: el.tagName.toLowerCase(),
+            className: typeof el.className === 'string' ? el.className : '',
+            left: Math.round(r.left),
+            right: Math.round(r.right),
+            width: Math.round(r.width),
+            text: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 90),
+          };
+        })
+        .filter((x) => x.right > clientWidth + 2 || x.left < -2)
+        .slice(0, 20);
+      return { scrollWidth: document.documentElement.scrollWidth, clientWidth, offenders };
+    });
+    if (overflow.scrollWidth > overflow.clientWidth + 2) {
+      console.log(`OVERFLOW ${route}: ${JSON.stringify(overflow.offenders)}`);
+    }
     expect(
       overflow.scrollWidth,
-      `${route} horizontally overflows: ${overflow.scrollWidth}px > ${overflow.clientWidth}px`,
+      `${route} horizontally overflows: ${overflow.scrollWidth}px > ${overflow.clientWidth}px; offenders=${JSON.stringify(overflow.offenders)}`,
     ).toBeLessThanOrEqual(overflow.clientWidth + 2);
 
     await page.waitForTimeout(500);
