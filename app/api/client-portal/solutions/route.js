@@ -13,7 +13,7 @@ export async function GET(req){
     const session=await verifyClientToken(store.get("ai_client")?.value||"");
     if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
     const account=await getClientAccount(session.clientId);
-    if(!(await customerAccess(account)).allowed)return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
+    if(!(await customerAccess(account)).allowed)return Response.json({error:en?"Customer access is not active.":"Müşteri erişimi aktif değil."},{status:403});
     let findings=await listFindingsForClient(session.clientId);
     if(!findings.length){
       const latest=await getLatestCompletedScan(session.clientId);
@@ -34,7 +34,7 @@ export async function POST(req){
     if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
     const account=await getClientAccount(session.clientId);
     const access=await customerAccess(account);
-    if(!access.allowed)return Response.json({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},{status:403});
+    if(!access.allowed)return Response.json({error:en?"Customer access is not active.":"Müşteri erişimi aktif değil."},{status:403});
     if(access.kind==='pilot')return Response.json({error:en?"Your free pilot includes diagnosis and reports. Implementation requires a separate paid service.":"Ücretsiz pilot analiz ve rapor içindir. Uygulama için ayrıca ücretli hizmet gereklidir."},{status:403});
     const findingId=String(body?.findingId||"").trim();
     if(!findingId)return Response.json({error:en?"No finding was selected.":"Bulgu seçilmedi."},{status:400});

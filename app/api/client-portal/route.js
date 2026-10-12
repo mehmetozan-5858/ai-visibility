@@ -17,7 +17,7 @@ export async function GET(req){
     const account=await getClientAccount(session.clientId);
     if(!account)return privateJson({error:en?"Customer account not found.":"Müşteri hesabı bulunamadı."},404);
     const access=await customerAccess(account);
-    if(!access.allowed)return privateJson({error:en?"Payment is awaiting bank verification.":"Ödeme banka doğrulaması bekliyor."},403);
+    if(!access.allowed)return privateJson({error:en?"Customer access is not active. Contact support if you have a paid account or an active pilot.":"Müşteri erişimi aktif değil. Ödemeniz onaylıysa veya pilot erişiminiz varsa destek ekibiyle iletişime geçin."},403);
     const profile=await getClientProfile(session.clientId).catch(()=>null);
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;

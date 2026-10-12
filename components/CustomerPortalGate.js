@@ -41,9 +41,9 @@ export default function CustomerPortalGate(){
     return (account?.payments||[]).some(p=>String(p.status||"").toLowerCase()==="paid");
   },[account]);
 
-  if(error)return <section style={card}><p className="client-message">{error}</p></section>;
+  if(error)return <section style={card}><p className="client-message">{error}</p><Link href="/musteri-giris" style={{display:"inline-block",marginTop:10}}>{lang==="en"?"Sign in to customer portal →":"Müşteri girişine dön →"}</Link></section>;
   if(!account)return <section style={card}><p>{c.loading}</p></section>;
-  if(unlocked)return <CustomerPortal/>;
+  if(account?.access?.kind==="pilot"||unlocked)return <CustomerPortal/>;
 
   return <section style={{display:"grid",gap:14}}>
     <article style={card}>
