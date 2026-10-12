@@ -9,7 +9,7 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 - [x] Production Next.js build succeeds.
 - [x] Vercel project is linked to `mehmetozan-5858/ai-visibility` and deploys `main` when explicitly released.
 - [x] Production aliases include `aivisibilityworks.com` and `www.aivisibilityworks.com`.
-- [x] Latest verified application production deployment for commit `5a9d9ba6f6ca79e4d103197defbc9bd1801c68b4` reached `READY` and was mapped to both production domains.
+- [x] Latest verified production deployment for commit `2fd043cd28d390de252891161cf3d3ab62a78acc` reached `READY` and was mapped to both production domains after applying the approved AI budget limits.
 - [x] No grouped Vercel production runtime errors were present in the 24-hour check performed on 2026-10-12 after the latest production release.
 - [x] Premium public site, customer login/onboarding, private customer/report indexing rules and payment-page privacy protections are on `main`.
 - [x] Sales preparation queue, bounded outreach, evidence-backed preliminary scoring, price experiment, score-vs-curiosity experiment and guarded adaptive allocation are on `main`.
