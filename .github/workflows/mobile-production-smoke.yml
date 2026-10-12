@@ -1,0 +1,30 @@
+name: Mobile Production Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'public/**'
+      - 'tests/mobile-production-smoke.spec.js'
+      - '.github/workflows/mobile-production-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Playwright Chromium
+        run: npx -y @playwright/test@1.55.1 install --with-deps chromium
+      - name: Test production at iPhone viewport
+        env:
+          SMOKE_BASE_URL: https://www.aivisibilityworks.com
+        run: npx -y @playwright/test@1.55.1 test tests/mobile-production-smoke.spec.js --reporter=line
