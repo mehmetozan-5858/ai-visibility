@@ -22,10 +22,11 @@ export default async function NewCustomerPage({searchParams}){
       </header>
       <section style={{textAlign:"center",maxWidth:760,margin:"12px auto 28px"}}><div style={{fontSize:11,letterSpacing:".2em",fontWeight:900,color:"#54dfd0",textTransform:"uppercase"}}>{en?"Free assessment":"Ücretsiz ön değerlendirme"}</div><h1 style={{fontSize:"clamp(38px,5vw,58px)",lineHeight:1.05,letterSpacing:"-.04em",margin:"12px 0 14px"}}>{en?"See where your brand stands in AI search.":"Markanızın AI dünyasındaki yerini görün."}</h1><p style={{color:"#9fb2b8",fontSize:16,lineHeight:1.7}}>{en?"Tell us about your business. Your chosen service is included in your application; scope and total price are shown before payment.":"İşletmenizi tanıyalım. Seçtiğiniz hizmet başvurunuza otomatik eklenir; kapsam ve toplam ücret ödeme öncesinde gösterilir."}</p></section>
       <div style={{maxWidth:780,margin:"0 auto"}}><NewCustomerLeadForm initialService={service} initialCountry={country} initialLanguage={language} prices={prices}/></div>
-      <div style={{display:"grid",gridTemplateColumns:"1.4fr .6fr",gap:16,maxWidth:980,margin:"18px auto 0"}}>
+      <div className="new-customer-followup-grid" style={{display:"grid",gridTemplateColumns:"1.4fr .6fr",gap:16,maxWidth:980,margin:"18px auto 0"}}>
         <section className="panel" style={{padding:22}}><div style={{fontSize:11,color:"#54dfd0",fontWeight:800,letterSpacing:".16em",textTransform:"uppercase"}}>{en?"Next steps":"Sonraki adımlar"}</div><h2>{en?"How it works":"Nasıl çalışır?"}</h2><ol style={{lineHeight:1.8,paddingLeft:22,marginBottom:0}}>{steps.map(step=><li key={step}>{step}</li>)}</ol></section>
         <section className="panel" style={{padding:22}}><div style={{fontSize:11,color:"#54dfd0",fontWeight:800,letterSpacing:".16em",textTransform:"uppercase"}}>{en?"Already registered?":"Zaten kayıtlı mısınız?"}</div><h2>{en?"Welcome back":"Tekrar hoş geldiniz"}</h2><p>{en?"If your payment is verified and your account is created, sign in with your email and password.":"Ödemeniz onaylandı ve hesabınızı oluşturduysanız e-posta ve şifrenizle giriş yapabilirsiniz."}</p><Link href="/musteri-giris" style={{display:"inline-block",marginTop:8,fontWeight:800}}>{en?"Customer login →":"Müşteri girişine git →"}</Link></section>
       </div>
+      <style>{`@media(max-width:720px){.new-customer-followup-grid{grid-template-columns:1fr!important}}`}</style>
     </div>
   </main>;
 }

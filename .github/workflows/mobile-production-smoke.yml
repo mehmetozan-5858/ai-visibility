@@ -1,0 +1,45 @@
+name: Mobile Production Smoke
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'public/**'
+      - 'tests/mobile-production-smoke.spec.js'
+      - '.github/workflows/mobile-production-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install application dependencies
+        run: npm install
+      - name: Install Playwright test runner
+        run: npm install --no-save --no-package-lock @playwright/test@1.55.1
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build exact commit
+        run: npm run build
+      - name: Start exact commit
+        run: |
+          npm start > /tmp/aiv-smoke.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/aiv-smoke.log
+          exit 1
+      - name: Test exact commit at iPhone viewport
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:3000
+        run: npx playwright test tests/mobile-production-smoke.spec.js --reporter=line
