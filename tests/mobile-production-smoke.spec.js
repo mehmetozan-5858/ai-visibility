@@ -10,6 +10,11 @@ test.use({
 
 for (const route of routes) {
   test(`mobile smoke ${route}`, async ({ page }) => {
+    const consoleErrors = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+
     const response = await page.goto(`${BASE}${route}`, { waitUntil: 'networkidle' });
     expect(response, `missing main document response for ${route}`).not.toBeNull();
     expect(response.status(), `${route} returned HTTP ${response.status()}`).toBeLessThan(400);
@@ -27,10 +32,6 @@ for (const route of routes) {
       `${route} horizontally overflows: ${overflow.scrollWidth}px > ${overflow.clientWidth}px`,
     ).toBeLessThanOrEqual(overflow.clientWidth + 2);
 
-    const consoleErrors = [];
-    page.on('console', (message) => {
-      if (message.type() === 'error') consoleErrors.push(message.text());
-    });
     await page.waitForTimeout(500);
     expect(consoleErrors, `${route} emitted browser console errors`).toEqual([]);
   });
