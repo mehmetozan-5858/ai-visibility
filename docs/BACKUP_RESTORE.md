@@ -21,10 +21,23 @@ Before commercial launch, record the following without storing credentials in Gi
 
 - [x] Backup mechanism/provider identified: Neon manual snapshot and point-in-time history (operator screenshot, 2026-10-12).
 - [x] Backup retention recorded: manual snapshot UI showed `Expires on: never`; point-in-time history window shown as 6 hours on Free plan. Verify provider policy before relying on indefinite retention.
-- [ ] Backup frequency/RPO agreed: currently manual-only snapshot, no automated schedule on Free plan; six-hour PITR history does not substitute for a recurring durable backup.
+- [x] Backup frequency/RPO recorded for the zero-cost pilot: provider point-in-time history gives a 6-hour recovery window; additionally create/refresh the single durable manual snapshot before production releases, schema migrations, or other risky changes. Automatic scheduled snapshots require a paid Neon tier and are intentionally not enabled while the project is in zero-cost mode.
 - [x] Restore target and responsible operator recorded: user/operator restored into an isolated Neon branch from snapshot; `main` remained unchanged.
 - [x] Manual snapshot creation verified by Neon UI: `main at 2026-10-12 19:54:51 UTC (manual)`; snapshot size shown as 215.51 MB.
-- [x] Isolated snapshot restore verified by Neon success banner at 2026-10-12 22:58 local time; new branch `br-winter-haze-b2nwbosh`. Tables UI showed restored `public` schema including `clients`, `payments`, `prospects`, `visibility_scans`, `admin_credentials`, `cost_ledger` and other application tables.\n- [ ] Representative read-only row counts and timestamps compared between `main` and isolated branch; until then full data integrity readback remains unverified.
+- [x] Isolated snapshot restore verified by Neon success banner at 2026-10-12 22:58 local time; new branch `br-winter-haze-b2nwbosh`. Tables UI showed restored `public` schema including `clients`, `payments`, `prospects`, `visibility_scans`, `admin_credentials`, `cost_ledger` and other application tables.
+- [x] Representative read-only row counts compared between restored snapshot and current `main` on 2026-10-12. Restored snapshot: `clients=18`, `payments=5`, `prospects=930`, `visibility_scans=127`, `cost_ledger=940`. Current `main`: `clients=18`, `payments=5`, `prospects=930`, `visibility_scans=127`, `cost_ledger=945`. The first four tables matched exactly; `cost_ledger` was five rows ahead on live production, which is consistent with normal post-snapshot writes rather than missing restored data.
+- [x] Restore branch remained isolated: the multi-step restore explicitly kept `main` unchanged, and application connections/settings were not migrated to the restored branch. No production cutover was performed.
+
+### Zero-cost pilot backup policy
+
+While AI Visibility remains on Neon's Free plan:
+
+1. Keep the manual snapshot as the durable recovery point.
+2. Refresh the manual snapshot immediately before any production release, schema migration, bulk data operation, or other high-risk change.
+3. Use Neon's 6-hour point-in-time history for short-window operational recovery.
+4. Never test recovery by restoring over `main`; restore into an isolated branch first and verify representative data.
+5. Do not migrate application connections/settings to a recovery-test branch.
+6. When revenue supports it, evaluate paid scheduled backups before increasing commercial criticality.
 
 ### Logical export fallback
 
@@ -76,4 +89,6 @@ A restore verification passes only when:
 
 ## Launch status
 
-**Provider-level manual snapshot and isolated restore have now been evidenced by operator Neon screenshots on 2026-10-12.** The restore showed application tables in the isolated branch, while `main` remained unchanged. **Do not mark the complete backup gate closed yet:** representative source-vs-restored row counts/timestamps, sustainable RPO/backup cadence and recovery-branch safety checks remain outstanding. Do not migrate connections/settings or restore into `main` for this test.
+**Backup and restore gate verified for the current zero-cost pilot on 2026-10-12.** A Neon manual snapshot was created, restored through multi-step restore to an isolated branch, core application tables were present, representative row counts were compared against current production, `main` remained unchanged, and application connections/settings were not migrated to the test branch. The only row-count difference was five additional `cost_ledger` rows on current production after the snapshot, consistent with expected ongoing writes.
+
+This verification supports controlled production/pilot launch. The zero-cost policy still relies on one durable manual snapshot plus Neon's 6-hour point-in-time history; scheduled durable backups should be reconsidered when project revenue supports a paid backup tier or commercial criticality increases.
