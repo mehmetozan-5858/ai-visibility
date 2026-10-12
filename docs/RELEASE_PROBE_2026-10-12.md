@@ -24,5 +24,9 @@ Vercel documentation states that this disables Git-triggered deployments even wh
 
 PR #19 changed the setting to `true` and passed the Node 24 CI/test/build pipeline before merge.
 
-## Post-fix probe
-This documentation update is the harmless second `main` push after the corrected `deploymentEnabled=true` setting became active. Its commit SHA is the release probe. A successful Vercel deployment created automatically from this SHA proves the Git release path is restored.
+## Post-fix probes
+- A harmless post-fix `main` push still produced no automatic Vercel deployment while the GitHub installation reported restricted repository access.
+- GitHub App repository access was then reviewed by the owner.
+- This documentation-only update is the next verification probe after that review.
+
+Pass condition: Vercel must automatically create a deployment for the exact commit SHA produced by this change, without using the manual deployment API.
