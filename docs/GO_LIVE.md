@@ -8,6 +8,7 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 - [x] GitHub CI test suite passes on the current production line using Node 24, matching the production major runtime.
 - [x] Production Next.js build succeeds.
 - [x] Vercel project is linked to `mehmetozan-5858/ai-visibility` and production branch `main`.
+- [x] Free TOTP Authenticator recovery code and enrollment screen deployed via PR #20 (production commit `bf5468781a7dcbfd3378dc2472b0675c5237db6c`, READY); activation awaits owner enrollment and controlled E2E verification.
 - [x] Automatic GitHub -> Vercel production release path is verified: probe commit `0cae733392045059d1e21fedffd8567437061a81` automatically created deployment `dpl_5NadLYG8qqiUK5GiAGSHYURRKoQB`, which reported `source: git`, reached `READY`, and mapped both production domains without a manual deployment API call.
 - [x] Production aliases include `aivisibilityworks.com` and `www.aivisibilityworks.com`.
 - [x] No grouped Vercel production runtime errors were present in the 24-hour checks performed during launch closure.
@@ -27,9 +28,9 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 - [ ] Email journey: verified sender -> first outreach -> provider acceptance/delivery -> inbound reply intake -> CRM state -> follow-up suppression when a reply/customer/opt-out exists. Safety and delivery tests pass; one controlled production round-trip is still required.
 - [ ] Admin journey: sign-in -> operational dashboard -> customer/prospect review -> payment review -> manager report without privilege or same-origin regressions. Route protections are tested; an authenticated production UI session is still required.
 - [x] Scheduled automation journey: scheduler authentication -> discovery/preparation -> bounded outreach -> reporting/learning cycles verified after the duplicate strategy-key fix.
-- [ ] Recovery journey: admin/customer password recovery and any configured multi-factor recovery work end-to-end in production. Admin recovery intentionally remains fail-closed until the second (phone/SMS) channel is configured.
+- [ ] Recovery journey: admin/customer password recovery and any configured multi-factor recovery work end-to-end in production. Admin recovery uses free email + TOTP Authenticator (PR #20 merged, CI and mobile smoke green). It intentionally remains fail-closed until the owner enrolls the device, validates the first code, ADMIN_RECOVERY_TOTP_ENABLED=true is configured, and a controlled production reset test passes.
 - [ ] Backup and restore: source/recovery instructions are documented in `docs/BACKUP_RESTORE.md`, but production database backup creation and an isolated restore/readback are still required.
-- [ ] Production environment review: core variables were reviewed and two Resend secrets were upgraded to `sensitive`; required phone/SMS recovery configuration and `DATA_CONTROLLER_NAME` remain owner/provider inputs before full commercial GO. AI budget limits are configured and verified.
+- [ ] Production environment review: core variables were reviewed and two Resend secrets were upgraded to `sensitive`; required owner Authenticator enrollment/activation and `DATA_CONTROLLER_NAME` remain owner/provider inputs before full commercial GO. AI budget limits are configured and verified.
 - [x] Spend controls: outreach caps are active at 5 per cycle and 50 per day. Production AI budget limits are $1/day and $10/month with 70/85/100% throttle thresholds active.
 - [x] CI/CD release path: automatic GitHub -> Vercel production deploy was verified with exact-SHA evidence after repository-side Git deploy settings and GitHub App repository access were repaired.
 - [ ] Authenticated mobile smoke: public/customer entry routes are verified at mobile width, but authenticated customer portal and core admin screens still need mobile visual verification as part of controlled production E2E sessions.
