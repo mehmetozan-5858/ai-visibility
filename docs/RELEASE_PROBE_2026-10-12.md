@@ -12,21 +12,13 @@ Date: 2026-10-12
 - Vercel project event history showed recent production releases were created explicitly rather than by an automatic Git push trigger.
 
 ## Root cause
-`vercel.json` explicitly contained:
+`vercel.json` explicitly contained `git.deploymentEnabled: false`. PR #19 changed the setting to `true` and passed the Node 24 CI/test/build pipeline before merge.
 
-```json
-"git": {
-  "deploymentEnabled": false
-}
-```
+## Authorization repair and final probe
+- Post-fix pushes still produced no deployment while the GitHub installation reported restricted repository access.
+- The repository access for the Vercel GitHub App was reviewed by the owner.
+- Verification commit: `0cae733392045059d1e21fedffd8567437061a81`.
+- Vercel automatically created production deployment `dpl_5NadLYG8qqiUK5GiAGSHYURRKoQB` from that exact SHA without a manual deployment API call.
+- The deployment reported `source: git`, reached `READY`, and was mapped to both `aivisibilityworks.com` and `www.aivisibilityworks.com` without alias errors.
 
-Vercel documentation states that this disables Git-triggered deployments even when the GitHub repository remains linked.
-
-PR #19 changed the setting to `true` and passed the Node 24 CI/test/build pipeline before merge.
-
-## Post-fix probes
-- A harmless post-fix `main` push still produced no automatic Vercel deployment while the GitHub installation reported restricted repository access.
-- GitHub App repository access was then reviewed by the owner.
-- This documentation-only update is the next verification probe after that review.
-
-Pass condition: Vercel must automatically create a deployment for the exact commit SHA produced by this change, without using the manual deployment API.
+Result: automatic GitHub -> Vercel production release path is verified operational.
