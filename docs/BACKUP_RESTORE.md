@@ -19,12 +19,12 @@ Production data is PostgreSQL/Neon-backed. Database backup evidence must be prov
 
 Before commercial launch, record the following without storing credentials in Git:
 
-- [ ] Backup mechanism/provider identified (provider point-in-time restore and/or PostgreSQL logical export).
-- [ ] Backup retention period recorded.
-- [ ] Backup frequency/RPO recorded.
-- [ ] Restore target and responsible operator recorded.
-- [ ] At least one backup creation/export is verified by timestamp/identifier.
-- [ ] At least one isolated restore or readback verification is completed.
+- [x] Backup mechanism/provider identified: Neon manual snapshot and point-in-time history (operator screenshot, 2026-10-12).
+- [x] Backup retention recorded: manual snapshot UI showed `Expires on: never`; point-in-time history window shown as 6 hours on Free plan. Verify provider policy before relying on indefinite retention.
+- [ ] Backup frequency/RPO agreed: currently manual-only snapshot, no automated schedule on Free plan; six-hour PITR history does not substitute for a recurring durable backup.
+- [x] Restore target and responsible operator recorded: user/operator restored into an isolated Neon branch from snapshot; `main` remained unchanged.
+- [x] Manual snapshot creation verified by Neon UI: `main at 2026-10-12 19:54:51 UTC (manual)`; snapshot size shown as 215.51 MB.
+- [x] Isolated snapshot restore verified by Neon success banner at 2026-10-12 22:58 local time; new branch `br-winter-haze-b2nwbosh`. Tables UI showed restored `public` schema including `clients`, `payments`, `prospects`, `visibility_scans`, `admin_credentials`, `cost_ledger` and other application tables.\n- [ ] Representative read-only row counts and timestamps compared between `main` and isolated branch; until then full data integrity readback remains unverified.
 
 ### Logical export fallback
 
@@ -76,4 +76,4 @@ A restore verification passes only when:
 
 ## Launch status
 
-This runbook documents the recovery procedure, but **database backup/restore remains a launch blocker until provider-level backup creation and an isolated restore/readback have been verified**. Documentation alone must not be used to mark the backup gate complete.
+**Provider-level manual snapshot and isolated restore have now been evidenced by operator Neon screenshots on 2026-10-12.** The restore showed application tables in the isolated branch, while `main` remained unchanged. **Do not mark the complete backup gate closed yet:** representative source-vs-restored row counts/timestamps, sustainable RPO/backup cadence and recovery-branch safety checks remain outstanding. Do not migrate connections/settings or restore into `main` for this test.
