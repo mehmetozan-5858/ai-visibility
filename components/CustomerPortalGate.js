@@ -43,7 +43,7 @@ export default function CustomerPortalGate(){
 
   if(error)return <section style={card}><p className="client-message">{error}</p></section>;
   if(!account)return <section style={card}><p>{c.loading}</p></section>;
-  if(unlocked)return <CustomerPortal/>;
+  if(account?.access?.kind==="pilot"||unlocked)return <CustomerPortal/>;
 
   return <section style={{display:"grid",gap:14}}>
     <article style={card}>
