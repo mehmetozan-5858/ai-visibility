@@ -50,7 +50,7 @@ export default function CustomerPortal(){
  const statusLabel={open:c.open,requested:c.requested,offered:c.offered,approved:c.approved,"in-progress":c.inProgress,resolved:c.resolved,draft:c.draft,accepted:c.accepted,paid:c.paid,completed:c.completed,cancelled:c.cancelled,ready:c.ready,"access-required":c.accessRequired,"approval-required":c.approvalRequired,pending:c.pending,"customer-reported":c.customerReported,failed:c.failed};
  const serviceCode=account?.profile?.requestedService||"";
  const canWork=account?.access?.kind==="paid"&&(serviceCode==="business-solution"||serviceCode==="business-monitoring");
- const canMonitor=account?.access?.kind!=="pilot"&&serviceCode==="business-monitoring";
+ const canMonitor=account?.access?.kind==="paid"&&serviceCode==="business-monitoring";
  const tabs=[["overview",c.overview,"⌂"],["findings",c.findings,"◆"],...(canWork?[["work",c.work,"⚙"]]:[]),["scans",c.scans,"◎"],["payments",c.payments,"₺"]];
  async function load(){try{const [a,f]=await Promise.all([fetch("/api/client-portal",{cache:"no-store",headers:{"accept-language":lang}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||c.loadFail);return d}),fetch("/api/client-portal/solutions",{cache:"no-store",headers:{"accept-language":lang}}).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||c.solutionsLoadFail);return d})]);setAccount(a.account);setFindings(f.findings||[])}catch(e){setMsg(e.message)}}
  useEffect(()=>{load()},[lang]);
