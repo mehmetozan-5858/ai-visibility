@@ -2,10 +2,15 @@ import { test, expect, devices } from '@playwright/test';
 
 const BASE = process.env.SMOKE_BASE_URL || 'https://www.aivisibilityworks.com';
 const routes = ['/', '/musteri-giris', '/yeni-musteri', '/hizmetler', '/demo'];
+const iphone = devices['iPhone 13'];
 
 test.use({
-  ...devices['iPhone 13'],
+  browserName: 'chromium',
   viewport: { width: 390, height: 844 },
+  userAgent: iphone.userAgent,
+  deviceScaleFactor: iphone.deviceScaleFactor,
+  isMobile: true,
+  hasTouch: true,
 });
 
 for (const route of routes) {
