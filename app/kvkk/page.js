@@ -1,10 +1,13 @@
 import PublicPage from "../../components/PublicPage";
 export const metadata={title:"KVKK Aydınlatma Metni"};
 export default function Page(){
-  const controller=process.env.DATA_CONTROLLER_NAME||"AI Visibility";
+  const controller=(process.env.DATA_CONTROLLER_NAME||"").trim();
   const contact=process.env.ADMIN_RECOVERY_EMAIL||"";
   return <PublicPage title="KVKK / Aydınlatma Metni">
-    <p><b>Veri sorumlusu:</b> {controller}.{contact?<> İlgili kişi başvuruları için iletişim: {contact}.</>:null}</p>
+    <p><b>Hizmet markası:</b> AI Visibility.</p>
+    {controller
+      ? <p><b>Veri sorumlusu:</b> {controller}.{contact?<> İlgili kişi başvuruları için iletişim: {contact}.</>:null}</p>
+      : <p><b>Yasal veri sorumlusu kimliği:</b> AI Visibility hizmet markasıdır; ticari yayına geçmeden önce gerçek kişi veya kayıtlı işletme niteliğindeki yasal veri sorumlusu kimliği bu sayfada ayrıca yayımlanacaktır.{contact?<> İletişim: {contact}.</>:null}</p>}
 
     <h2>İşlenen veri kategorileri ve amaçlar</h2>
     <p>Ad-soyad, e-posta ve telefon gibi iletişim bilgileri; işletme ve alan adı bilgileri; hizmet talepleri; tarama, rapor, destek ve işlem kayıtları; ödeme ve fatura durum bilgileri hizmetin kurulması ve yürütülmesi, hesabın ve ödeme sürecinin yönetilmesi, destek sağlanması, güvenliğin temini, hizmet kalitesinin ölçülmesi ve hukuki yükümlülüklerin yerine getirilmesi amaçlarıyla işlenebilir.</p>
@@ -22,6 +25,6 @@ export default function Page(){
     <p>6698 sayılı Kanunun 11 inci maddesi kapsamındaki şartlarla; kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme, işleme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya yurt dışında aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmişse düzeltilmesini isteme, kanuni şartları oluştuğunda silinmesini veya yok edilmesini isteme ve mevzuatta tanınan diğer haklarınızı kullanabilirsiniz.</p>
 
     <h2>Başvuru</h2>
-    <p>{contact?<>Başvurularınızı {contact} adresine, kimliğinizi ve talebinizi doğrulamaya elverişli bilgilerle iletebilirsiniz.</>:<>Başvuru kanalı İletişim sayfasında yayımlanır. Ticari yayına geçmeden önce veri sorumlusunun açık kimliği ve başvuru iletişim kanalı yapılandırılmalıdır.</>}</p>
+    <p>{contact?<>Başvurularınızı {contact} adresine, kimliğinizi ve talebinizi doğrulamaya elverişli bilgilerle iletebilirsiniz.</>:<>Başvuru kanalı İletişim sayfasında yayımlanır. Ticari yayına geçmeden önce veri sorumlusunun açık yasal kimliği ve başvuru iletişim kanalı yapılandırılmalıdır.</>}</p>
   </PublicPage>;
 }
