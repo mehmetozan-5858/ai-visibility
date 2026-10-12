@@ -39,24 +39,24 @@ export async function POST(req){
     if(action==="reset"){
       const limited=checkRateLimit(req,{bucket:"admin-recovery-reset",limit:12,windowMs:15*60*1000});if(limited)return limited;
       const emailRequestId=String(body?.emailRequestId||"");
-      const totpRequestId=String(body?.phoneRequestId||"");
+      const totpRequestId=String(body?.totpRequestId||"");
       const emailCode=String(body?.emailCode||"").replace(/\D/g,"").slice(0,6);
-      const totpCode=String(body?.phoneCode||"").replace(/\D/g,"").slice(0,6);
+      const totpCode=String(body?.totpCode||"").replace(/\D/g,"").slice(0,6);
       const password=String(body?.password||"");
-      if(!emailRequestId||!phoneRequestId||emailCode.length!==6||phoneCode.length!==6)return json({error:"E-posta ve Authenticator doğrulama kodlarının ikisi de gereklidir."},{status:400});
+      if(!emailRequestId||!totpRequestId||emailCode.length!==6||totpCode.length!==6)return json({error:"E-posta ve Authenticator doğrulama kodlarının ikisi de gereklidir."},{status:400});
       if(password.length<10)return json({error:"Yeni şifre en az 10 karakter olmalı."},{status:400});
       const emailCheck=await verifyResetCode(emailRequestId,emailCode);
-      const phoneCheck=await verifyResetCode(phoneRequestId,phoneCode);
+      const totpCheck=await verifyResetCode(totpRequestId,totpCode);
       const invalid=(check,label)=>{
         if(check.ok)return null;
         const msg=check.reason==="expired"?"kodun süresi doldu":check.reason==="locked"?"çok fazla hatalı deneme yapıldı":check.reason==="used"?"kod daha önce kullanıldı":"kod yanlış";
         return label+" "+msg+".";
       };
       const emailError=invalid(emailCheck,"E-posta");
-      const phoneError=invalid(phoneCheck,"Authenticator");
-      if(emailError||phoneError)return json({error:[emailError,phoneError].filter(Boolean).join(" ")},{status:401});
-      if(emailCheck.channel!=="email"||phoneCheck.channel!=="totp")return json({error:"Kurtarma kanalı doğrulaması başarısız."},{status:401});
-      await finishReset([emailRequestId,phoneRequestId],password);
+      const totpError=invalid(totpCheck,"Authenticator");
+      if(emailError||totpError)return json({error:[emailError,totpError].filter(Boolean).join(" ")},{status:401});
+      if(emailCheck.channel!=="email"||totpCheck.channel!=="totp")return json({error:"Kurtarma kanalı doğrulaması başarısız."},{status:401});
+      await finishReset([emailRequestId,totpRequestId],password);
       return json({ok:true,message:"E-posta ve Authenticator doğrulandı. Şifreniz yenilendi."});
     }
     return json({error:"Geçersiz işlem."},{status:400});
