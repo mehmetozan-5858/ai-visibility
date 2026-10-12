@@ -9,14 +9,14 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 - [x] Production Next.js build succeeds.
 - [x] Vercel project is linked to `mehmetozan-5858/ai-visibility` and deploys `main` when explicitly released.
 - [x] Production aliases include `aivisibilityworks.com` and `www.aivisibilityworks.com`.
-- [x] Latest verified production deployment for commit `b11b2876bfb3389eb670ccfdfed07c1334b06020` reached `READY`.
+- [x] Latest verified application production deployment for commit `5a9d9ba6f6ca79e4d103197defbc9bd1801c68b4` reached `READY` and was mapped to both production domains.
 - [x] No grouped Vercel production runtime errors were present in the 24-hour check performed on 2026-10-12 after the latest production release.
 - [x] Premium public site, customer login/onboarding, private customer/report indexing rules and payment-page privacy protections are on `main`.
 - [x] Sales preparation queue, bounded outreach, evidence-backed preliminary scoring, price experiment, score-vs-curiosity experiment and guarded adaptive allocation are on `main`.
 - [x] Scheduled automation was re-run against production on 2026-10-12 after repairing strategy-learning canonicalization; strategy learning plus the business, creator, inbox, preparation, first-contact, follow-up, implementation and guard/health jobs all completed successfully.
 - [x] Payment safety tests cover exact invoice currency/amount preservation, atomic activation, bank-evidence mismatch rejection, bank-reference reuse prevention and rollback on audit failure.
 - [x] Communication safety tests cover test-sender blocking, unsupported-claim rejection, safe permission enquiries and read-only delivery verification without exposing provider credentials.
-- [x] Responsive CSS includes narrow-viewport layouts and mobile safe-area handling; real-device/browser visual smoke remains a separate gate.
+- [x] Public/customer-entry mobile smoke now runs against the exact built commit at a 390×844 touch/mobile Chromium viewport. After fixing three real horizontal-overflow defects, homepage, customer login, new-customer onboarding, services and demo all passed 5/5; the same application commit was then deployed to production and the formerly affected routes returned HTTP 200.
 - [x] KVKK disclosure structure now covers controller identity configuration, purposes, legal bases, collection methods, recipient groups and data-subject rights. Current official KVKK guidance was reviewed on 2026-10-12.
 - [x] Stale draft PRs that were superseded by production work are closed rather than merged into the current line.
 
@@ -30,8 +30,8 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 - [ ] Backup and restore: source/recovery instructions are documented in `docs/BACKUP_RESTORE.md`, but production database backup creation and an isolated restore/readback are still required.
 - [ ] Production environment review: core variables were reviewed and two Resend secrets were upgraded to `sensitive`; required phone/SMS recovery configuration, `DATA_CONTROLLER_NAME`, `DAILY_AI_BUDGET_USD` and `MONTHLY_AI_BUDGET_USD` remain owner/provider inputs before full commercial GO.
 - [ ] Spend controls: outreach caps are active at 5 per cycle and 50 per day. AI budget guard code supports 70/85/100% throttle thresholds, but explicit non-zero daily and monthly USD limits must be chosen and configured by the owner.
-- [ ] CI/CD release path: Git linkage was re-confirmed on 2026-10-12, but a harmless docs-only `main` commit (`94c2e742e167e615227525c65ca2f801908e997d`) produced no Vercel deployment or Vercel GitHub status. `docs/RELEASE_PROBE_2026-10-12.md` records the evidence. The external Vercel↔GitHub push trigger/authorization must be repaired before this gate passes.
-- [ ] Mobile/responsive smoke test: responsive rules exist; homepage, login, onboarding, customer portal and core admin pages still need visual verification on a narrow real/mobile browser viewport.
+- [ ] CI/CD release path: Git linkage was re-confirmed on 2026-10-12, but a harmless docs-only `main` commit (`94c2e742e167e615227525c65ca2f801908e997d`) produced no Vercel deployment or Vercel GitHub status. A subsequent tested merge also produced no deployment until an explicit release was created. `docs/RELEASE_PROBE_2026-10-12.md` records the evidence. The external Vercel↔GitHub push trigger/authorization must be repaired before this gate passes.
+- [ ] Authenticated mobile smoke: the five unauthenticated/public-customer entry routes are verified at mobile width, but the authenticated customer portal and core admin screens still need mobile visual verification as part of their controlled production E2E sessions.
 - [ ] Legal/customer-facing copy review: KVKK structure was strengthened using current official guidance and consumer pages preserve mandatory rights, but `DATA_CONTROLLER_NAME` must contain the real public legal identity and final commercial legal review remains required before paid acquisition.
 
 ## Launch policy
