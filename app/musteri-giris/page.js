@@ -7,4 +7,4 @@ export const metadata={
   robots:{index:false,follow:false}
 };
 
-export default function Page(){return <main><CustomerLoginForm/></main>}
+export default function Page(){return <main style={{maxWidth:"none",margin:0,padding:0}}><CustomerLoginForm/></main>}
