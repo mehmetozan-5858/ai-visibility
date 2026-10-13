@@ -1,6 +1,6 @@
 # AI Visibility — Launch Closure Gate
 
-Updated: 2026-10-12
+Updated: 2026-10-14 (closure reconciliation; no production release)
 
 This file is the source of truth for declaring AI Visibility production-ready. A capability is not counted as complete merely because code exists; the production path must also be verified.
 
@@ -26,10 +26,10 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 - [ ] Production customer journey: public site -> lead/onboarding -> customer authentication -> report/customer portal. The components and access tests exist; a controlled production E2E session is still required.
 - [ ] Payment journey: supported payment or manual-bank path -> exact invoice/currency -> confirmation -> service activation -> customer access. Security/atomicity tests pass; a controlled production E2E payment path is still required without creating an unintended real charge.
 - [ ] Email journey: verified sender -> first outreach -> provider acceptance/delivery -> inbound reply intake -> CRM state -> follow-up suppression when a reply/customer/opt-out exists. Safety and delivery tests pass; one controlled production round-trip is still required.
-- [ ] Admin journey: sign-in -> operational dashboard -> customer/prospect review -> payment review -> manager report without privilege or same-origin regressions. Route protections are tested; an authenticated production UI session is still required.
+- [x] Admin journey (desktop): owner secure sign-in, operational dashboard, customer/prospect list, manager reports, payment review center and read-only health checks were observed on 2026-10-14 against production commit `90c12848901becc6acd3b6bac05364dd6e15fb31`. No payment approvals, outbound messages or customer writes were performed. Authenticated mobile verification remains a separate open gate below. See `docs/admin-session-verification.md`.
 - [x] Scheduled automation journey: scheduler authentication -> discovery/preparation -> bounded outreach -> reporting/learning cycles verified after the duplicate strategy-key fix.
 - [ ] Recovery journey: admin/customer password recovery and any configured multi-factor recovery work end-to-end in production. Admin recovery uses free email + TOTP Authenticator (PR #20 merged, CI and mobile smoke green). It intentionally remains fail-closed until the owner enrolls the device, validates the first code, ADMIN_RECOVERY_TOTP_ENABLED=true is configured, and a controlled production reset test passes.
-- [ ] Backup and restore: source/recovery instructions are documented in `docs/BACKUP_RESTORE.md`, but production database backup creation and an isolated restore/readback are still required.
+- [x] Backup and restore: `docs/BACKUP_RESTORE.md` records the 2026-10-12 manual snapshot, isolated restore to `br-winter-haze-b2nwbosh`, and representative row-count readback. Production remained unchanged. This is historical verified evidence; refresh the manual snapshot before a new risky production release or schema migration.
 - [ ] Production environment review: core variables were reviewed and two Resend secrets were upgraded to `sensitive`; required owner Authenticator enrollment/activation and `DATA_CONTROLLER_NAME` remain owner/provider inputs before full commercial GO. AI budget limits are configured and verified.
 - [x] Spend controls: outreach caps are active at 5 per cycle and 50 per day. Production AI budget limits are $1/day and $10/month with 70/85/100% throttle thresholds active.
 - [x] CI/CD release path: automatic GitHub -> Vercel production deploy was verified with exact-SHA evidence after repository-side Git deploy settings and GitHub App repository access were repaired.
@@ -44,3 +44,7 @@ Commercial launch is **GO** only when every item in the section above is checked
 - Keep credentials in the hosting/provider secret store with least privilege.
 - Do not bypass authentication, payment, recipient-verification, opt-out, rate-limit or spend-limit gates to make a checklist item pass.
 - Failed or unavailable measurements stay unknown; they are never converted into successful zero values.
+
+## Sandbox billing evidence (separate from production launch gates)
+
+Draft PR #28 records successful test-card monthly and one-time checkout, actual Sandbox subscription creation/cancellation, payment failure/retry, and signed webhook storage. Its customer identity binding has unit tests plus a provider-signed simulator fixture. These do not check the production payment gate above. Authenticated browser checkout/status and real timed renewal remain unverified. No renewal timer is currently running; the earlier real Sandbox subscription was canceled.

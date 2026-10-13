@@ -17,8 +17,8 @@ test("stage 5 harness remains admin-only, same-origin and synthetic",()=>{
 test("stage 5 harness requires email verification before temporary test credential",()=>{
   assert.match(route,/createVerificationCode/);
   assert.match(route,/sendVerificationEmail/);
-  assert.match(route,/verifyEmailCode/);
-  assert.match(route,/resetClientPassword|createClientCredential/);
+  assert.match(route,/completeTestCredential/);
+  assert.match(route,/withClientCredentialDatabase/);
 });
 
 test("stage 5 UI exercises actual login, protected portal and PDF report",()=>{
