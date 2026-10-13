@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import {exactPaytrAmountMatches} from "../../../../lib/payment-stage6";
 import {confirmCardPaymentByMerchantOid,getPaymentByMerchantOid,markCardPaymentFailedByMerchantOid} from "../../../../lib/repository";
 import {markProspectWonByClient} from "../../../../lib/prospects";
 import {markCreatorWonByClient} from "../../../../lib/creator-hunt";
@@ -26,10 +27,7 @@ export async function POST(req){
     }
 
     if(status==="success"){
-      if(payment.currency!=="TRY")return new Response("PAYTR notification failed: currency mismatch",{status:400});
-      const receivedCents=Number(total_amount);
-      const expectedCents=Math.round(((Number(payment.setupAmount)||0)+(Number(payment.monthlyAmount)||0))*100);
-      if(!Number.isFinite(receivedCents)||receivedCents<expectedCents){
+      if(!exactPaytrAmountMatches(payment,total_amount)){
         return new Response("PAYTR notification failed: amount mismatch",{status:400,headers:{"content-type":"text/plain"}});
       }
       if(!payment.serviceStartConsentAt){
