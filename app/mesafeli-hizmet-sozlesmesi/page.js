@@ -3,7 +3,9 @@ import PublicPage from "../../components/PublicPage";
 export const metadata={title:"Mesafeli Hizmet Sözleşmesi"};
 
 export default function Page(){
+  const legalName=(process.env.DATA_CONTROLLER_NAME||"").trim();
   return <PublicPage title="Mesafeli Hizmet Satış Sözleşmesi">
+    <p><b>Hizmet markası:</b> AI Visibility. <b>Yasal hizmet sağlayıcı:</b> {legalName||"Henüz ticari satışa açılmamıştır; yasal satıcı kimliği ticari yayından önce ilan edilecektir."} <a href="/iletisim">İletişim bilgileri</a>.</p>
     <p>Bu sözleşme, AI Visibility üzerinden sunulan dijital analiz, raporlama, GEO/AEO iyileştirme ve ilgili uygulama desteklerinin genel koşullarını açıklar.</p>
 
     <h2>1. Hizmetin kapsamı</h2>
@@ -33,10 +35,13 @@ export default function Page(){
     <h2>9. Üçüncü taraf hizmetleri</h2>
     <p>AI sağlayıcıları, barındırma hizmetleri, ödeme kuruluşları ve müşterinin kullandığı harici platformlardaki kesinti, algoritma veya politika değişiklikleri AI Visibility'ın doğrudan kontrolü dışındadır. Kendi kusurumuzdan kaynaklanan yükümlülükler saklıdır.</p>
 
-    <h2>10. Ücret ve ödeme</h2>
+    <h2>10. Abonelik, yenileme ve iptal</h2>
+    <p>Aylık takip hizmeti seçildiğinde fiyat ve yenileme koşulları ödeme öncesinde açıklanır. Otomatik yenileme ancak ilgili ödeme sağlayıcısı ve müşteri tarafından açıkça kabul edilmişse uygulanır. İptal talepleri iletişim kanalı üzerinden iletilebilir; ödeme sağlayıcısı üzerinden yönetilen aboneliklerde sağlayıcının sunduğu iptal kanalları da geçerlidir. İptal sonraki yenilemeyi durdurur; zorunlu iade hakları saklıdır.</p>
+
+    <h2>11. Ücret ve ödeme</h2>
     <p>Kurulum ve aylık ücretler teklif veya ödeme ekranında müşteriye gösterilir. Vadesi gelen ödemenin yapılmaması halinde, kanuni haklar saklı kalmak üzere, yeni çalışma ve periyodik hizmetler ödeme tamamlanana kadar durdurulabilir.</p>
 
-    <h2>11. İletişim ve uyuşmazlık</h2>
+    <h2>12. İletişim ve uyuşmazlık</h2>
     <p>Taraflar taleplerini kayıtlı iletişim kanalları üzerinden iletir. Tüketicilerin ve işletmelerin uygulanabilir mevzuattan doğan zorunlu başvuru ve dava hakları saklıdır.</p>
   </PublicPage>;
 }
