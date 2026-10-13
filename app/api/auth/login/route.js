@@ -16,7 +16,8 @@ export async function POST(req){
     return res;
   }catch(e){return Response.json({error:"Giriş yapılamadı."},{status:500})}
 }
-export async function DELETE(){
+export async function DELETE(req){
+  const originError=enforceSameOrigin(req);if(originError)return originError;
   const res=Response.json({ok:true});
   res.headers.append("Set-Cookie","ai_admin=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0");
   return res;
