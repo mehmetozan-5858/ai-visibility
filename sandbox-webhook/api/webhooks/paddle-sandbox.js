@@ -10,7 +10,12 @@ export async function POST(req){
  let event;try{event=JSON.parse(raw)}catch{return Response.json({error:'Invalid JSON'},{status:400})}
  const pool=new pg.Pool({connectionString:url,max:1,connectionTimeoutMillis:3000});
  try{return Response.json(await recordSandboxEvent(event,pool))}
- catch{return Response.json({error:'Sandbox event not recorded; retry required'},{status:503})}
+ catch(e){
+  const known=['invalid-event','invalid-entity','unknown-price'];
+  const code=known.includes(e.message)?e.message:(/^[A-Z0-9_]{2,40}$/.test(e.code||'')?e.code:'storage-error');
+  console.warn('Paddle sandbox recording failed',code);
+  return Response.json({error:'Sandbox event not recorded; retry required'},{status:503});
+ }
  finally{await pool.end()}
 }
 
