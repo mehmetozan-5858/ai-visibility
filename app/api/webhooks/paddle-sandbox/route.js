@@ -1,5 +1,6 @@
 import pg from 'pg';
 import {sandboxEnabled,sandboxDatabaseUrl,verifyPaddleSignature,recordSandboxEvent} from '../../../../lib/paddle-sandbox';
+import {linkSandboxIntent} from '../../../../lib/paddle-sandbox-identity';
 export const runtime='nodejs';
 export async function POST(req){
  if(!sandboxEnabled())return Response.json({error:'Sandbox disabled'},{status:404});
@@ -9,7 +10,7 @@ export async function POST(req){
  if(!verifyPaddleSignature(raw,req.headers.get('paddle-signature'),secret))return Response.json({error:'Invalid signature'},{status:401});
  let event;try{event=JSON.parse(raw)}catch{return Response.json({error:'Invalid JSON'},{status:400})}
  const pool=new pg.Pool({connectionString:url,max:1,connectionTimeoutMillis:3000});
- try{return Response.json(await recordSandboxEvent(event,pool))}
+ try{return Response.json(await recordSandboxEvent(event,pool,{linkIntent:linkSandboxIntent}))}
  catch{return Response.json({error:'Sandbox event not recorded; retry required'},{status:503})}
  finally{await pool.end()}
 }
