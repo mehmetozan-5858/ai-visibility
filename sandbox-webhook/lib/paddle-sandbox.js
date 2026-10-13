@@ -27,7 +27,7 @@ export function verifyPaddleSignature(raw,header,secret,{now=Date.now(),toleranc
  return parts.filter(([k])=>k==='h1').some(([,v])=>/^[a-f0-9]{64}$/i.test(v||'')&&timingSafeEqual(expected,Buffer.from(v,'hex')));
 }
 export function sandboxEvent(event){
- if(!/^evt_[a-z0-9]+$/.test(event?.event_id||'')||!Number.isFinite(Date.parse(event.occurred_at)))throw Error('invalid-event');
+ if(!/^(?:evt|ntfsimevt)_[a-z0-9]+$/.test(event?.event_id||'')||!Number.isFinite(Date.parse(event.occurred_at)))throw Error('invalid-event');
  const type=String(event.event_type||'');
  if(!/^(transaction\.(completed|payment_failed)|subscription\.(created|activated|updated|paused|resumed|canceled|past_due))$/.test(type))return null;
  const data=event.data||{},subscription=type.startsWith('subscription.');

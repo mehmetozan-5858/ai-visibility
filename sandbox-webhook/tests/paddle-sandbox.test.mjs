@@ -33,3 +33,8 @@ test('duplicate events do not mutate entity state; storage failure rolls back an
   assert.equal(released,true);assert.equal(queries.some(x=>x.startsWith('INSERT INTO paddle_sandbox_entities')),false);assert.ok(queries.includes(mode==='duplicate'?'COMMIT':'ROLLBACK'));
  }
 });
+
+test('signed Sandbox simulator event IDs are accepted only by the Sandbox parser',()=>{
+ assert.equal(sandboxEvent({...event,event_id:'ntfsimevt_01m4ve0z7dt9ah77m0zfv4rss9'}).id,'ntfsimevt_01m4ve0z7dt9ah77m0zfv4rss9');
+ assert.throws(()=>sandboxEvent({...event,event_id:'ntf_untrusted'}));
+});
