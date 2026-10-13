@@ -1,27 +1,37 @@
 import crypto from "node:crypto";
 import {getPaymentById,recordPaymentConsent} from "../../../../lib/repository";
 import {verifyPaymentAccessToken} from "../../../../lib/admin-auth";
+import {enforceSameOrigin,checkRateLimit} from "../../../../lib/api-security";
+import {getClientProfile} from "../../../../lib/client-profile";
+import {servicePrice,SERVICE_CODES} from "../../../../lib/regional-pricing";
+import {paymentMatchesPlan} from "../../../../lib/hosted-checkout";
 export const runtime="nodejs";
 
 function configured(){return Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT)}
 function clean(v,max=200){return String(v||"").trim().slice(0,max)}
 
 export async function POST(req){
+  const originCheck=enforceSameOrigin(req);if(originCheck)return originCheck;
+  const limited=checkRateLimit(req,{bucket:"paytr-token",limit:8,windowMs:15*60*1000});if(limited)return limited;
   try{
     if(!configured())return Response.json({error:"PayTR henüz yapılandırılmadı."},{status:503});
     const body=await req.json();
     if(body?.consent!==true)return Response.json({error:"Hizmet başlangıcı ve sözleşme onayı gereklidir."},{status:400});
     const access=await verifyPaymentAccessToken(body?.token||"");
     if(!access)return Response.json({error:"Ödeme bağlantısı geçersiz veya süresi dolmuş."},{status:401});
+    if(!SERVICE_CODES.includes(access.service))return Response.json({error:"Hizmete bağlı ödeme bağlantısı gerekli."},{status:400});
     const payment=await getPaymentById(body?.paymentId);
     if(!payment)return Response.json({error:"Ödeme kaydı bulunamadı."},{status:404});
     if(payment.clientId!==access.clientId)return Response.json({error:"Bu bağlantı bu ödeme için geçerli değil."},{status:403});
-    if(payment.status==="paid")return Response.json({error:"Bu ödeme zaten tamamlandı."},{status:409});
-    await recordPaymentConsent(payment.id,"2026-10-02");
+    if(!["pending","customer-reported"].includes(payment.status))return Response.json({error:"Bu ödeme için yeni kart işlemi başlatılamaz."},{status:409});
+    const profile=await getClientProfile(access.clientId);
+    const plan=servicePrice({service:access.service,country:profile?.country||"Türkiye",language:"tr"});
+    if(!paymentMatchesPlan(payment,plan))return Response.json({error:"Hizmet, tutar veya para birimi eşleşmiyor."},{status:409});
 
     if(payment.currency!=="TRY")return Response.json({error:"PayTR yalnız TRY para birimindeki kayıtlar için kullanılabilir."},{status:409});
     const user_name=clean(body?.name,60),email=clean(body?.email,100),user_phone=clean(body?.phone,20),user_address=clean(body?.address,400);
     if(!user_name||!email||!email.includes("@")||!user_phone||!user_address)return Response.json({error:"Ad soyad, e-posta, telefon ve adres zorunlu."},{status:400});
+    await recordPaymentConsent(payment.id,"2026-10-02");
 
     const merchant_id=process.env.PAYTR_MERCHANT_ID;
     const merchant_key=process.env.PAYTR_MERCHANT_KEY;
