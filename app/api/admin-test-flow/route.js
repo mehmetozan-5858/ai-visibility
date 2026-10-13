@@ -2,9 +2,12 @@ import crypto from "node:crypto";
 import {servicePrice} from "../../../lib/regional-pricing";
 import {addClient,findClientByIdentity,createScan,completeScan,getLatestCompletedScan,getOrCreatePaymentIntent,recordPaymentConsent,reportPayment,confirmPayment} from "../../../lib/repository";
 import {createPaymentAccessToken} from "../../../lib/admin-auth";
-import {createClientCredential,getClientCredential,resetClientPassword} from "../../../lib/client-credentials";
-import {createVerificationCode,sendVerificationEmail,verifyEmailCode} from "../../../lib/email-verification";
+import {hashPassword,withClientCredentialDatabase} from "../../../lib/client-credentials";
+import {completeTestCredential} from "../../../lib/test-customer-verification";
+import {createVerificationCode,sendVerificationEmail} from "../../../lib/email-verification";
 import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
+
+const json=(body,init={})=>Response.json(body,{...init,headers:{...init.headers,"cache-control":"no-store"}});
 
 const TEST_NAME="AI Visibility Test Müşteri";
 const TEST_DOMAIN="test.ai-visibility.local";
@@ -20,6 +23,7 @@ function maskEmail(email=""){
 async function ensureTestClient(){
   let client=await findClientByIdentity(TEST_NAME,TEST_DOMAIN);
   if(!client)client=await addClient({name:TEST_NAME,domain:TEST_DOMAIN,plan:"Test",competitors:[]});
+  if(client.name!==TEST_NAME||client.domain!==TEST_DOMAIN)throw new Error("test-client-mismatch");
   return client;
 }
 
@@ -51,31 +55,26 @@ export async function POST(req){
     const body=await req.json().catch(()=>({}));
     const action=String(body?.action||"start");
     const email=testEmail();
-    if(!email)return Response.json({error:"Kontrollü test için yönetici e-posta adresi yapılandırılmamış."},{status:503});
+    if(!email)return json({error:"Kontrollü test için yönetici e-posta adresi yapılandırılmamış."},{status:503});
 
     if(action==="finish"){
       const client=await findClientByIdentity(TEST_NAME,TEST_DOMAIN);
-      if(!client)return Response.json({error:"Önce müşteri E2E testini başlatın."},{status:409});
+      if(!client)return json({error:"Önce müşteri E2E testini başlatın."},{status:409});
       const code=String(body?.code||"").replace(/\D/g,"").slice(0,6);
-      if(code.length!==6)return Response.json({error:"6 haneli doğrulama kodunu girin."},{status:400});
-      const verified=await verifyEmailCode(client.id,email,code);
-      if(!verified)return Response.json({error:"Kod hatalı veya süresi dolmuş."},{status:400});
-
+      if(code.length!==6)return json({error:"6 haneli doğrulama kodunu girin."},{status:400});
       const password=`AivTest!${crypto.randomBytes(12).toString("base64url")}`;
-      const existing=await getClientCredential(client.id);
-      if(existing)await resetClientPassword(client.id,email,password);
-      else await createClientCredential(client.id,email,password);
-      return Response.json({ok:true,action:"finish",email,password,client:{id:client.id,name:client.name,domain:client.domain}});
+      const account=await withClientCredentialDatabase(pool=>completeTestCredential(pool,{client,email,code,password,hashPassword}));
+      return json({ok:true,action:"finish",email:account.email,password,client:{id:client.id,name:client.name,domain:client.domain}});
     }
 
-    if(action!=="start")return Response.json({error:"Geçersiz test işlemi."},{status:400});
+    if(action!=="start")return json({error:"Geçersiz test işlemi."},{status:400});
     const client=await ensureTestClient();
     const {scan,payment}=await ensureTestData(client);
     const token=await createPaymentAccessToken(client.id,7200,"business-diagnosis");
     const verification=await createVerificationCode(client.id,email);
     await sendVerificationEmail(verification.email,verification.code);
 
-    return Response.json({
+    return json({
       ok:true,
       action:"start",
       emailMasked:maskEmail(email),
@@ -86,8 +85,12 @@ export async function POST(req){
     });
   }catch(e){
     const m=String(e?.message||"");
-    if(m==="verification-rate-limit")return Response.json({error:"Yeni kod istemeden önce 60 saniye bekleyin."},{status:429});
-    if(m==="email-provider-not-configured"||m.startsWith("email-send-failed"))return Response.json({error:"Doğrulama e-postası gönderilemedi."},{status:503});
-    return Response.json({error:"Test akışı hazırlanamadı.",detail:m.slice(0,220)},{status:500});
+    if(m==="verification-rate-limit")return json({error:"Yeni kod istemeden önce 60 saniye bekleyin."},{status:429});
+    if(m==="email-provider-not-configured"||m.startsWith("email-send-failed"))return json({error:"Doğrulama e-postası gönderilemedi."},{status:503});
+    if(m==="verification-invalid-or-expired")return json({error:"Kod hatalı veya süresi dolmuş."},{status:400});
+    if(m==="test-email-in-use"||e?.code==="23505")return json({error:"Test e-posta adresi başka bir hesaba bağlı. Mevcut hesabın şifresi değiştirilmedi.",code:"test-email-conflict"},{status:409});
+    if(m==="test-client-mismatch")return json({error:"Sentetik test hesabı doğrulanamadı.",code:"test-account-mismatch"},{status:409});
+    console.error("admin-test-flow-failed",{code:/^[A-Z0-9_]{2,40}$/.test(e?.code||"")?e.code:"test-preparation-failed"});
+    return json({error:"Test hesabı hazırlanamadı. Kod henüz geçerliyse yeniden deneyebilirsiniz.",code:"test-preparation-failed"},{status:500});
   }
 }
