@@ -222,6 +222,9 @@
 .work-workspace form>div{flex-wrap:wrap;}
 
 /* Settings and verification cards must fit narrow authenticated screens. */
+.assessment-leads .client-row{grid-template-columns:42px minmax(0,1fr) auto auto minmax(100px,auto);}
+.assessment-leads .client-row>*{min-width:0;overflow-wrap:anywhere;}
+@media(max-width:720px){.assessment-leads .client-row{grid-template-columns:minmax(0,1fr);}.assessment-leads .client-row>button,.assessment-leads .client-row>select{width:100%;max-width:100%;white-space:normal;}}
 .settings>div{display:grid;grid-template-columns:minmax(120px,.6fr) minmax(0,1fr);align-items:start;gap:16px;}
 .settings>div>b,.settings>div>span{min-width:0;overflow-wrap:anywhere;}
 .settings>div>span{text-align:right;}

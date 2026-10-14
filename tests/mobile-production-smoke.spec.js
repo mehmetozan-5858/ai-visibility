@@ -129,7 +129,7 @@ test('local admin sees regional assessment leads and can retry an unavailable li
   let requests=0;
   await page.route('**/api/leads',route=>{
     if(++requests===1)return route.fulfill({status:503,json:{error:'Başvurular yüklenemedi.'}});
-    return route.fulfill({json:{leads:[{id:'fixture',businessName:'Regional lead fixture',name:'Synthetic fixture',email:'fixture@example.com',country:'Germany',requestedService:'business-monitoring',status:'new',service:{name:'İşletme – Sürekli Takip + Optimizasyon',amount:159,currency:'EUR',kind:'monthly'}}]}});
+    return route.fulfill({json:{leads:[{id:'fixture',businessName:'Regional lead fixture',name:'Synthetic fixture',email:'fixture@example.com',website:'https://long-regional-fixture-domain.test.ai-visibility.local',country:'Germany',requestedService:'business-monitoring',status:'new',service:{name:'İşletme – Sürekli Takip + Optimizasyon',amount:159,currency:'EUR',kind:'monthly'}}]}});
   });
   await page.goto(`${BASE}/musteriler`,{waitUntil:'networkidle'});
   await expect(page.getByRole('heading',{name:'Yeni Müşteri Başvuruları',exact:true})).toBeVisible();

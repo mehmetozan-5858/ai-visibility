@@ -28,7 +28,7 @@ export default function LeadsManager(){
       await load();
     }catch(e){setMsg(e.message)}finally{setBusy("")}
   }
-  return <section className="panel">
+  return <section className="panel assessment-leads">
     <div className="section-title"><div><h2>Yeni Müşteri Başvuruları</h2><small>Web sitesinden gelen ön değerlendirme talepleri</small></div></div>
     {msg&&<p className="client-message">{msg}</p>}
     {loading&&<p>Başvurular yükleniyor…</p>}
