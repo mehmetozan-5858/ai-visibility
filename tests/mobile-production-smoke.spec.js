@@ -141,3 +141,31 @@ test('local admin sees regional assessment leads and can retry an unavailable li
   const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
   expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
 });
+
+test('local customer recovery preserves errors and resets verification when the email changes',async({page,context})=>{
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local intercepted fixture only');
+  await context.addCookies([{name:'ai_lang',value:'tr',url:BASE}]);
+  let confirmations=0;
+  await page.route('**/api/client-auth/password-reset',route=>{
+    const body=route.request().postDataJSON();
+    if(body.action==='request')return route.fulfill({json:{ok:true,message:'Bu e-posta ile kayıtlı hesap varsa doğrulama kodu gönderildi.'}});
+    if(++confirmations===1)return route.fulfill({status:500,json:{error:'Şifre sıfırlama işlemi tamamlanamadı.'}});
+    return route.fulfill({json:{ok:true,message:'Şifreniz yenilendi. Artık giriş yapabilirsiniz.'}});
+  });
+  await page.goto(`${BASE}/musteri-sifre-sifirla`,{waitUntil:'networkidle'});
+  const form=page.locator('.customer-password-reset');
+  await form.getByLabel('E-posta',{exact:true}).fill('fixture@example.com');
+  await form.getByRole('button',{name:'Doğrulama kodu gönder',exact:true}).click();
+  await form.getByLabel('6 haneli kod',{exact:true}).fill('123456');
+  await form.getByLabel('Yeni şifre',{exact:true}).fill('local-fixture-password');
+  await form.getByRole('button',{name:'Şifremi yenile',exact:true}).click();
+  await expect(form.getByRole('status')).toHaveText('Şifre sıfırlama işlemi tamamlanamadı.');
+  await expect(page).toHaveURL(/\/musteri-sifre-sifirla$/);
+  await form.getByLabel('E-posta',{exact:true}).fill('other-fixture@example.com');
+  await expect(form.getByLabel('6 haneli kod',{exact:true})).not.toBeVisible();
+  await form.getByRole('button',{name:'Doğrulama kodu gönder',exact:true}).click();
+  await form.getByLabel('6 haneli kod',{exact:true}).fill('123456');
+  await form.getByLabel('Yeni şifre',{exact:true}).fill('local-fixture-password');
+  await form.getByRole('button',{name:'Şifremi yenile',exact:true}).click();
+  await expect(page).toHaveURL(/\/musteri-giris$/);
+});
