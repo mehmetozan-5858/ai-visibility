@@ -17,6 +17,9 @@ jobs:
   mobile-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ADMIN_PASSWORD: ci-only-local-password-fixture
+      AUTH_SECRET: ci-only-local-signing-fixture
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

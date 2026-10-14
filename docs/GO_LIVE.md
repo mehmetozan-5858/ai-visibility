@@ -1,6 +1,6 @@
 # AI Visibility — Launch Closure Gate
 
-Updated: 2026-10-14 (closure reconciliation; no production release)
+Updated: 2026-10-14 (Stage 5 owner result and mobile layout follow-up)
 
 This file is the source of truth for declaring AI Visibility production-ready. A capability is not counted as complete merely because code exists; the production path must also be verified.
 
@@ -21,6 +21,8 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 - [x] Production AI spend controls are active: `DAILY_AI_BUDGET_USD=1` and `MONTHLY_AI_BUDGET_USD=10`; the live budget guard verified the limits and normal mode with 70/85/100% throttle logic active.
 - [x] KVKK disclosure structure covers controller identity configuration, purposes, legal bases, collection methods, recipient groups and data-subject rights.
 - [x] Stale draft PRs superseded by production work are closed rather than merged.
+
+- [x] Controlled synthetic customer Stage 5 passed on production after PR #29 publication (commit `f00ebf7be8ccb8ad2211498c8b896652fde1941a`): owner screenshot at 00:40 Istanbul confirmed email verification → account preparation → real customer login → portal → score-42 fixture → PDF download. No real payment. This is evidence for that controlled chain, not public lead-form submission or a live provider payment.
 
 ## Must be verified before commercial launch is declared complete
 - [ ] Production customer journey: public site -> lead/onboarding -> customer authentication -> report/customer portal. The components and access tests exist; a controlled production E2E session is still required.
@@ -47,4 +49,4 @@ Commercial launch is **GO** only when every item in the section above is checked
 
 ## Sandbox billing evidence (separate from production launch gates)
 
-Draft PR #28 records successful test-card monthly and one-time checkout, actual Sandbox subscription creation/cancellation, payment failure/retry, and signed webhook storage. Its customer identity binding has unit tests plus a provider-signed simulator fixture. These do not check the production payment gate above. Authenticated browser checkout/status and real timed renewal remain unverified. No renewal timer is currently running; the earlier real Sandbox subscription was canceled.
+PR #28 contains successful Sandbox card checkout, activation, cancellation, failed-card retry and signed webhook storage. A real provider-side timed renewal was verified separately. The protected Sandbox preview also verified server-issued synthetic browser session → actual intent endpoint → checkout → isolated own-status response. The linked recurring-event delivery test is tracked in that PR's current Sandbox status notes; consult those notes for active-test and cleanup state. These tests do not close the production payment/entitlement gate above, and no real charge or Paddle live launch was performed.
