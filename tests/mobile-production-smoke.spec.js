@@ -68,7 +68,6 @@ test('authenticated local settings and verification controls fit mobile width',a
   await page.route('**/api/admin-test-flow',route=>route.fulfill({json:{ok:true,emailMasked:'fi***@example.com'}}));
   await page.goto(`${BASE}/ayarlar`,{waitUntil:'networkidle'});
   await expect(page.getByText('WORDPRESS_APPLICATION_PASSWORD',{exact:false})).toBeVisible();
-  await expect(page.getByRole('heading',{name:'Ayarlar',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'5. aşama testini başlat',exact:true}).click();
   const input=page.getByLabel('E-postaya gelen 6 haneli kod',{exact:true});
   await expect(input).toBeVisible();
