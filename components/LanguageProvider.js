@@ -105,11 +105,13 @@ function applyStaticTranslations(lang){
   const nodes=[];let node;
   while((node=walker.nextNode()))nodes.push(node);
   for(const n of nodes){
+    if(n.parentElement?.closest('[data-localized]'))continue;
     const raw=n.nodeValue||"";const core=raw.trim();if(!core)continue;
     const translated=translateStaticText(core,lang);
     if(translated!==core)n.nodeValue=raw.replace(core,translated);
   }
   for(const el of document.querySelectorAll("[placeholder],[title],[aria-label]")){
+    if(el.closest('[data-localized]'))continue;
     for(const attr of ["placeholder","title","aria-label"]){
       const value=el.getAttribute(attr);if(!value)continue;
       const translated=translateStaticText(value,lang);if(translated!==value)el.setAttribute(attr,translated);

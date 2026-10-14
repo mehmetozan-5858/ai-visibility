@@ -60,8 +60,9 @@ for (const route of routes) {
   });
 }
 
-test('local onboarding retains selected service and retries a failed submission',async({page})=>{
+test('local onboarding retains selected service and retries a failed submission',async({page,context})=>{
   test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only; no real lead writes');
+  await context.addCookies([{name:'ai_lang',value:'tr',url:BASE}]);
   const submitted=[];
   await page.route('**/api/leads',async route=>{
     submitted.push(route.request().postDataJSON());
@@ -70,6 +71,12 @@ test('local onboarding retains selected service and retries a failed submission'
     return route.fulfill({json:{ok:true,lead:{id:'local-fixture',status:'new'}}});
   });
   await page.goto(`${BASE}/yeni-musteri?service=business-monitoring&country=Germany`,{waitUntil:'networkidle'});
+  // Reproduce the owner browser's Turkish preference while this page explicitly
+  // uses English. Let the legacy DOM translator run before asserting labels.
+  await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
+  await page.waitForTimeout(500);
+  await expect(page.getByRole('textbox',{name:'Business name',exact:true})).toBeVisible();
+  await expect(page.getByRole('option',{name:'Other',exact:true})).toHaveAttribute('value','Diğer');
   await expect(page.getByRole('combobox',{name:/^Selected service/})).toHaveValue('business-monitoring');
   await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
   await page.getByLabel('Business name',{exact:true}).fill('Local Fixture Business');
