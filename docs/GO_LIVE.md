@@ -1,6 +1,6 @@
 # AI Visibility — Launch Closure Gate
 
-Updated: 2026-10-14 (Stage 5 owner result and mobile layout follow-up)
+Updated: 2026-10-14 (PR31/PR32 publication and read-only production verification)
 
 This file is the source of truth for declaring AI Visibility production-ready. A capability is not counted as complete merely because code exists; the production path must also be verified.
 
@@ -24,19 +24,22 @@ This file is the source of truth for declaring AI Visibility production-ready. A
 
 - [x] Controlled synthetic customer Stage 5 passed on production after PR #29 publication (commit `f00ebf7be8ccb8ad2211498c8b896652fde1941a`): owner screenshot at 00:40 Istanbul confirmed email verification → account preparation → real customer login → portal → score-42 fixture → PDF download. No real payment. This is evidence for that controlled chain, not public lead-form submission or a live provider payment.
 
+- [x] PR31 and PR32 are merged and published. Production commit `526c8eed9fd3544a3dd1447fb915b46a42af5d52`, deployment `dpl_Xw2rAm473DpHkPs3MwAGqcypDupp`, READY on both domains. Final code CI: 300 tests/build passed; mobile fixtures 8/8 passed. The regional English form stays English despite a Turkish saved preference; incoming leads now appear in the protected customer-management page with server-derived regional prices and retryable read failures. Live read-only health checks passed; the short post-release grouped error scan returned no entries.
+- [x] Read-only live intake/list verification: the Germany form displays English fields and EUR159/month, and the protected lead list loaded one existing record without a retry/error state. No new production lead was submitted.
+
 ## Must be verified before commercial launch is declared complete
 - [ ] Production customer journey: public site -> lead/onboarding -> customer authentication -> report/customer portal. The components and access tests exist; a controlled production E2E session is still required.
 - [ ] Payment journey: supported payment or manual-bank path -> exact invoice/currency -> confirmation -> service activation -> customer access. Security/atomicity tests pass; a controlled production E2E payment path is still required without creating an unintended real charge.
 - [ ] Email journey: verified sender -> first outreach -> provider acceptance/delivery -> inbound reply intake -> CRM state -> follow-up suppression when a reply/customer/opt-out exists. Safety and delivery tests pass; one controlled production round-trip is still required.
 - [x] Admin journey (desktop): owner secure sign-in, operational dashboard, customer/prospect list, manager reports, payment review center and read-only health checks were observed on 2026-10-14 against production commit `90c12848901becc6acd3b6bac05364dd6e15fb31`. No payment approvals, outbound messages or customer writes were performed. Authenticated mobile verification remains a separate open gate below. See `docs/admin-session-verification.md`.
 - [x] Scheduled automation journey: scheduler authentication -> discovery/preparation -> bounded outreach -> reporting/learning cycles verified after the duplicate strategy-key fix.
-- [ ] Recovery journey: admin/customer password recovery and any configured multi-factor recovery work end-to-end in production. Admin recovery uses free email + TOTP Authenticator (PR #20 merged, CI and mobile smoke green). It intentionally remains fail-closed until the owner enrolls the device, validates the first code, ADMIN_RECOVERY_TOTP_ENABLED=true is configured, and a controlled production reset test passes.
+- [ ] Recovery journey: production settings now confirm email and Authenticator configuration ready. Device enrollment/activation must not be requested again based only on the old phone field. A controlled production admin/customer recovery reset remains unverified and credential changes require owner participation.
 - [x] Backup and restore: `docs/BACKUP_RESTORE.md` records the 2026-10-12 manual snapshot, isolated restore to `br-winter-haze-b2nwbosh`, and representative row-count readback. Production remained unchanged. This is historical verified evidence; refresh the manual snapshot before a new risky production release or schema migration.
-- [ ] Production environment review: core variables were reviewed and two Resend secrets were upgraded to `sensitive`; required owner Authenticator enrollment/activation and `DATA_CONTROLLER_NAME` remain owner/provider inputs before full commercial GO. AI budget limits are configured and verified.
+- [x] Production environment review: current live status confirms database, three AI providers, administrator authentication, email and Authenticator recovery configuration, inbound email and budget controls. KVKK publicly displays the configured controller identity. Earlier secret classification review is recorded above; no secrets or protections were changed by PR31/PR32. Actual recovery and commercial legal review remain separate gates.
 - [x] Spend controls: outreach caps are active at 5 per cycle and 50 per day. Production AI budget limits are $1/day and $10/month with 70/85/100% throttle thresholds active.
 - [x] CI/CD release path: automatic GitHub -> Vercel production deploy was verified with exact-SHA evidence after repository-side Git deploy settings and GitHub App repository access were repaired.
 - [ ] Authenticated mobile smoke: public/customer entry routes are verified at mobile width, but authenticated customer portal and core admin screens still need mobile visual verification as part of controlled production E2E sessions.
-- [ ] Legal/customer-facing copy review: KVKK structure is strengthened and consumer pages preserve mandatory rights, but `DATA_CONTROLLER_NAME` must contain the real public legal identity and final commercial legal review remains required before paid acquisition.
+- [ ] Legal/customer-facing copy review: DATA_CONTROLLER_NAME is present and the live KVKK page displays Mehmet Ozan Ekmekci. Missing controller configuration is no longer an open technical issue; final commercial legal/copy review remains open.
 
 ## Launch policy
 Commercial launch is **GO** only when every item in the section above is checked or explicitly marked non-applicable with evidence. Until then the application may run in controlled production/pilot mode, but it must not be described internally as fully closed.
@@ -50,3 +53,8 @@ Commercial launch is **GO** only when every item in the section above is checked
 ## Sandbox billing evidence (separate from production launch gates)
 
 PR #28 contains successful Sandbox card checkout, activation, cancellation, failed-card retry and signed webhook storage. A real provider-side timed renewal was verified separately. The protected Sandbox preview also verified server-issued synthetic browser session → actual intent endpoint → checkout → isolated own-status response. The linked recurring-event delivery test is tracked in that PR's current Sandbox status notes; consult those notes for active-test and cleanup state. These tests do not close the production payment/entitlement gate above, and no real charge or Paddle live launch was performed.
+
+## Blocked production write test
+Automatic approval review rejected creating the proposed synthetic production lead, because it creates persistent contact/application state and lacks specific authorization for that exact write. The rejected batch did not fill or submit the form. No API, CLI or alternate route was used to circumvent it.
+
+Proposed fixture awaiting explicit approval: business AI Visibility Closure TEST 20261014, contact Synthetic test — no outreach, email closure-test-20261014@example.com, reserved .local test website, Germany, business-monitoring. Only save and inspect this one own-application lead; no email, outreach, payment, customer activation or credential change. The production intake end-to-end write gate remains open.
