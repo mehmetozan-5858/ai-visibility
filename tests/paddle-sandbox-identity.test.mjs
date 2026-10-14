@@ -46,3 +46,14 @@ test('link failure rolls back event insertion and never updates entity state',as
  await assert.rejects(()=>recordSandboxEvent(event,{connect:async()=>tx},{linkIntent:async()=>{throw Error('customer-already-linked')}}));
  assert.ok(queries.includes('ROLLBACK'));assert.equal(queries.some(x=>x.startsWith('INSERT INTO paddle_sandbox_entities')),false);
 });
+test('a signed negative prorated credit is accepted only for its already bound customer and subscription',async()=>{
+ const intent={...base,paddle_customer_id:'ctm_test',subscription_id:'sub_test',initial_transaction_id:'txn_original'};
+ const ev={...event,event_type:'transaction.completed',data:{...event.data,id:'txn_credit',subscription_id:'sub_test',origin:'subscription_update',items:[{price:{id:price},quantity:-1}],details:{totals:{total:'-16886'}}}};
+ const it={...item,type:ev.event_type,entityId:ev.data.id};
+ await linkSandboxIntent(ev,it,db(intent));
+ for(const [eventChange,intentChange] of [
+  [{},base],[{origin:'subscription_recurring'},intent],[{subscription_id:'sub_other'},intent],
+  [{customer_id:'ctm_other'},intent],[{details:{totals:{total:'16900'}}},intent],
+  [{items:[{price:{id:price},quantity:-2}]},intent],
+ ])await assert.rejects(()=>linkSandboxIntent({...ev,data:{...ev.data,...eventChange}},it,db(intentChange)));
+});
