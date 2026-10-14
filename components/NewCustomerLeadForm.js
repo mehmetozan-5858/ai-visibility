@@ -21,6 +21,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
     try{
       const r=await fetch("/api/leads",{method:"POST",headers:{"content-type":"application/json","accept-language":lang},body:JSON.stringify({...form,language:lang})});
       const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||c.fail);
+      if(d.ok!==true||!d.lead?.id)throw new Error(c.fail);
       setOk(true);setMsg(c.ok);
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }

@@ -65,6 +65,7 @@ test('local onboarding retains selected service and retries a failed submission'
   await page.route('**/api/leads',async route=>{
     submitted.push(route.request().postDataJSON());
     if(submitted.length===1)return route.fulfill({status:503,contentType:'text/html',body:'Temporary gateway failure'});
+    if(submitted.length===2)return route.fulfill({status:200,json:{ok:false}});
     return route.fulfill({json:{ok:true,lead:{id:'local-fixture',status:'new'}}});
   });
   await page.goto(`${BASE}/yeni-musteri?service=business-monitoring&country=Germany`,{waitUntil:'networkidle'});
@@ -78,9 +79,12 @@ test('local onboarding retains selected service and retries a failed submission'
   await expect(page.getByRole('alert')).toHaveText('Could not submit your application.');
   await expect(send).toBeEnabled();
   await send.click();
+  await expect(page.getByRole('alert')).toHaveText('Could not submit your application.');
+  await expect(send).toBeEnabled();
+  await send.click();
   await expect(page.getByRole('status')).toContainText('Your application has been received.');
   await expect(page.getByRole('button',{name:'Application received ✓',exact:true})).toBeDisabled();
-  expect(submitted).toHaveLength(2);
+  expect(submitted).toHaveLength(3);
   for(const body of submitted)expect(body).toMatchObject({service:'business-monitoring',country:'Germany',language:'en',email:'fixture@example.com'});
   const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
   expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
