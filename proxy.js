@@ -11,10 +11,19 @@ export function authorizedAgentCycle(req){
 }
 
 export async function proxy(req){
-  if(authorizedAgentCycle(req))return NextResponse.next();
   const {pathname}=req.nextUrl;
+  const sandboxPreview=process.env.PADDLE_SANDBOX_ENABLED==="true"&&process.env.PADDLE_ENVIRONMENT==="sandbox"&&["preview","development"].includes(process.env.VERCEL_ENV);
+  const paddleSandboxPath=pathname==="/paddle-sandbox"||pathname==="/api/webhooks/paddle-sandbox"||pathname==="/api/paddle-sandbox/checkout-intents"||pathname==="/api/paddle-sandbox/account"||pathname==="/api/paddle-sandbox/test-session";
+  // Sandbox previews expose only checkout and signature-verified billing events.
+  // Even a valid admin or scheduler credential cannot enter production routes here.
+  if(sandboxPreview&&!paddleSandboxPath)return new NextResponse("Not found",{status:404});
+  if(authorizedAgentCycle(req))return NextResponse.next();
   const publicPages=["/","/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/musteri-sifre-sifirla","/demo","/yeni-musteri","/on-degerlendirme"];
   const publicPath=pathname==="/api/free-assessment"||pathname==="/api/webhooks/resend"||pathname==="/login"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname==="/api/leads"||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/")||pathname.startsWith("/api/cron/")||pathname==="/api/creator-hunt";
+  if(paddleSandboxPath){
+    if(sandboxPreview)return NextResponse.next();
+    return new NextResponse("Not found",{status:404});
+  }
   if(publicPath)return NextResponse.next();
 
   if(!authConfigured()){

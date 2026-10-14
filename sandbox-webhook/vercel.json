@@ -1,0 +1,10 @@
+{
+  "regions": [
+    "fra1"
+  ],
+  "functions": {
+    "api/webhooks/paddle-sandbox.js": {
+      "maxDuration": 15
+    }
+  }
+}
