@@ -1,6 +1,6 @@
 import PublicPage from "../../components/PublicPage";
 
-export const metadata={title:"Mesafeli Hizmet Sözleşmesi"};
+export const metadata={alternates:{canonical:"/mesafeli-hizmet-sozlesmesi"},title:"Mesafeli Hizmet Sözleşmesi"};
 
 export default function Page(){
   const legalName=(process.env.DATA_CONTROLLER_NAME||"").trim();

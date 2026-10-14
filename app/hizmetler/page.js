@@ -2,7 +2,7 @@ import Link from "next/link";
 import PublicPage from "../../components/PublicPage";
 import {servicePrice,formatMoney} from "../../lib/regional-pricing";
 
-export const metadata={title:"Hizmetler ve Fiyatlar",description:"AI görünürlük analizi, GEO/AEO çözüm uygulama ve sürekli takip hizmetleri; ülkeye göre fiyatlandırma."};
+export const metadata={alternates:{canonical:"/hizmetler"},title:"Hizmetler ve Fiyatlar",description:"AI görünürlük analizi, GEO/AEO çözüm uygulama ve sürekli takip hizmetleri; ülkeye göre fiyatlandırma."};
 
 const packages=[
  {code:"business-diagnosis",title:"AI Visibility Analizi + Rapor",type:"Tek seferlik",desc:"İşletmenizin AI görünürlüğü ölçülür; sorunlar, öncelikler ve geliştirme alanları detaylı raporlanır.",items:["AI görünürlük skoru","Sorun ve eksiklerin tespiti","Önceliklendirilmiş detaylı rapor","Geliştirme yol haritası"]},

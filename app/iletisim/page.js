@@ -1,5 +1,5 @@
 import PublicPage from "../../components/PublicPage";
-export const metadata={title:"İletişim"};
+export const metadata={alternates:{canonical:"/iletisim"},title:"İletişim"};
 export default function Page(){
   const controller=(process.env.DATA_CONTROLLER_NAME||"").trim();
   const email=process.env.ADMIN_RECOVERY_EMAIL||"";

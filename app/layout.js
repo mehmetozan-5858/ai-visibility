@@ -7,6 +7,7 @@ export const metadata={
   metadataBase:new URL("https://www.aivisibilityworks.com"),
   title:{default:"AI Visibility | Yapay Zekâ Görünürlük Platformu",template:"%s | AI Visibility"},
   description:"Markanızın ChatGPT, Google AI ve diğer yapay zekâ platformlarındaki görünürlüğünü ölçün, kanıtlarla doğrulayın ve büyüme fırsatlarını aksiyona dönüştürün.",
+  verification:process.env.GOOGLE_SITE_VERIFICATION?{google:process.env.GOOGLE_SITE_VERIFICATION}:undefined,
   applicationName:"AI Visibility",
   keywords:["AI visibility","GEO","AEO","yapay zekâ görünürlüğü","AI search visibility","brand visibility"],
   openGraph:{
