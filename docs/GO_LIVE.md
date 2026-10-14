@@ -58,3 +58,8 @@ PR #28 contains successful Sandbox card checkout, activation, cancellation, fail
 An earlier automatic approval review rejected the synthetic lead write for lack of specific authorization. The owner then explicitly approved the exact fixture and save/read-only scope at 11:04 Europe/Istanbul. The normal public UI submission succeeded; the same fixture was verified in the protected admin list. No alternate route or bypass was used.
 
 Fixture: AI Visibility Closure TEST 20261014; contact Synthetic test — no outreach; email closure-test-20261014@example.com; reserved .local website; Germany; business-monitoring; EUR159/month; status New. Retained as an identifiable synthetic audit record. No conversion or contact actions were taken.
+
+## Customer recovery code closure — 2026-10-14
+PR34 is merged and published: production commit 44bdb086a2daada972455ebdc0883478e1aac01a, deployment dpl_Ct9q6b4DaeiQRZBfM71syGuhxgUF, READY on both domains. Exact-commit CI and local checks passed 305 tests/build; mobile software fixtures passed 9/9. Customer reset now consumes verification and writes the bound account password atomically, rolling back on write failure or zero updated rows. Unknown-account confirmation cannot report a changed password. The form clears verification when its email changes and requires explicit success.
+
+These tests used isolated software fixtures only. No live password, recovery code or outbound email was used. Public administrator recovery UI independently displayed the email + Authenticator flow ready. An actual owner credential reset still requires the owner to enter and submit the new password; production email receipt/reply and authenticated production mobile review remain open. No Paddle live changes.
