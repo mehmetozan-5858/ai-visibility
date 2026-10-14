@@ -68,10 +68,10 @@ test('local onboarding retains selected service and retries a failed submission'
     return route.fulfill({json:{ok:true,lead:{id:'local-fixture',status:'new'}}});
   });
   await page.goto(`${BASE}/yeni-musteri?service=business-monitoring&country=Germany`,{waitUntil:'networkidle'});
-  await expect(page.getByLabel('Selected service',{exact:true})).toHaveValue('business-monitoring');
+  await expect(page.getByRole('combobox',{name:/^Selected service/})).toHaveValue('business-monitoring');
   await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
   await page.getByLabel('Business name',{exact:true}).fill('Local Fixture Business');
-  await page.getByLabel('Industry',{exact:true}).selectOption('Tekstil / Giyim');
+  await page.getByRole('combobox',{name:/^Industry/}).selectOption('Tekstil / Giyim');
   await page.getByLabel('Email',{exact:true}).fill('fixture@example.com');
   const send=page.getByRole('button',{name:'Request assessment',exact:true});
   await send.click();
