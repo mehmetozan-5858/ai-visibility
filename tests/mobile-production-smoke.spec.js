@@ -1,4 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
+import {createAdminToken} from '../lib/admin-auth.js';
 
 const BASE = process.env.SMOKE_BASE_URL || 'https://www.aivisibilityworks.com';
 const routes = ['/', '/musteri-giris', '/yeni-musteri', '/hizmetler', '/demo'];
@@ -58,3 +59,56 @@ for (const route of routes) {
     expect(consoleErrors, `${route} emitted browser console errors`).toEqual([]);
   });
 }
+
+test('local onboarding retains selected service and retries a failed submission',async({page})=>{
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only; no real lead writes');
+  const submitted=[];
+  await page.route('**/api/leads',async route=>{
+    submitted.push(route.request().postDataJSON());
+    if(submitted.length===1)return route.fulfill({status:503,contentType:'text/html',body:'Temporary gateway failure'});
+    if(submitted.length===2)return route.fulfill({status:200,json:{ok:false}});
+    return route.fulfill({json:{ok:true,lead:{id:'local-fixture',status:'new'}}});
+  });
+  await page.goto(`${BASE}/yeni-musteri?service=business-monitoring&country=Germany`,{waitUntil:'networkidle'});
+  await expect(page.getByRole('combobox',{name:/^Selected service/})).toHaveValue('business-monitoring');
+  await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
+  await page.getByLabel('Business name',{exact:true}).fill('Local Fixture Business');
+  await page.getByRole('combobox',{name:/^Industry/}).selectOption('Tekstil / Giyim');
+  await page.getByLabel('Email',{exact:true}).fill('fixture@example.com');
+  const form=page.locator('form.scan-form');
+  const send=page.getByRole('button',{name:'Request assessment',exact:true});
+  await send.click();
+  await expect(form.getByRole('alert')).toHaveText('Could not submit your application.');
+  await expect(send).toBeEnabled();
+  await send.click();
+  await expect(form.getByRole('alert')).toHaveText('Could not submit your application.');
+  await expect(send).toBeEnabled();
+  await send.click();
+  await expect(form.getByRole('status')).toContainText('Your application has been received.');
+  await expect(page.getByRole('button',{name:'Application received ✓',exact:true})).toBeDisabled();
+  expect(submitted).toHaveLength(3);
+  for(const body of submitted)expect(body).toMatchObject({service:'business-monitoring',country:'Germany',language:'en',email:'fixture@example.com'});
+  const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
+});
+
+test('authenticated local settings and verification controls fit mobile width',async({page,context})=>{
+  // Never issue a fixture token or mock customer actions against an external site.
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local build fixture only');
+  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'}]);
+  await page.route('**/api/status',route=>route.fulfill({json:{database:{configured:true},providers:[],auth:{configured:true,recovery:{}},billing:{configured:false},integrations:{cms:{configured:false,missing:['WORDPRESS_SITE_URL','WORDPRESS_USERNAME','WORDPRESS_APPLICATION_PASSWORD']}}}}));
+  await page.route('**/api/admin-test-flow',route=>route.fulfill({json:{ok:true,emailMasked:'fi***@example.com'}}));
+  await page.goto(`${BASE}/ayarlar`,{waitUntil:'networkidle'});
+  await expect(page.getByText('WORDPRESS_APPLICATION_PASSWORD',{exact:false})).toBeVisible();
+  await page.getByRole('button',{name:'5. aşama testini başlat',exact:true}).click();
+  const input=page.getByLabel('E-postaya gelen 6 haneli kod',{exact:true});
+  await expect(input).toBeVisible();
+  const size=await page.evaluate(()=>{
+    const input=document.querySelector('.test-center input');
+    const r=input.getBoundingClientRect(),p=input.closest('.panel').getBoundingClientRect();
+    return {scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth,right:r.right,cardRight:p.right};
+  });
+  expect(size.scroll).toBeLessThanOrEqual(size.viewport+2);
+  expect(size.right).toBeLessThanOrEqual(size.cardRight);
+  await expect(page.getByRole('button',{name:'Kodu doğrula ve 5. aşamayı bitir',exact:true})).toBeDisabled();
+});

@@ -220,3 +220,13 @@
 .work-workspace input:not([type="checkbox"]),.work-workspace textarea,.work-workspace select{width:100%;max-width:100%;min-height:44px;font-size:16px;}
 .work-workspace button{min-height:44px;max-width:100%;white-space:normal;}
 .work-workspace form>div{flex-wrap:wrap;}
+
+/* Settings and verification cards must fit narrow authenticated screens. */
+.settings>div{display:grid;grid-template-columns:minmax(120px,.6fr) minmax(0,1fr);align-items:start;gap:16px;}
+.settings>div>b,.settings>div>span{min-width:0;overflow-wrap:anywhere;}
+.settings>div>span{text-align:right;}
+.test-center,.test-center>*{min-width:0;max-width:100%;}
+.test-center input{width:100%;max-width:100%;min-width:0;}
+.test-center button{max-width:100%;white-space:normal;min-height:44px;}
+.test-center small,.test-center .client-message{overflow-wrap:anywhere;}
+@media(max-width:720px){.settings>div{grid-template-columns:minmax(0,1fr);gap:8px;}.settings>div>span{text-align:left;}.test-center .section-title{flex-wrap:wrap;align-items:flex-start;}.test-center .section-title>div{min-width:0;flex:1 1 100%;}}
