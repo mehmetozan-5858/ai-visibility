@@ -1,4 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
+import {createAdminToken} from '../lib/admin-auth.js';
 
 const BASE = process.env.SMOKE_BASE_URL || 'https://www.aivisibilityworks.com';
 const routes = ['/', '/musteri-giris', '/yeni-musteri', '/hizmetler', '/demo'];
@@ -58,3 +59,25 @@ for (const route of routes) {
     expect(consoleErrors, `${route} emitted browser console errors`).toEqual([]);
   });
 }
+
+test('authenticated local settings and verification controls fit mobile width',async({page,context})=>{
+  // Never issue a fixture token or mock customer actions against an external site.
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local build fixture only');
+  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'}]);
+  await page.route('**/api/status',route=>route.fulfill({json:{database:{configured:true},providers:[],auth:{configured:true,recovery:{}},billing:{configured:false},integrations:{cms:{configured:false,missing:['WORDPRESS_SITE_URL','WORDPRESS_USERNAME','WORDPRESS_APPLICATION_PASSWORD']}}}}));
+  await page.route('**/api/admin-test-flow',route=>route.fulfill({json:{ok:true,emailMasked:'fi***@example.com'}}));
+  await page.goto(`${BASE}/ayarlar`,{waitUntil:'networkidle'});
+  await expect(page.getByText('WORDPRESS_APPLICATION_PASSWORD',{exact:false})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Ayarlar',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'5. aşama testini başlat',exact:true}).click();
+  const input=page.getByLabel('E-postaya gelen 6 haneli kod',{exact:true});
+  await expect(input).toBeVisible();
+  const size=await page.evaluate(()=>{
+    const input=document.querySelector('.test-center input');
+    const r=input.getBoundingClientRect(),p=input.closest('.panel').getBoundingClientRect();
+    return {scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth,right:r.right,cardRight:p.right};
+  });
+  expect(size.scroll).toBeLessThanOrEqual(size.viewport+2);
+  expect(size.right).toBeLessThanOrEqual(size.cardRight);
+  await expect(page.getByRole('button',{name:'Kodu doğrula ve 5. aşamayı bitir',exact:true})).toBeDisabled();
+});
