@@ -120,3 +120,24 @@ test('authenticated local settings and verification controls fit mobile width',a
   expect(size.right).toBeLessThanOrEqual(size.cardRight);
   await expect(page.getByRole('button',{name:'Kodu doğrula ve 5. aşamayı bitir',exact:true})).toBeDisabled();
 });
+
+test('local admin sees regional assessment leads and can retry an unavailable list',async({page,context})=>{
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only');
+  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'},{name:'ai_lang',value:'tr',url:BASE}]);
+  await page.route('**/api/clients',route=>route.fulfill({json:{clients:[]}}));
+  await page.route('**/api/prospects',route=>route.fulfill({json:{prospects:[]}}));
+  let requests=0;
+  await page.route('**/api/leads',route=>{
+    if(++requests===1)return route.fulfill({status:503,json:{error:'Başvurular yüklenemedi.'}});
+    return route.fulfill({json:{leads:[{id:'fixture',businessName:'Regional lead fixture',name:'Synthetic fixture',email:'fixture@example.com',country:'Germany',requestedService:'business-monitoring',status:'new',service:{name:'İşletme – Sürekli Takip + Optimizasyon',amount:159,currency:'EUR',kind:'monthly'}}]}});
+  });
+  await page.goto(`${BASE}/musteriler`,{waitUntil:'networkidle'});
+  await expect(page.getByRole('heading',{name:'Yeni Müşteri Başvuruları',exact:true})).toBeVisible();
+  await expect(page.getByText('Henüz yeni müşteri başvurusu yok.',{exact:true})).not.toBeVisible();
+  await page.getByRole('button',{name:'Başvuruları yeniden yükle',exact:true}).click();
+  const lead=page.locator('.client-row').filter({hasText:'Regional lead fixture'});
+  await expect(lead).toContainText('159,00');await expect(lead).toContainText('€');
+  await expect(lead.getByRole('button',{name:'Müşteri + ödeme',exact:true})).toBeVisible();
+  const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
+});
