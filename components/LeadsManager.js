@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import {formatMoney} from "../lib/regional-pricing";
 
 const labels={new:"Yeni",contacted:"İletişim kuruldu",qualified:"Nitelikli",proposal:"Teklif",won:"Müşteri oldu",lost:"Kapandı"};
-function serviceLabel(service){return service?service.name+" · "+formatMoney(service.amount,service.currency,"tr-TR")+(service.kind==="monthly"?" / ay":service.kind==="from"?" başlangıç"):"Belirtilmedi"}
+function serviceLabel(service){return service?service.name+" · "+formatMoney(service.amount,service.currency,"tr-TR")+(service.kind==="monthly"?" / ay":service.kind==="from"?" başlangıç":""):"Belirtilmedi"}
 
 export default function LeadsManager(){
   const [items,setItems]=useState([]),[busy,setBusy]=useState(""),[msg,setMsg]=useState("");
