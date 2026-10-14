@@ -24,9 +24,9 @@ const structuredData={"@context":"https://schema.org","@graph":[
 ]};
 export default function Home(){
  const steps=[
-  ["1","⌕","Keşfet","Görünürlüğünüzü analiz edin. Tüm yapay zekâ platformlarında markanızın mevcut durumunu görün."],
+  ["1","⌕","Keşfet","Bağlı sağlayıcılardaki değerlendirmeleri ve kaydedilen yanıt örneklerini inceleyin."],
   ["2","▤","Doğrula","Gerçek veriler ve kanıtlarla içgörüleri derinleştirin. Nedenleri ve fırsatları anlayın."],
-  ["3","ϟ","Harekete Geç","Özel öneriler ve yol haritasıyla somut adımlar atın. Görünürlüğünüzü kalıcı şekilde artırın."]
+  ["3","ϟ","Harekete Geç","Özel öneriler ve yol haritasıyla somut adımlar atın. Değişikliklerden sonra sonuçları yeniden değerlendirin."]
  ];
  const solutions=[
   ["▥","Üretim ve ihracat","Ürün ve uzmanlık alanınızın AI cevaplarında nasıl temsil edildiğini görün."],
@@ -74,7 +74,7 @@ export default function Home(){
   </section>
 
   <section id="urun" className={styles.product}>
-   <div className={styles.productIntro}><div className={styles.kicker}>Ürün deneyimi</div><h2>Tüm ihtiyaçlarınız için entegre bir platform.</h2><p>Analiz, kanıt, strateji ve aksiyon. AI Visibility ile tüm süreci tek bir platformda yönetin.</p><Link className={styles.outline} href="/demo">Ürünü yakından inceleyin →</Link></div>
+   <div className={styles.productIntro}><div className={styles.kicker}>Ürün deneyimi · Örnek ekranlar</div><h2>Tüm ihtiyaçlarınız için entegre bir platform.</h2><p>Analiz, kanıt, strateji ve aksiyon. AI Visibility ile tüm süreci tek bir platformda yönetin.</p><Link className={styles.outline} href="/demo">Ürünü yakından inceleyin →</Link></div>
    <div className={styles.productGrid}>
     {[['Executive Overview','Markanızın AI görünürlüğüne dair yönetici özeti, skorlar ve eğilimler.'],['Evidence Explorer','Görünürlük kaynaklarını, alıntıları ve kanıtları detaylı olarak inceleyin.'],['Action Workspace','Kişiselleştirilmiş önerileri, öncelikleri ve uygulama yol haritasını yönetin.']].map(([t,p],idx)=><article className={styles.productCard} key={t}><div className={styles.mock}><strong>{idx===0?'72 / 100':idx===1?'ChatGPT · Google AI':'✓ Öncelikli aksiyonlar'}</strong><div className={styles.mockLine}/><div className={`${styles.mockLine} ${styles.short}`}/><div className={styles.mockLine}/></div><h3>{t}</h3><p>{p}</p></article>)}
    </div>
@@ -83,7 +83,7 @@ export default function Home(){
   <section id="rapor" className={styles.reports}>
    <div className={styles.reportIntro}><div className={styles.kicker}>İçgörüler ve raporlama · Örnek ekran</div><h2>Karar vermeyi kolaylaştıran raporlar.</h2><p>Sadece bir skor değil, neyin neden olduğunu ve sonraki adımda ne yapmanız gerektiğini gösteren net içgörüler.</p><Link className={styles.outline} href="/demo">Örnek raporu görüntüle →</Link></div>
    <div className={styles.reportCard}><div className={styles.reportRing}><span>72</span></div><div className={styles.findings}><strong>Öne çıkan bulgular</strong><div className={styles.finding}>↗ Sektör karşılaştırmasında güçlü görünürlük</div><div className={styles.finding}>! Kaynak alıntılarında gelişim fırsatı</div><div className={styles.finding}>◆ Teknik içeriklerde iyileştirme alanı</div></div></div>
-   <aside className={styles.trust}><div className={styles.kicker}>Güven ve standartlar</div><h3>Daha şeffaf, daha güvenilir bir AI ekosistemi.</h3><p>Veriye dayalı, kanıtlanabilir ve sorumlu bir yapay zekâ görünürlük yönetimi için tasarlandı.</p><div className={styles.trustGrid}><span>◈ Şeffaf analiz</span><span>▤ Kanıta dayalı</span><span>▣ Veri gizliliği</span><span>✓ Doğrulanmış sistem</span></div></aside>
+   <aside className={styles.trust}><div className={styles.kicker}>Güven ve standartlar</div><h3>Daha şeffaf, daha güvenilir bir AI ekosistemi.</h3><p>Veriye dayalı, kanıtlanabilir ve sorumlu bir yapay zekâ görünürlük yönetimi için tasarlandı.</p><div className={styles.trustGrid}><span>◈ Şeffaf analiz</span><span>▤ Kanıta dayalı</span><span>▣ Veri gizliliği</span><span>✓ Açık ölçüm yöntemi</span></div></aside>
   </section>
 
   <section className={styles.how} aria-labelledby="first-analysis">
@@ -91,8 +91,8 @@ export default function Home(){
    <div className={styles.steps}>{[["Ölçüm ve geçmiş","Tamamlanan taramalar, son skor ve önceki ölçümle değişim."],["Bulgu ve kanıt","Sağlayıcı sonuçları, bulguların önem seviyesi ve örnek rapor."],["Çözüm ve takip","Hizmet kapsamına göre öneriler, çözüm talepleri ve çalışma durumu."]].map(([t,p])=><article className={styles.solution} key={t}><h3>{t}</h3><p>{p}</p></article>)}</div>
    <div className={styles.heroButtons}><Link className={styles.cta} href="/yeni-musteri">Markam için ön değerlendirme iste →</Link><Link className={styles.outline} href="/demo">Örnek raporu incele</Link></div>
   </section>
-  <section className={styles.how} aria-labelledby="faq-heading"><div className={styles.kicker}>Karar vermeden önce</div><h2 id="faq-heading">Sık sorulan sorular</h2><div className={styles.faq}>{faq.map(([q,a])=><details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div><Link className={styles.more} href="/iletisim">Sorunuz mu var? Bize ulaşın →</Link></section>
+  <section className={styles.how} aria-labelledby="faq-heading"><div className={styles.kicker}>Karar vermeden önce</div><h2 id="faq-heading">Sık sorulan sorular</h2><div className={styles.faq}>{faq.map(([q,a])=><details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div><p><Link className={styles.more} href="/metodoloji">Skorlar ve kanıtlar nasıl yorumlanır? →</Link></p><Link className={styles.more} href="/iletisim">Sorunuz mu var? Bize ulaşın →</Link></section>
   <div className={styles.logos}><span>ChatGPT</span><span>Gemini</span><span>Perplexity</span><span>AI Search</span><span>GEO</span><span>AEO</span><span>Evidence Intelligence</span></div>
-  <footer className={styles.footer}><div><div className={styles.brand}><span className={styles.logo}/><span>AI Visibility</span></div><p>Markanızı yapay zekâ dünyasında daha görünür, daha güvenilir ve daha güçlü kılar.</p><div className={styles.legal}>© 2026 AI Visibility · Tüm hakları saklıdır.</div></div><div className={styles.footerLinks}><div><strong>Ürün</strong><a href="#urun">Genel Bakış</a><Link href="/hizmetler">Fiyatlandırma</Link></div><div><strong>Çözümler</strong><a href="#cozumler">Üretim & İhracat</a><a href="#cozumler">B2B Hizmetler</a></div><div><strong>Kaynaklar</strong><a href="#rapor">Raporlar</a><Link href="/demo">Demo</Link></div><div><strong>Hakkımızda</strong><Link href="/hakkimizda">Hakkımızda</Link><Link href="/iletisim">İletişim</Link><Link href="/gizlilik">Gizlilik</Link><Link href="/mesafeli-hizmet-sozlesmesi">Hizmet Koşulları</Link><Link href="/iptal-iade">İptal ve İade</Link><Link href="/kvkk">KVKK</Link></div></div></footer>
+  <footer className={styles.footer}><div><div className={styles.brand}><span className={styles.logo}/><span>AI Visibility</span></div><p>Markanızı yapay zekâ dünyasında daha görünür, daha güvenilir ve daha güçlü kılar.</p><div className={styles.legal}>© 2026 AI Visibility · Tüm hakları saklıdır.</div></div><div className={styles.footerLinks}><div><strong>Ürün</strong><a href="#urun">Genel Bakış</a><Link href="/hizmetler">Fiyatlandırma</Link></div><div><strong>Çözümler</strong><a href="#cozumler">Üretim & İhracat</a><a href="#cozumler">B2B Hizmetler</a></div><div><strong>Kaynaklar</strong><a href="#rapor">Raporlar</a><Link href="/demo">Demo</Link><Link href="/metodoloji">Ölçüm yöntemi</Link><Link href="/yapay-zeka-gorunurlugu">GEO / AEO rehberi</Link></div><div><strong>Hakkımızda</strong><Link href="/hakkimizda">Hakkımızda</Link><Link href="/iletisim">İletişim</Link><Link href="/gizlilik">Gizlilik</Link><Link href="/mesafeli-hizmet-sozlesmesi">Hizmet Koşulları</Link><Link href="/iptal-iade">İptal ve İade</Link><Link href="/kvkk">KVKK</Link></div></div></footer>
  </div></div>;
 }

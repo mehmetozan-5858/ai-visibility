@@ -15,7 +15,7 @@ function request(path){const u=new URL(path,'https://www.aivisibilityworks.com')
 test('anonymous crawlers can fetch discovery documents without opening private routes',async()=>{
  const old=process.env.PADDLE_SANDBOX_ENABLED;process.env.PADDLE_SANDBOX_ENABLED='false';
  try{
-  for(const path of ['/robots.txt','/sitemap.xml']){const r=await proxy(request(path));assert.equal(r.status,200);assert.equal(await r.text(),'next')}
+  for(const path of ['/robots.txt','/sitemap.xml','/metodoloji','/yapay-zeka-gorunurlugu']){const r=await proxy(request(path));assert.equal(r.status,200);assert.equal(await r.text(),'next')}
   for(const path of ['/admin','/musteri-panel'])assert.equal((await proxy(request(path))).status,307);
   assert.equal((await proxy(request('/api/clients'))).status,401);
  }finally{if(old===undefined)delete process.env.PADDLE_SANDBOX_ENABLED;else process.env.PADDLE_SANDBOX_ENABLED=old}

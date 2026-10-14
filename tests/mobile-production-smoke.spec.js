@@ -2,7 +2,7 @@ import { test, expect, devices } from '@playwright/test';
 import {createAdminToken} from '../lib/admin-auth.js';
 
 const BASE = process.env.SMOKE_BASE_URL || 'https://www.aivisibilityworks.com';
-const routes = ['/', '/musteri-giris', '/yeni-musteri', '/hizmetler', '/demo'];
+const routes = ['/', '/musteri-giris', '/yeni-musteri', '/hizmetler', '/demo', '/metodoloji', '/yapay-zeka-gorunurlugu'];
 const iphone = devices['iPhone 13'];
 
 test.use({
