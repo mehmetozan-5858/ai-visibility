@@ -60,8 +60,9 @@ for (const route of routes) {
   });
 }
 
-test('local onboarding retains selected service and retries a failed submission',async({page})=>{
+test('local onboarding retains selected service and retries a failed submission',async({page,context})=>{
   test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only; no real lead writes');
+  await context.addCookies([{name:'ai_lang',value:'tr',url:BASE}]);
   const submitted=[];
   await page.route('**/api/leads',async route=>{
     submitted.push(route.request().postDataJSON());
@@ -70,6 +71,12 @@ test('local onboarding retains selected service and retries a failed submission'
     return route.fulfill({json:{ok:true,lead:{id:'local-fixture',status:'new'}}});
   });
   await page.goto(`${BASE}/yeni-musteri?service=business-monitoring&country=Germany`,{waitUntil:'networkidle'});
+  // Reproduce the owner browser's Turkish preference while this page explicitly
+  // uses English. Let the legacy DOM translator run before asserting labels.
+  await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
+  await page.waitForTimeout(500);
+  await expect(page.getByRole('textbox',{name:'Business name',exact:true})).toBeVisible();
+  await expect(page.getByRole('option',{name:'Other',exact:true})).toHaveAttribute('value','Diğer');
   await expect(page.getByRole('combobox',{name:/^Selected service/})).toHaveValue('business-monitoring');
   await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
   await page.getByLabel('Business name',{exact:true}).fill('Local Fixture Business');
@@ -100,6 +107,7 @@ test('authenticated local settings and verification controls fit mobile width',a
   await page.route('**/api/admin-test-flow',route=>route.fulfill({json:{ok:true,emailMasked:'fi***@example.com'}}));
   await page.goto(`${BASE}/ayarlar`,{waitUntil:'networkidle'});
   await expect(page.getByText('WORDPRESS_APPLICATION_PASSWORD',{exact:false})).toBeVisible();
+  await expect(page.getByRole('link',{name:'Ücretsiz kurulum →',exact:true})).toHaveAttribute('href','/admin/guvenlik');
   await page.getByRole('button',{name:'5. aşama testini başlat',exact:true}).click();
   const input=page.getByLabel('E-postaya gelen 6 haneli kod',{exact:true});
   await expect(input).toBeVisible();
@@ -111,4 +119,25 @@ test('authenticated local settings and verification controls fit mobile width',a
   expect(size.scroll).toBeLessThanOrEqual(size.viewport+2);
   expect(size.right).toBeLessThanOrEqual(size.cardRight);
   await expect(page.getByRole('button',{name:'Kodu doğrula ve 5. aşamayı bitir',exact:true})).toBeDisabled();
+});
+
+test('local admin sees regional assessment leads and can retry an unavailable list',async({page,context})=>{
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only');
+  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'},{name:'ai_lang',value:'tr',url:BASE}]);
+  await page.route('**/api/clients',route=>route.fulfill({json:{clients:[]}}));
+  await page.route('**/api/prospects',route=>route.fulfill({json:{prospects:[]}}));
+  let requests=0;
+  await page.route('**/api/leads',route=>{
+    if(++requests===1)return route.fulfill({status:503,json:{error:'Başvurular yüklenemedi.'}});
+    return route.fulfill({json:{leads:[{id:'fixture',businessName:'Regional lead fixture',name:'Synthetic fixture',email:'fixture@example.com',website:'https://long-regional-fixture-domain.test.ai-visibility.local',country:'Germany',requestedService:'business-monitoring',status:'new',service:{name:'İşletme – Sürekli Takip + Optimizasyon',amount:159,currency:'EUR',kind:'monthly'}}]}});
+  });
+  await page.goto(`${BASE}/musteriler`,{waitUntil:'networkidle'});
+  await expect(page.getByRole('heading',{name:'Yeni Müşteri Başvuruları',exact:true})).toBeVisible();
+  await expect(page.getByText('Henüz yeni müşteri başvurusu yok.',{exact:true})).not.toBeVisible();
+  await page.getByRole('button',{name:'Başvuruları yeniden yükle',exact:true}).click();
+  const lead=page.locator('.client-row').filter({hasText:'Regional lead fixture'});
+  await expect(lead).toContainText('€159 / ay');
+  await expect(lead.getByRole('button',{name:'Müşteri + ödeme',exact:true})).toBeVisible();
+  const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
 });

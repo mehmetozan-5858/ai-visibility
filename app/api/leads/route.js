@@ -3,6 +3,7 @@ import {addClient,findClientByIdentity} from "../../../lib/repository";
 import {upsertClientProfile} from "../../../lib/client-profile";
 import {createPaymentAccessToken,verifyAdminToken} from "../../../lib/admin-auth";
 import {checkRateLimit,enforceSameOrigin} from "../../../lib/api-security";
+import {SERVICE_CODES,servicePrice} from "../../../lib/regional-pricing";
 
 async function isAdmin(req){
   const token=req.cookies.get("ai_admin")?.value||"";
@@ -31,7 +32,7 @@ export async function POST(req){
 
 export async function GET(req){
   if(!await isAdmin(req))return Response.json({error:"Yetkisiz erişim."},{status:401});
-  try{return json({leads:await listLeads(150)})}
+  try{return json({leads:(await listLeads(150)).map(lead=>({...lead,service:SERVICE_CODES.includes(lead.requestedService)?servicePrice({service:lead.requestedService,country:lead.country,language:"tr"}):null}))})}
   catch{return json({error:"Lead listesi alınamadı."},500)}
 }
 

@@ -4,6 +4,7 @@ import {currencyForCountry,formatMoney} from "../lib/regional-pricing";
 import {useLanguage} from "./LanguageProvider";
 
 const sectors=["Otel / Konaklama","Restoran / Kafe","Sağlık","Hukuk","Emlak","Otomotiv","E-ticaret","Tekstil / Giyim","Eğitim","Turizm","B2B / Sanayi","Diğer"];
+const sectorEnglish=["Hotel / Accommodation","Restaurant / Cafe","Healthcare","Legal services","Real estate","Automotive","E-commerce","Textiles / Clothing","Education","Tourism","B2B / Industry","Other"];
 const countries=["Türkiye","United Kingdom","United States","Germany","France","Italy","Spain","Netherlands","Belgium","Austria","Ireland","Portugal","Poland","Romania","Bulgaria","Greece","Sweden","Norway","Denmark","Finland","Switzerland","Canada","Australia","United Arab Emirates","Saudi Arabia","Qatar","Japan","South Korea","India","China","Brazil","Mexico","South Africa"];
 const text={
  tr:{title:"Ücretsiz ön değerlendirme başlat",help:"Ön değerlendirme başvurusu ücretsizdir; başvuru tek başına müşteri paneli hesabı açmaz. Hesap, onaylı ücretsiz pilot daveti veya ödeme doğrulaması ve e-posta onayı sonrasında oluşturulur.",name:"Ad Soyad",business:"İşletme adı",website:"Web sitesi",country:"Ülke",city:"Şehir",sector:"Sektör",select:"Seçin",email:"E-posta",phone:"Telefon / WhatsApp",send:"Ön değerlendirme iste",sending:"Gönderiliyor…",done:"Başvuru alındı ✓",ok:"Başvurunuz alındı. İşletmenizi inceleyip size uygun analiz ve teklif süreci hazırlanacak.",fail:"Başvuru gönderilemedi.",countryHelp:"Ülkeniz fiyat para birimini belirler: Türkiye ₺, Avrupa €, Birleşik Krallık £, ABD ve diğer ülkeler $."},
@@ -25,7 +26,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
       setOk(true);setMsg(c.ok);
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }
-  return <form className="panel scan-form" onSubmit={submit} style={{marginBottom:16}}>
+  return <form lang={lang} data-localized className="panel scan-form" onSubmit={submit} style={{marginBottom:16}}>
     <div><h2>{c.title}</h2><p>{c.help}</p></div>
     <label>{lang==="en"?"Selected service":"Seçilen hizmet"}<select value={form.service} onChange={e=>change("service",e.target.value)} required><option value="">{lang==="en"?"Select a service":"Hizmet seçin"}</option>{(prices[currencyForCountry(form.country)]||[]).map(p=><option key={p.code} value={p.code}>{p.name} — {formatMoney(p.amount,p.currency,lang==="en"?"en-GB":"tr-TR")}{p.kind==="monthly"?(lang==="en"?" / month":" / ay"):p.kind==="from"?(lang==="en"?" starting from":" başlangıç"):""}</option>)}</select></label>
     <label>{c.name}<input value={form.name} onChange={e=>change("name",e.target.value)} required/></label>
@@ -35,7 +36,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
       <label>{c.country}<input list="aiv-country-options" value={form.country} onChange={e=>change("country",e.target.value)} required/><datalist id="aiv-country-options">{countries.map(x=><option key={x} value={x}/>)}</datalist><small>{c.countryHelp}</small></label>
       <label>{c.city}<input value={form.city} onChange={e=>change("city",e.target.value)}/></label>
     </div>
-    <label>{c.sector}<select value={form.sector} onChange={e=>change("sector",e.target.value)} required><option value="">{c.select}</option>{sectors.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+    <label>{c.sector}<select value={form.sector} onChange={e=>change("sector",e.target.value)} required><option value="">{c.select}</option>{sectors.map((x,i)=><option key={x} value={x}>{lang==="en"?sectorEnglish[i]:x}</option>)}</select></label>
     <label>{c.email}<input type="email" value={form.email} onChange={e=>change("email",e.target.value)} required autoComplete="email"/></label>
     <label>{c.phone}<input value={form.phone} onChange={e=>change("phone",e.target.value)} inputMode="tel" autoComplete="tel"/></label>
     <button disabled={busy||ok}>{busy?c.sending:ok?c.done:c.send}</button>

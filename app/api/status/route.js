@@ -17,7 +17,7 @@ export async function GET(req){
     billing:{configured:Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),provider:"PayTR"},
     auth:{configured:authConfigured(),recovery:recoveryStatus()},
     safeDemo:!getDatabaseUrl()||!providers.some(x=>x.status==="connected")
-  });
+  },{headers:{"Cache-Control":"no-store"}});
 }
 // production-refresh-secure-checkout
 // production-refresh-final-polish
