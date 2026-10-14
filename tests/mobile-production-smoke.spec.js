@@ -58,3 +58,30 @@ for (const route of routes) {
     expect(consoleErrors, `${route} emitted browser console errors`).toEqual([]);
   });
 }
+
+test('local onboarding retains selected service and retries a failed submission',async({page})=>{
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only; no real lead writes');
+  const submitted=[];
+  await page.route('**/api/leads',async route=>{
+    submitted.push(route.request().postDataJSON());
+    if(submitted.length===1)return route.fulfill({status:503,contentType:'text/html',body:'Temporary gateway failure'});
+    return route.fulfill({json:{ok:true,lead:{id:'local-fixture',status:'new'}}});
+  });
+  await page.goto(`${BASE}/yeni-musteri?service=business-monitoring&country=Germany`,{waitUntil:'networkidle'});
+  await expect(page.getByLabel('Selected service',{exact:true})).toHaveValue('business-monitoring');
+  await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
+  await page.getByLabel('Business name',{exact:true}).fill('Local Fixture Business');
+  await page.getByLabel('Industry',{exact:true}).selectOption('Tekstil / Giyim');
+  await page.getByLabel('Email',{exact:true}).fill('fixture@example.com');
+  const send=page.getByRole('button',{name:'Request assessment',exact:true});
+  await send.click();
+  await expect(page.getByRole('alert')).toHaveText('Could not submit your application.');
+  await expect(send).toBeEnabled();
+  await send.click();
+  await expect(page.getByRole('status')).toContainText('Your application has been received.');
+  await expect(page.getByRole('button',{name:'Application received ✓',exact:true})).toBeDisabled();
+  expect(submitted).toHaveLength(2);
+  for(const body of submitted)expect(body).toMatchObject({service:'business-monitoring',country:'Germany',language:'en',email:'fixture@example.com'});
+  const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
+  expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
+});

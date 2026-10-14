@@ -20,7 +20,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
     e.preventDefault();setBusy(true);setMsg("");setOk(false);
     try{
       const r=await fetch("/api/leads",{method:"POST",headers:{"content-type":"application/json","accept-language":lang},body:JSON.stringify({...form,language:lang})});
-      const d=await r.json();if(!r.ok)throw new Error(d.error||c.fail);
+      const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||c.fail);
       setOk(true);setMsg(c.ok);
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }
@@ -38,6 +38,6 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
     <label>{c.email}<input type="email" value={form.email} onChange={e=>change("email",e.target.value)} required autoComplete="email"/></label>
     <label>{c.phone}<input value={form.phone} onChange={e=>change("phone",e.target.value)} inputMode="tel" autoComplete="tel"/></label>
     <button disabled={busy||ok}>{busy?c.sending:ok?c.done:c.send}</button>
-    {msg&&<p className="client-message" style={{marginBottom:0}}>{msg}</p>}
+    {msg&&<p className="client-message" role={ok?"status":"alert"} aria-live="polite" style={{marginBottom:0}}>{msg}</p>}
   </form>;
 }

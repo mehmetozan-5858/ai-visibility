@@ -9,39 +9,50 @@ async function isAdmin(req){
   return await verifyAdminToken(token);
 }
 
+function json(body,status=200){return Response.json(body,{status,headers:{"Cache-Control":"no-store"}})}
+async function readObject(req){
+  const body=await req.json();
+  if(!body||typeof body!=="object"||Array.isArray(body))throw new Error("invalid-request");
+  return body;
+}
+
 export async function POST(req){
   const origin=enforceSameOrigin(req);if(origin)return origin;
   const limited=checkRateLimit(req,{bucket:"public-lead",limit:10,windowMs:15*60*1000});if(limited)return limited;
   try{
-    const body=await req.json();
+    const body=await readObject(req);
     const lead=await createLead(body||{});
-    return Response.json({ok:true,lead:{id:lead.id,status:lead.status}});
+    return json({ok:true,lead:{id:lead.id,status:lead.status}});
   }catch(e){
-    const code=e?.message==="invalid-lead"?400:500;
-    return Response.json({error:code===400?"Ad, işletme adı ve geçerli e-posta zorunludur.":"Başvuru kaydedilemedi."},{status:code});
+    const code=e instanceof SyntaxError||["invalid-lead","invalid-request"].includes(e?.message)?400:500;
+    return json({error:code===400?"Ad, işletme adı ve geçerli e-posta zorunludur.":"Başvuru kaydedilemedi."},code);
   }
 }
 
 export async function GET(req){
   if(!await isAdmin(req))return Response.json({error:"Yetkisiz erişim."},{status:401});
-  try{return Response.json({leads:await listLeads(150)})}
-  catch{return Response.json({error:"Lead listesi alınamadı."},{status:500})}
+  try{return json({leads:await listLeads(150)})}
+  catch{return json({error:"Lead listesi alınamadı."},500)}
 }
 
 export async function PATCH(req){
   if(!await isAdmin(req))return Response.json({error:"Yetkisiz erişim."},{status:401});
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"admin-lead-status",limit:30,windowMs:15*60*1000});if(limited)return limited;
   try{
-    const body=await req.json();
+    const body=await readObject(req);
     const lead=await updateLeadStatus(body?.id,body?.status);
     if(!lead)return Response.json({error:"Lead bulunamadı."},{status:404});
-    return Response.json({ok:true,lead});
-  }catch(e){return Response.json({error:e?.message==="invalid-lead-status"?"Geçersiz durum.":"Lead güncellenemedi."},{status:400})}
+    return json({ok:true,lead});
+  }catch(e){const status=e instanceof SyntaxError||["invalid-lead-status","invalid-request"].includes(e?.message)?400:500;return json({error:e?.message==="invalid-lead-status"?"Geçersiz durum.":"Lead güncellenemedi."},status)}
 }
 
 export async function PUT(req){
   if(!await isAdmin(req))return Response.json({error:"Yetkisiz erişim."},{status:401});
+  const origin=enforceSameOrigin(req);if(origin)return origin;
+  const limited=checkRateLimit(req,{bucket:"admin-lead-convert",limit:10,windowMs:15*60*1000});if(limited)return limited;
   try{
-    const body=await req.json();const lead=await getLead(body?.id);if(!lead)return Response.json({error:"Lead bulunamadı."},{status:404});
+    const body=await readObject(req);const lead=await getLead(body?.id);if(!lead)return json({error:"Lead bulunamadı."},404);
     let client=await findClientByIdentity(lead.businessName,lead.website||"");
     if(!client)client=await addClient({name:lead.businessName,domain:lead.website||("lead-"+lead.id.slice(0,8)),plan:"Starter",competitors:[]});
     if(!client?.id)return Response.json({error:"Müşteri oluşturulamadı."},{status:500});
@@ -49,6 +60,6 @@ export async function PUT(req){
     await updateLeadStatus(lead.id,"qualified");
     const service=["business-diagnosis","business-solution","business-monitoring"].includes(lead.requestedService)?lead.requestedService:"business-diagnosis";
     const token=await createPaymentAccessToken(client.id,604800,service);
-    return Response.json({ok:true,clientId:client.id,service,paymentUrl:"/odeme?token="+encodeURIComponent(token)});
-  }catch(e){return Response.json({error:"Başvuru müşteriye dönüştürülemedi.",detail:String(e?.message||e).slice(0,180)},{status:500})}
+    return json({ok:true,clientId:client.id,service,paymentUrl:"/odeme?token="+encodeURIComponent(token)});
+  }catch(e){return json({error:"Başvuru müşteriye dönüştürülemedi."},e instanceof SyntaxError||e?.message==="invalid-request"?400:500)}
 }
