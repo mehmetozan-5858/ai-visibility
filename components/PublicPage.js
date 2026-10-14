@@ -4,6 +4,7 @@ const nav=[
   ["/","Ana Sayfa"],
   ["/hizmetler","Çözümler ve Fiyatlar"],
   ["/demo","Demo"],
+  ["/metodoloji","Ölçüm Yöntemi"],
   ["/hakkimizda","Hakkımızda"],
   ["/iletisim","İletişim"]
 ];
