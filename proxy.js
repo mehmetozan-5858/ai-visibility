@@ -13,7 +13,7 @@ export function authorizedAgentCycle(req){
 export async function proxy(req){
   const {pathname}=req.nextUrl;
   const sandboxPreview=process.env.PADDLE_SANDBOX_ENABLED==="true"&&process.env.PADDLE_ENVIRONMENT==="sandbox"&&["preview","development"].includes(process.env.VERCEL_ENV);
-  const paddleSandboxPath=pathname==="/paddle-sandbox"||pathname==="/api/webhooks/paddle-sandbox"||pathname==="/api/paddle-sandbox/checkout-intents"||pathname==="/api/paddle-sandbox/account";
+  const paddleSandboxPath=pathname==="/paddle-sandbox"||pathname==="/api/webhooks/paddle-sandbox"||pathname==="/api/paddle-sandbox/checkout-intents"||pathname==="/api/paddle-sandbox/account"||pathname==="/api/paddle-sandbox/test-session";
   // Sandbox previews expose only checkout and signature-verified billing events.
   // Even a valid admin or scheduler credential cannot enter production routes here.
   if(sandboxPreview&&!paddleSandboxPath)return new NextResponse("Not found",{status:404});
