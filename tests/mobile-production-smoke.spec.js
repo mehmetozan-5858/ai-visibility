@@ -136,7 +136,7 @@ test('local admin sees regional assessment leads and can retry an unavailable li
   await expect(page.getByText('Henüz yeni müşteri başvurusu yok.',{exact:true})).not.toBeVisible();
   await page.getByRole('button',{name:'Başvuruları yeniden yükle',exact:true}).click();
   const lead=page.locator('.client-row').filter({hasText:'Regional lead fixture'});
-  await expect(lead).toContainText('159,00');await expect(lead).toContainText('€');
+  await expect(lead).toContainText('€159 / ay');
   await expect(lead.getByRole('button',{name:'Müşteri + ödeme',exact:true})).toBeVisible();
   const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
   expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
