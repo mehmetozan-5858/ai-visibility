@@ -1,5 +1,5 @@
 import PublicPage from "../../components/PublicPage";
-export const metadata={title:"KVKK Aydınlatma Metni"};
+export const metadata={alternates:{canonical:"/kvkk"},title:"KVKK Aydınlatma Metni"};
 export default function Page(){
   const controller=(process.env.DATA_CONTROLLER_NAME||"").trim();
   const contact=process.env.ADMIN_RECOVERY_EMAIL||"";

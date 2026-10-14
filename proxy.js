@@ -18,7 +18,7 @@ export async function proxy(req){
   // Even a valid admin or scheduler credential cannot enter production routes here.
   if(sandboxPreview&&!paddleSandboxPath)return new NextResponse("Not found",{status:404});
   if(authorizedAgentCycle(req))return NextResponse.next();
-  const publicPages=["/","/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/musteri-sifre-sifirla","/demo","/yeni-musteri","/on-degerlendirme"];
+  const publicPages=["/robots.txt","/sitemap.xml","/","/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/musteri-sifre-sifirla","/demo","/yeni-musteri","/on-degerlendirme"];
   const publicPath=pathname==="/api/free-assessment"||pathname==="/api/webhooks/resend"||pathname==="/login"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname==="/api/leads"||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/")||pathname.startsWith("/api/cron/")||pathname==="/api/creator-hunt";
   if(paddleSandboxPath){
     if(sandboxPreview)return NextResponse.next();

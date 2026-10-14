@@ -1,5 +1,5 @@
 import PublicPage from "../../components/PublicPage";
-export const metadata={title:"Gizlilik Politikası"};
+export const metadata={alternates:{canonical:"/gizlilik"},title:"Gizlilik Politikası"};
 export default function Page(){return <PublicPage title="Gizlilik Politikası">
   <p><b>AI Visibility</b>, hizmetin müşteri-facing markasıdır. Kişisel verilerin yasal veri sorumlusu, ticari yayına geçmeden önce KVKK Aydınlatma Metni ve İletişim sayfasında açıkça yayımlanır.</p>
   <p>Hizmetin sunulması için gerekli olan iletişim, müşteri, tarama, raporlama ve ödeme durum bilgileri yalnızca hizmetin kurulması, yürütülmesi, güvenliğinin sağlanması ve yasal yükümlülüklerin yerine getirilmesi amaçlarıyla işlenir.</p>
