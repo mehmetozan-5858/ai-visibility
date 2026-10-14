@@ -1,24 +1,21 @@
-# Paddle Sandbox status — 2026-10-14, Europe/Istanbul
+# Paddle Sandbox current status — 2026-10-14 09:01 Europe/Istanbul
 
-This is the current consolidated status. Earlier preparation/runtime notes are historical snapshots, not current readiness claims.
+This note supersedes earlier preparation snapshots.
 
-## Completed and verified
+## Verified
+- Eight Sandbox products and 32 regional price IDs; no live catalog/charges.
+- Actual Sandbox successful monthly/one-time checkout, declined-card retry, cancellation; earlier seven signed events stored separately from simulator fixtures.
+- First real timed provider renewal completed at Oct14 01:40 Istanbul; subscription then canceled. That run lacked an active destination, so its delivery was not claimed.
+- Server-issued synthetic browser session → actual checkout-intent endpoint → USD169 Sandbox checkout → signed webhook → isolated owner-filtered account response verified. Customer test UI shows Business monitoring: Etkin. This fixture is not production customer signup/login or entitlements.
+- Bound signed subscription_update credits with quantity -1 are now accepted only for exact previously bound monthly customer/subscription and known price, negative total. The actual credit transaction txn_01m4wfe317hze7pr381fq6t472 was retried through Paddle and returned 200 with recorded:true. Foreign owners, new claims and other quantities remain rejected.
+- 316 tests and local Next.js build pass. Application browser preview dpl_8B74oeV4KHVTLwP6YM6DPFY1Qtib READY. Fixed isolated receiver dpl_3RK2jGzPC2pFdZBvGZ95tE8ufk5Q READY.
 
-- Catalog: eight products, 32 explicit TRY/USD/EUR/GBP prices, four one-time reports and four monthly monitoring offers. Quote-based services excluded.
-- Real Sandbox checkout: monthly payment and activation, immediate cancellation, declined one-time payment and successful retry. Seven actual platform events confirmed in the isolated database; simulator events are distinguished from them.
-- Raw signature verification, freshness, duplicate/reordered event handling, catalog validation, rollback and production-route isolation covered by automated tests.
-- Customer binding: server-owned opaque checkout intents, session-only identity, exact price/quantity checks, unique Paddle customer ownership. Signed Paddle simulator delivery confirmed linkage to a seeded synthetic intent.
-- Account-route behavioral checks now execute the actual GET route with an isolated database adapter: production/unauthenticated requests never open the pool; two customers each see only their own records despite a foreign customer query parameter; error responses omit private details and close the pool. Responses are no-store. Full test suite: 307 passed, zero failed.
-- Main application's separate Stage 5 customer journey passed after PR #29 publication. Owner screenshot at 00:40 showed email verification, account preparation, login, portal, score-42 synthetic data and PDF completion. This is not Paddle customer-session verification.
+## ACTIVE timed test — do not prematurely deactivate
+Linked real Sandbox subscription sub_01m4wfb2t3kh1z1hm9qw5gkt1d is scheduled for 2026-10-14 06:25 UTC /09:25 Europe/Istanbul. Synthetic customer sandbox-linked-renewal@example.com, initial transaction txn_01m4wf9zjayzrwywk5mwrrjr2j. Reopened billing-date editor confirms 06:25 AM Oct14. The preview amount USD0.14 is only a proration preview, not a guaranteed final amount.
 
-## Safely stopped test resources
+Destination ntfset_01m4vcb0m6f57g3d7yw69fxdzv was active BEFORE linked checkout and remains active. Current receiver plain URL: https://ai-visibility-paddle-sandbox-webhook-16d3breg8-ai-visibility2.vercel.app/api/webhooks/paddle-sandbox. Its configured URL temporarily includes the scoped automation access key. Key is scoped only to isolated project prj_PpHetMGOjOrxfpm8WfPcKtO6OlkP, note Temporary end-to-end Sandbox recurring delivery test. No production project protection change.
 
-The earlier real Sandbox test subscription was canceled. Temporary test-project automation bypass keys and the preview share key were revoked. Paddle notification destination was deactivated after successful delivery tests. Thus new provider events will not reach the protected receiver until an authorized test session temporarily restores that specific route and destination. No renewal is currently scheduled and no 31-minute countdown is running.
+After due time: verify actual subscription_recurring transaction.completed is Delivered and response recorded:true; inspect customer's own status; cancel this test subscription immediately; verify signed subscription.canceled and UI İptal edildi; revoke only this exact temporary access key without regeneration; strip query; deactivate destination. No live payment.
 
-## Still open
-
-1. Browser-authenticated customer session on the isolated preview → server intent → real Sandbox checkout → own subscription-status UI. API behavior and seeded provider binding are verified separately; they do not replace this complete browser journey. The preview intentionally blocks production sign-in/account routes, so this requires a scoped test-session provisioning design and owner authentication participation, without opening production routes or reading production customer data.
-2. Real timed renewal: create a new Sandbox subscription, save a billing date at least 31 minutes ahead, retain only temporary test receiver access, observe actual recurring transaction and subscription events, then cancel the test subscription and revoke access. Simulator renewal evidence does not close this check.
-3. Production entitlement wiring and commercial launch gates remain separate and are not authorized by Sandbox testing. No live payment credentials/catalog migration or real charge has been performed.
-
-Current Sandbox application preview: dpl_HC6BGMp5Rz3wm4Zo15Wu7fhj9Ysr. Receiver: dpl_4JdszUry4Ec1gZzXJp1vXzLj4Jpc. Sandbox PR #28 remains unmerged. Main Stage 5 fix is f00ebf7be8ccb8ad2211498c8b896652fde1941a, independently published with owner approval.
+## Scope still separate
+PR28 remains unmerged and Sandbox-only. Main Stage5 application customer journey passed independently after PR29 publication. Commercial launch, production entitlements/provider approval and general remaining application readiness gates are not closed by these Sandbox tests.
