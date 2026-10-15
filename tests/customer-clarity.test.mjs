@@ -25,6 +25,16 @@ test('services page clearly starts an application before payment',()=>{
   assert.doesNotMatch(source,/Satın Alma Sürecini Başlat/);
 });
 
+test('demo explains sample data, application boundary and publishes WebPage schema',()=>{
+  const page=fs.readFileSync(new URL('../app/demo/page.js',import.meta.url),'utf8');
+  const layout=fs.readFileSync(new URL('../app/demo/layout.js',import.meta.url),'utf8');
+  assert.match(page,/Bu demoda neyi inceleyebilirsiniz/);
+  assert.match(page,/Başvuru doğrudan ücretli üyelik veya otomatik hesap açılışı değildir/);
+  assert.match(page,/Ücretsiz ön değerlendirme/);
+  assert.match(layout,/"@type":"WebPage"/);
+  assert.match(layout,/https:\/\/www\.aivisibilityworks\.com\/demo#webpage/);
+});
+
 test('customer login sends new visitors to application rather than promising account creation',()=>{
   const source=fs.readFileSync(new URL('../components/CustomerLoginForm.js',import.meta.url),'utf8');
   assert.match(source,/Yeni müşteriyim \/ Başvuruyu başlat/);
