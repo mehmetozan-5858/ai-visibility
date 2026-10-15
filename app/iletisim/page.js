@@ -1,5 +1,5 @@
 import PublicPage from "../../components/PublicPage";
-export const metadata={alternates:{canonical:"/iletisim"},title:"İletişim"};
+export const metadata={alternates:{canonical:"/iletisim"},title:"İletişim",description:"AI Visibility hizmet, teklif, ödeme, iptal, kişisel veri ve destek talepleri için resmi iletişim ve hizmet sağlayıcı bilgileri."};
 export default function Page(){
   const controller=(process.env.DATA_CONTROLLER_NAME||"").trim();
   const email=process.env.ADMIN_RECOVERY_EMAIL||"";
@@ -9,9 +9,9 @@ export default function Page(){
     <p><b>Platform:</b> AI Visibility Intelligence Platform</p>
     {controller
       ? <p><b>Yasal hizmet sağlayıcı / veri sorumlusu:</b> {controller}</p>
-      : <p><b>Yasal hizmet sağlayıcı / veri sorumlusu:</b> Ticari yayına geçmeden önce gerçek kişi veya kayıtlı işletme niteliğindeki yasal kimlik burada ayrıca yayımlanacaktır.</p>}
+      : <p><b>Yasal hizmet sağlayıcı / veri sorumlusu:</b> Güncel yasal kimlik bilgisi bu sayfada yayımlanır.</p>}
     {email?<p><b>E-posta:</b> {email}</p>:<p>İletişim e-postası yapılandırılıyor.</p>}
     {phone?<p><b>Telefon:</b> {phone}</p>:null}
     <p>Hizmet, teklif, ödeme, iptal, kişisel veri başvurusu ve destek talepleriniz için kayıtlı iletişim kanallarımız üzerinden bize ulaşabilirsiniz.</p>
-  </PublicPage>
+  </PublicPage>;
 }
