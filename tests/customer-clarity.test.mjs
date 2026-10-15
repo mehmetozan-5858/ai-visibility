@@ -35,6 +35,14 @@ test('demo explains sample data, application boundary and publishes WebPage sche
   assert.match(layout,/https:\/\/www\.aivisibilityworks\.com\/demo#webpage/);
 });
 
+test('demo uses the same service language as live pricing instead of an undefined Pro tier',()=>{
+  const page=fs.readFileSync(new URL('../app/demo/page.js',import.meta.url),'utf8');
+  assert.match(page,/Aktif hizmet/);
+  assert.match(page,/Tam Rapor/);
+  assert.match(page,/analiz veya hizmet kapsamı aktive edilmiş müşterilere/);
+  assert.doesNotMatch(page,/Pro Raporu|Pro müşterilere|Pro için/);
+});
+
 test('customer login sends new visitors to application rather than promising account creation',()=>{
   const source=fs.readFileSync(new URL('../components/CustomerLoginForm.js',import.meta.url),'utf8');
   assert.match(source,/Yeni müşteriyim \/ Başvuruyu başlat/);
