@@ -25,7 +25,7 @@ export default function PublicPage({title,subtitle,children}){
       <nav style={{display:"flex",gap:18,flexWrap:"wrap",alignItems:"center",fontSize:14}}>{nav.slice(1).map(([h,l])=><Link key={h} href={h} style={{color:"#b5c8ce"}}>{l}</Link>)}</nav>
       <div style={{display:"flex",gap:10,alignItems:"center"}}>
         <Link href="/musteri-giris" style={{padding:"10px 14px",border:"1px solid #274755",borderRadius:10,textDecoration:"none"}}>Giriş yap</Link>
-        <Link href="/yeni-musteri" style={{padding:"10px 14px",borderRadius:10,background:"linear-gradient(90deg,#4de2d5,#79f1e2)",color:"#052028",fontWeight:800,textDecoration:"none"}}>Ücretsiz demo al →</Link>
+        <Link href="/yeni-musteri" style={{padding:"10px 14px",borderRadius:10,background:"linear-gradient(90deg,#4de2d5,#79f1e2)",color:"#052028",fontWeight:800,textDecoration:"none"}}>Ücretsiz ön değerlendirme →</Link>
       </div>
     </header>
 
@@ -43,7 +43,6 @@ export default function PublicPage({title,subtitle,children}){
       <div><strong style={{display:"block",marginBottom:6}}>AI Visibility</strong><span style={{color:"#819ba5",fontSize:12}}>Markanızı yapay zekâ dünyasında daha görünür, daha güvenilir ve daha güçlü kılar.</span></div>
       <div style={{display:"flex",gap:14,flexWrap:"wrap",justifyContent:"flex-end",fontSize:12,color:"#93aab2"}}>
         {legal.map(([h,l])=><Link key={h} href={h}>{l}</Link>)}
-        <Link href="/login">Yönetici Girişi</Link>
       </div>
     </footer>
   </main>;
