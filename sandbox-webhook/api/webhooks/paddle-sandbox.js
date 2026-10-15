@@ -10,7 +10,11 @@ export async function POST(req){
  if(!verifyPaddleSignature(raw,req.headers.get('paddle-signature'),secret))return Response.json({error:'Invalid signature'},{status:401});
  let event;try{event=JSON.parse(raw)}catch{return Response.json({error:'Invalid JSON'},{status:400})}
  const pool=new pg.Pool({connectionString:url,max:1,connectionTimeoutMillis:3000});
- try{return Response.json(await recordSandboxEvent(event,pool,{linkIntent:linkSandboxIntent}))}
+ try{
+  const result=await recordSandboxEvent(event,pool,{linkIntent:linkSandboxIntent});
+  console.info('Paddle sandbox event processed',result?.recorded?'recorded':result?.duplicate?'duplicate':result?.ignored?'ignored':'ok',String(event?.event_type||''));
+  return Response.json(result);
+ }
  catch(e){
   const known=['invalid-event','invalid-entity','unknown-price'];
   const code=known.includes(e.message)?e.message:(/^[A-Z0-9_]{2,40}$/.test(e.code||'')?e.code:'storage-error');
