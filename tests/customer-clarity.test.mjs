@@ -43,6 +43,16 @@ test('demo uses the same service language as live pricing instead of an undefine
   assert.doesNotMatch(page,/Pro Raporu|Pro müşterilere|Pro için/);
 });
 
+test('published legal pages do not tell customers legal identity will be added before launch',()=>{
+  const privacy=fs.readFileSync(new URL('../app/gizlilik/page.js',import.meta.url),'utf8');
+  const contact=fs.readFileSync(new URL('../app/iletisim/page.js',import.meta.url),'utf8');
+  assert.match(privacy,/DATA_CONTROLLER_NAME/);
+  assert.match(privacy,/KVKK Aydınlatma Metni/);
+  assert.match(contact,/DATA_CONTROLLER_NAME/);
+  assert.doesNotMatch(privacy,/ticari yayına geçmeden önce/);
+  assert.doesNotMatch(contact,/Ticari yayına geçmeden önce/);
+});
+
 test('customer login sends new visitors to application rather than promising account creation',()=>{
   const source=fs.readFileSync(new URL('../components/CustomerLoginForm.js',import.meta.url),'utf8');
   assert.match(source,/Yeni müşteriyim \/ Başvuruyu başlat/);
