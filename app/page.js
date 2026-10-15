@@ -19,7 +19,7 @@ const faq=[
  ["Görünürlük veya satış artışı garanti mi?","Hayır. AI yanıtları ve arama sonuçları değişebilir. Ölçüm, kanıt ve öncelikli öneriler sunarız; belirli bir sıralama veya satış sonucu garanti etmeyiz."]
 ];
 const structuredData={"@context":"https://schema.org","@graph":[
- {"@type":"Organization","@id":"https://www.aivisibilityworks.com/#organization",name:"AI Visibility",url:"https://www.aivisibilityworks.com",description:"İşletmeler için yapay zekâ görünürlük analizi, kanıt incelemesi ve iyileştirme hizmetleri."},
+ {"@type":"Organization","@id":"https://www.aivisibilityworks.com/#organization",name:"AI Visibility",url:"https://www.aivisibilityworks.com",logo:"https://www.aivisibilityworks.com/icon.png",description:"İşletmeler için yapay zekâ görünürlük analizi, kanıt incelemesi ve iyileştirme hizmetleri."},
  {"@type":"WebSite","@id":"https://www.aivisibilityworks.com/#website",url:"https://www.aivisibilityworks.com",name:"AI Visibility Works",inLanguage:"tr",publisher:{"@id":"https://www.aivisibilityworks.com/#organization"}}
 ]};
 export default function Home(){
@@ -39,7 +39,7 @@ export default function Home(){
   <header className={styles.nav}>
    <Link href="/" className={styles.brand}><span className={styles.logo}/><span>AI Visibility</span></Link>
    <nav className={styles.navlinks}><a href="#urun">Ürün</a><a href="#cozumler">Çözümler</a><a href="#rapor">Kaynaklar</a><Link href="/hizmetler">Fiyatlandırma</Link><Link href="/hakkimizda">Hakkımızda</Link></nav>
-   <div className={styles.actions}><Link className={styles.ghost} href="/musteri-giris">Giriş yap</Link><Link className={styles.cta} href="/yeni-musteri">Ücretsiz demo al →</Link></div>
+   <div className={styles.actions}><Link className={styles.ghost} href="/musteri-giris">Giriş yap</Link><Link className={styles.cta} href="/yeni-musteri">Ücretsiz ön değerlendirme →</Link></div>
   </header>
 
   <section className={styles.hero}>
@@ -47,7 +47,7 @@ export default function Home(){
     <div className={styles.eyebrow}>Yapay zekâ dünyasında markanızı görünür kılın</div>
     <h1>AI görünürlüğünüz <span>büyüme gücünüzdür.</span></h1>
     <p className={styles.lead}>Markanızın yapay zekâ platformlarında nasıl göründüğünü analiz edin, kanıtlarla güçlendirin ve etkisini artırın. Daha fazla görünürlük, daha fazla fırsat, daha güçlü büyüme.</p>
-    <div className={styles.heroButtons}><Link className={styles.cta} href="/yeni-musteri">Ücretsiz demo al →</Link><Link className={styles.outline} href="/demo">◉ Ürün demosunu incele</Link></div>
+    <div className={styles.heroButtons}><Link className={styles.cta} href="/yeni-musteri">Ücretsiz ön değerlendirme →</Link><Link className={styles.outline} href="/demo">◉ Ürün demosunu incele</Link></div>
     <div className={styles.checks}><span>Hızlı kurulum</span><span>Kredi kartı gerekmez</span><span>Uzman ekibimizle tanışın</span></div>
    </div>
    <div className={styles.visual} aria-label="Örnek rapor görselleştirmesi; gerçek müşteri verisi değildir">
