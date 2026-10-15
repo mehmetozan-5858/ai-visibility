@@ -17,6 +17,14 @@ test('homepage distinguishes assessment CTA from product demo and publishes orga
   assert.match(source,/href="\/demo">◉ Ürün demosunu incele/);
 });
 
+test('services page clearly starts an application before payment',()=>{
+  const source=fs.readFileSync(new URL('../app/hizmetler/page.js',import.meta.url),'utf8');
+  assert.match(source,/Bu paket için başvur/);
+  assert.match(source,/Başvuru ve satın alma süreci/);
+  assert.match(source,/Başvurunuz değerlendirildikten sonra uygun ödeme adımında/);
+  assert.doesNotMatch(source,/Satın Alma Sürecini Başlat/);
+});
+
 test('customer login sends new visitors to application rather than promising account creation',()=>{
   const source=fs.readFileSync(new URL('../components/CustomerLoginForm.js',import.meta.url),'utf8');
   assert.match(source,/Yeni müşteriyim \/ Başvuruyu başlat/);
