@@ -16,12 +16,19 @@ export default function DemoPage(){
     <header className="top" style={{marginBottom:24}}>
       <Link href="/demo" className="brand"><span className="logo">A</span><div><strong>AI VISIBILITY</strong><small>DEMO MÜŞTERİ GÖRÜNÜMÜ</small></div></Link>
       <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-        <Link href="/yeni-musteri" style={{textDecoration:"none",fontWeight:700}}>Yeni müşteriyim</Link>
+        <Link href="/yeni-musteri" style={{textDecoration:"none",fontWeight:700}}>Ücretsiz ön değerlendirme</Link>
         <Link href="/musteri-giris" style={{textDecoration:"none"}}>Müşteri Girişi</Link>
       </div>
     </header>
 
-    <section className="page-head"><div><h1>Müşteri Paneli Demo</h1><p>Merak ettiğin bölümlere dokunarak gerçek müşteri panelinin nasıl çalıştığını örnek verilerle inceleyebilirsin. Hiçbir gerçek müşteri veya ödeme verisi gösterilmez.</p></div></section>
+    <section className="page-head"><div><h1>Müşteri Paneli Demo</h1><p>Merak ettiğiniz bölümlere dokunarak müşteri panelinin nasıl çalıştığını örnek verilerle inceleyebilirsiniz. Hiçbir gerçek müşteri, ödeme veya işletme verisi gösterilmez.</p></div></section>
+
+    <section className="panel" style={{marginBottom:18,padding:20}} aria-labelledby="demo-guide-heading">
+      <h2 id="demo-guide-heading">Bu demoda neyi inceleyebilirsiniz?</h2>
+      <p>Bu ekran, AI Visibility hizmeti başladıktan sonra bir müşterinin sonuçlarını nasıl takip edebileceğini açıklamak için hazırlanmış örnek bir deneyimdir. Genel Bakış bölümünde örnek görünürlük skoru ve ölçüm geçmişini, AI Görünürlük bölümünde sağlayıcı bazlı değerlendirmeleri, Öneriler bölümünde ise tespit edilen geliştirme alanlarının nasıl aksiyona dönüştürüldüğünü görebilirsiniz.</p>
+      <p>Rapor sekmesi, ayrıntılı raporun müşteri deneyimindeki yerini gösterir; ekrandaki skorlar, tarihler ve işletme bilgileri tamamen örnektir ve herhangi bir gerçek müşteriye ait değildir. Paketler sekmesi de analiz, uygulama ve takip aşamalarının birbirinden nasıl ayrıldığını açıklar. Gerçek hizmet kapsamı ve ülkenize göre güncel fiyatlar <Link href="/hizmetler">Hizmetler ve Fiyatlar</Link> sayfasında gösterilir.</p>
+      <p>Hizmeti değerlendirmek istiyorsanız önce ücretsiz ön değerlendirme başvurusu yapabilirsiniz. Başvuru doğrudan ücretli üyelik veya otomatik hesap açılışı değildir; uygun hizmet ve ödeme adımı netleştikten sonra müşteri erişimi etkinleştirilir.</p>
+    </section>
 
     <nav aria-label="Demo bölümleri" style={{display:"flex",gap:8,overflowX:"auto",padding:"4px 0 16px",WebkitOverflowScrolling:"touch"}}>
       {tabs.map(([id,label])=><button key={id} onClick={()=>setTab(id)} style={{whiteSpace:"nowrap",padding:"10px 14px",borderRadius:12,border:tab===id?"1px solid #6ed7ff":"1px solid rgba(255,255,255,.18)",background:tab===id?"rgba(69,185,255,.18)":"rgba(255,255,255,.04)",fontWeight:tab===id?700:500}}>{label}</button>)}
@@ -70,15 +77,15 @@ export default function DemoPage(){
           <div style={{fontSize:34,marginBottom:8}}>★ 🔒</div>
           <h2 style={{marginBottom:8}}>Pro Raporu</h2>
           <p>Tam rapor Pro müşterilere özeldir. Pro olduğunda tüm bulguları, öncelikleri, aksiyon planını, önce/sonra karşılaştırmasını ve tam raporu görebilirsin.</p>
-          <Link href="/yeni-musteri" style={{display:"inline-block",marginTop:12,fontWeight:800}}>Pro ile tüm raporu aç →</Link>
+          <Link href="/yeni-musteri" style={{display:"inline-block",marginTop:12,fontWeight:800}}>Pro için ön değerlendirme iste →</Link>
         </div>
       </div>
     </section>}
 
     {tab==="plans"&&<section className="panel">
-      <h2>Paketler nasıl çalışır?</h2><p>Demo fiyat göstermez; gerçek teklifte işletmenin ihtiyacına göre analiz ve uygulama kapsamı oluşturulur.</p>
+      <h2>Paketler nasıl çalışır?</h2><p>Demo fiyat göstermez; güncel fiyatlar Hizmetler ve Fiyatlar sayfasında, çözüm kapsamı ise işletmenin ihtiyacına göre başvuru ve değerlendirme sürecinde netleştirilir.</p>
       <div className="client-list" style={{marginTop:14}}><article className="client-row"><div><b>Analiz</b><small>Mevcut AI görünürlüğünü ve eksikleri bulur</small></div><span>1</span></article><article className="client-row"><div><b>Uygulama</b><small>Seçilen kritik/yüksek öncelikli iyileştirmeleri hayata geçirir</small></div><span>2</span></article><article className="client-row"><div><b>Takip</b><small>Tekrar ölçer ve değişimi raporlar</small></div><span>3</span></article></div>
-      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:18}}><Link href="/yeni-musteri" style={{fontWeight:700}}>Yeni müşteriyim / Başlamak istiyorum</Link><Link href="/hizmetler">Hizmetleri incele</Link></div>
+      <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:18}}><Link href="/yeni-musteri" style={{fontWeight:700}}>Ücretsiz ön değerlendirme başlat</Link><Link href="/hizmetler">Hizmetleri ve fiyatları incele</Link></div>
     </section>}
   </main>;
 }
