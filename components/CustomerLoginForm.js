@@ -4,7 +4,7 @@ import {useState} from "react";
 import {LanguageSwitcher,useLanguage} from "./LanguageProvider";
 
 export default function CustomerLoginForm(){
-  const {t}=useLanguage();
+  const {t,lang}=useLanguage();
   const [email,setEmail]=useState(""),[password,setPassword]=useState(""),[busy,setBusy]=useState(false),[msg,setMsg]=useState("");
   async function submit(e){
     e.preventDefault();setBusy(true);setMsg("");
@@ -35,7 +35,7 @@ export default function CustomerLoginForm(){
             <label>{t("email")}<input type="email" value={email} onChange={e=>setEmail(e.target.value)} autoComplete="email" required/></label>
             <label>{t("password")}<input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" required/></label>
             <button disabled={busy} style={{minHeight:46,fontWeight:800}}>{busy?t("signingIn"):t("signIn")}</button>
-            <div style={{display:"flex",justifyContent:"space-between",gap:12,fontSize:13,flexWrap:"wrap"}}><Link href="/yeni-musteri">{t("createAccount")}</Link><Link href="/musteri-sifre-sifirla">{t("forgotPassword")}</Link></div>
+            <div style={{display:"flex",justifyContent:"space-between",gap:12,fontSize:13,flexWrap:"wrap"}}><Link href="/yeni-musteri">{lang==="en"?"I’m a new customer / Start application":"Yeni müşteriyim / Başvuruyu başlat"}</Link><Link href="/musteri-sifre-sifirla">{t("forgotPassword")}</Link></div>
             {msg&&<p className="client-message">{msg}</p>}
           </form>
           <section className="panel" style={{marginTop:14,padding:18,textAlign:"center",background:"rgba(6,29,39,.75)"}}>
