@@ -9,6 +9,14 @@ test('public navigation distinguishes assessment from product demo',()=>{
   assert.doesNotMatch(source,/Yönetici Girişi/);
 });
 
+test('homepage distinguishes assessment CTA from product demo and publishes organization logo',()=>{
+  const source=fs.readFileSync(new URL('../app/page.js',import.meta.url),'utf8');
+  assert.match(source,/Ücretsiz ön değerlendirme/);
+  assert.doesNotMatch(source,/Ücretsiz demo al/);
+  assert.match(source,/logo:"https:\/\/www\.aivisibilityworks\.com\/icon\.png"/);
+  assert.match(source,/href="\/demo">◉ Ürün demosunu incele/);
+});
+
 test('customer login sends new visitors to application rather than promising account creation',()=>{
   const source=fs.readFileSync(new URL('../components/CustomerLoginForm.js',import.meta.url),'utf8');
   assert.match(source,/Yeni müşteriyim \/ Başvuruyu başlat/);
