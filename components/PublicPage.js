@@ -3,6 +3,7 @@ import Link from "next/link";
 const nav=[
   ["/","Ana Sayfa"],
   ["/hizmetler","Çözümler ve Fiyatlar"],
+  ["/yapay-zeka-gorunurlugu","AI Görünürlüğü"],
   ["/demo","Demo"],
   ["/metodoloji","Ölçüm Yöntemi"],
   ["/hakkimizda","Hakkımızda"],
@@ -40,7 +41,7 @@ export default function PublicPage({title,subtitle,children}){
     </section>
 
     <footer style={{marginTop:32,paddingTop:24,borderTop:"1px solid #143541",display:"grid",gridTemplateColumns:"1fr auto",gap:24,alignItems:"start"}}>
-      <div><strong style={{display:"block",marginBottom:6}}>AI Visibility</strong><span style={{color:"#819ba5",fontSize:12}}>Markanızı yapay zekâ dünyasında daha görünür, daha güvenilir ve daha güçlü kılar.</span></div>
+      <div><strong style={{display:"block",marginBottom:6}}>AI Visibility</strong><span style={{color:"#819ba5",fontSize:12}}>Markanızı yapay zekâ dünyasında daha görünür, daha güvenilir ve daha güçlü kılar.</span><div style={{marginTop:10,fontSize:12}}><Link href="/yapay-zeka-gorunurlugu">AI görünürlüğü, GEO ve AEO rehberi →</Link></div></div>
       <div style={{display:"flex",gap:14,flexWrap:"wrap",justifyContent:"flex-end",fontSize:12,color:"#93aab2"}}>
         {legal.map(([h,l])=><Link key={h} href={h}>{l}</Link>)}
       </div>
