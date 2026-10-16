@@ -22,7 +22,8 @@ export default function SettingsManager(){
    {Object.entries(s.integrations||{}).map(([key,x])=>{
      const label={sms:"SMS kurtarma",card:"PayTR kart",shopier:"Shopier ürünleri",inbox:"Gelen e-posta",cms:"WordPress bağlantısı",budget:"AI bütçesi"}[key]||key;
      const optional=key==="cms";
-     return <div key={key}><b>{label}{optional?" · Opsiyonel":""}</b><span className={x.configured?"ready":optional?"":"waiting"}>{x.configured?"● Yapılandırıldı":optional?"○ Kullanılmıyor · Vercel yayını için gerekli değil":"○ Eksik: "+x.missing.join(", ")}</span></div>;
+     const optionalText=`○ Kullanılmıyor · Vercel yayını için gerekli değil · Opsiyonel alanlar: ${(x.missing||[]).join(", ")}`;
+     return <div key={key}><b>{label}{optional?" · Opsiyonel":""}</b><span className={x.configured?"ready":optional?"":"waiting"}>{x.configured?"● Yapılandırıldı":optional?optionalText:"○ Eksik: "+x.missing.join(", ")}</span></div>;
    })}
    <div><b>Dış iletişim</b><span>İnsan onayı gerekli</span></div>
  </section>;
