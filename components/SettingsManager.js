@@ -20,13 +20,14 @@ export default function SettingsManager(){
    <div><b>Yönetici girişi</b><span className={s.auth?.configured?"ready":"waiting"}>{s.auth?.configured?"● Korumalı":"○ ADMIN_PASSWORD + AUTH_SECRET gerekli"}</span></div>
    <div><b>Şifre kurtarma · E-posta</b><span className={s.auth?.recovery?.email?.configured?"ready":"waiting"}>{s.auth?.recovery?.email?.configured?"● Hazır · "+s.auth.recovery.email.masked:"○ Kurulum gerekli"}</span></div>
    <div><b>Şifre kurtarma · Authenticator</b><span className={s.auth?.recovery?.totp?.configured?"ready":"waiting"}>{s.auth?.recovery?.totp?.configured?"● Hazır":"○ Cihaz kurulumu gerekli"}{!s.auth?.recovery?.totp?.configured&&<a href="/admin/guvenlik" style={{display:"block",marginTop:6}}>Ücretsiz kurulum →</a>}</span></div>
-   <div><b>Paddle LIVE</b><span className={paddle.liveApiVerified?"ready":paddle.configured?"waiting":"waiting"}>{paddleText}</span></div>
-   <div><b>PayTR · Opsiyonel / yedek</b><span className={s.billing?.paytr?.configured?"ready":""}>{s.billing?.paytr?.configured?"● Yapılandırıldı":"○ Kullanılmıyor"}</span></div>
-   {Object.entries(s.integrations||{}).map(([key,x])=>{
-     const label={sms:"SMS kurtarma",card:"PayTR kart",shopier:"Shopier ürünleri",inbox:"Gelen e-posta",cms:"WordPress bağlantısı",budget:"AI bütçesi"}[key]||key;
+   <div><b>SMS kurtarma · Opsiyonel / eski kanal</b><span>{s.integrations?.sms?.configured?"● Yapılandırıldı":"○ Kullanılmıyor · e-posta + Authenticator kurtarması yeterli"}</span></div>
+   <div><b>Paddle LIVE</b><span className={paddle.liveApiVerified?"ready":"waiting"}>{paddleText}</span></div>
+   <div><b>PayTR · Opsiyonel / yedek</b><span className={s.billing?.paytr?.configured?"ready":""}>{s.billing?.paytr?.configured?"● Yapılandırıldı":"○ Kullanılmıyor · Paddle LIVE birincil ödeme kanalı"}</span></div>
+   {Object.entries(s.integrations||{}).filter(([key])=>key!=="sms"&&key!=="card").map(([key,x])=>{
+     const label={shopier:"Shopier ürünleri",inbox:"Gelen e-posta",cms:"WordPress bağlantısı",budget:"AI bütçesi"}[key]||key;
      const optional=key==="cms";
      const optionalText=`○ Kullanılmıyor · Vercel yayını için gerekli değil · Opsiyonel alanlar: ${(x.missing||[]).join(", ")}`;
-     return <div key={key}><b>{label}{optional?" · Opsiyonel":""}</b><span className={x.configured?"ready":optional?"":"waiting"}>{x.configured?"● Yapılandırıldı":optional?optionalText:"○ Eksik: "+x.missing.join(", ")}</span></div>;
+     return <div key={key}><b>{label}{optional?" · Opsiyonel":""}</b><span className={x.configured?"ready":optional?"":"waiting"}>{x.configured?"● Yapılandırıldı":optional?optionalText:"○ Eksik: "+(x.missing||[]).join(", ")}</span></div>;
    })}
    <div><b>Dış iletişim</b><span>İnsan onayı gerekli</span></div>
  </section>;

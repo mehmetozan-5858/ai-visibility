@@ -1,10 +1,14 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
+import {formatLaunchQaTime,markLaunchQaStage,readLaunchQaStatus} from "../lib/launch-qa-status";
 
 export default function LaunchQAConsole(){
   const [phase,setPhase]=useState("idle"),[result,setResult]=useState(null),[code,setCode]=useState(""),[error,setError]=useState("");
   const [paddlePhase,setPaddlePhase]=useState("idle"),[paddleResult,setPaddleResult]=useState(null),[paddleError,setPaddleError]=useState("");
+  const [savedStatus,setSavedStatus]=useState({stage5At:"",stage6At:""});
   const busy=phase==="starting"||phase==="finishing";
+
+  useEffect(()=>{setSavedStatus(readLaunchQaStatus());},[]);
 
   async function call(body){
     const response=await fetch("/api/admin-test-flow",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
@@ -24,8 +28,12 @@ export default function LaunchQAConsole(){
     const clean=String(code).replace(/\D/g,"").slice(0,6);
     if(clean.length!==6){setError("E-postaya gelen 6 haneli kodu girin.");return;}
     setPhase("finishing");setError("");
-    try{const data=await call({action:"finish",code:clean});setResult(prev=>({...prev,...data}));setPhase("done");}
-    catch(e){setError(e?.message||"Test tamamlanamadı.");setPhase("code");}
+    try{
+      const data=await call({action:"finish",code:clean});
+      setResult(prev=>({...prev,...data}));
+      setSavedStatus(markLaunchQaStage("stage5"));
+      setPhase("done");
+    }catch(e){setError(e?.message||"Test tamamlanamadı.");setPhase("code");}
   }
 
   async function verifyPaddle(){
@@ -35,13 +43,15 @@ export default function LaunchQAConsole(){
       const data=await response.json();
       if(!response.ok)throw new Error(data?.error||"Paddle LIVE durumu okunamadı.");
       const paddle=data?.billing?.paddle||{};
-      setPaddleResult({
+      const next={
         configured:Boolean(paddle.configured),
         authenticated:Boolean(paddle.liveApiVerified),
         reachable:Boolean(paddle.reachable),
         status:Number(paddle.status)||0,
         eventTypes:Number(paddle.eventTypes)||0
-      });
+      };
+      setPaddleResult(next);
+      if(next.configured&&next.authenticated&&next.reachable)setSavedStatus(markLaunchQaStage("stage6"));
       setPaddlePhase("done");
     }catch(e){setPaddleError(e?.message||"Paddle LIVE kontrolü tamamlanamadı.");setPaddlePhase("idle");}
   }
@@ -53,7 +63,8 @@ export default function LaunchQAConsole(){
       <div style={{fontSize:11,letterSpacing:".16em",fontWeight:900,color:"#54dfd0",textTransform:"uppercase",marginBottom:8}}>Production E2E</div>
       <h2 style={{marginTop:0}}>Sentetik müşteri lansman testi</h2>
       <p>Gerçek müşteri verisi veya gerçek tahsilat kullanmadan; müşteri kaydı, test taraması, ödeme durumu, e-posta doğrulaması ve müşteri hesabı kurulumunu production veritabanında kontrollü olarak doğrular.</p>
-      <button type="button" onClick={start} disabled={busy}>{phase==="starting"?"Test hazırlanıyor…":"Lansman testini başlat"}</button>
+      {savedStatus.stage5At&&<p className="client-message" role="status" style={{marginBottom:12}}>✓ Son başarılı 5. aşama doğrulaması: {formatLaunchQaTime(savedStatus.stage5At)}</p>}
+      <button type="button" onClick={start} disabled={busy}>{phase==="starting"?"Test hazırlanıyor…":savedStatus.stage5At?"Lansman testini tekrar çalıştır":"Lansman testini başlat"}</button>
       {error&&<p className="client-message" role="alert" style={{marginTop:12}}>{error}</p>}
     </section>
 
@@ -90,7 +101,8 @@ export default function LaunchQAConsole(){
       <div style={{fontSize:11,letterSpacing:".16em",fontWeight:900,color:"#54dfd0",textTransform:"uppercase",marginBottom:8}}>6. Aşama · Paddle LIVE</div>
       <h2 style={{marginTop:0}}>Canlı ödeme sağlayıcısı hazırlık kontrolü</h2>
       <p>Bu kontrol yalnız Paddle LIVE API&apos;ye salt-okunur <code>GET /event-types</code> isteği gönderir. Transaction, checkout veya kart tahsilatı oluşturmaz.</p>
-      <button type="button" onClick={verifyPaddle} disabled={paddlePhase==="checking"}>{paddlePhase==="checking"?"Paddle LIVE doğrulanıyor…":"Paddle LIVE kontrolünü çalıştır"}</button>
+      {savedStatus.stage6At&&<p className="client-message" role="status" style={{marginBottom:12}}>✓ Son başarılı Paddle LIVE doğrulaması: {formatLaunchQaTime(savedStatus.stage6At)}</p>}
+      <button type="button" onClick={verifyPaddle} disabled={paddlePhase==="checking"}>{paddlePhase==="checking"?"Paddle LIVE doğrulanıyor…":savedStatus.stage6At?"Paddle LIVE kontrolünü tekrar çalıştır":"Paddle LIVE kontrolünü çalıştır"}</button>
       {paddleError&&<p className="client-message" role="alert" style={{marginTop:12}}>{paddleError}</p>}
       {paddleResult&&<div role="status" style={{marginTop:14,padding:14,borderRadius:14,background:paddleOk?"#083329":"#392718"}}>
         <b>{paddleOk?"✓ Paddle LIVE API doğrulandı":"⚠ Paddle LIVE henüz doğrulanmadı"}</b>
