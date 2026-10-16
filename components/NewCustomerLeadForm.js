@@ -34,7 +34,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
     <label>{c.name}<input value={form.name} onChange={e=>change("name",e.target.value)} required/></label>
     <label>{c.business}<input value={form.businessName} onChange={e=>change("businessName",e.target.value)} required/></label>
     <label>{c.website}<input value={form.website} onChange={e=>change("website",e.target.value)} placeholder="https://..." inputMode="url"/></label>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
+    <div className="new-customer-location-grid" style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
       <label>{c.country}<input list="aiv-country-options" value={form.country} onChange={e=>change("country",e.target.value)} required/><datalist id="aiv-country-options">{countries.map(x=><option key={x} value={x}/>)}</datalist><small>{c.countryHelp}</small></label>
       <label>{c.city}<input value={form.city} onChange={e=>change("city",e.target.value)}/></label>
     </div>
@@ -43,5 +43,6 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
     <label>{c.phone}<input value={form.phone} onChange={e=>change("phone",e.target.value)} inputMode="tel" autoComplete="tel"/></label>
     <button disabled={busy||ok}>{busy?c.sending:ok?c.done:c.send}</button>
     {msg&&<p className="client-message" role={ok?"status":"alert"} aria-live="polite" style={{marginBottom:0}}>{msg}</p>}
+    <style jsx>{`@media (max-width:640px){.new-customer-location-grid{grid-template-columns:1fr!important;}}`}</style>
   </form>;
 }
