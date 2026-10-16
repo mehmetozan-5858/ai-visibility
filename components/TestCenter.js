@@ -1,5 +1,6 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
+import {formatLaunchQaTime,markLaunchQaStage,readLaunchQaStatus} from "../lib/launch-qa-status";
 
 const labels={
   database:"Veritabanı",dashboard:"Dashboard",clients:"Müşteriler",scans:"Taramalar",crm:"Satış CRM",workItems:"İş / Onay",payments:"Ödemeler",providers:"AI sağlayıcıları",auth:"Yönetici koruması",paytr:"PayTR"
@@ -8,6 +9,17 @@ const labels={
 export default function TestCenter(){
   const [busy,setBusy]=useState(false),[data,setData]=useState(null),[msg,setMsg]=useState("");
   const [e2eBusy,setE2eBusy]=useState(false),[e2eStep,setE2eStep]=useState("idle"),[e2eMsg,setE2eMsg]=useState(""),[code,setCode]=useState(""),[emailMasked,setEmailMasked]=useState("");
+  const [lastStage5At,setLastStage5At]=useState("");
+
+  useEffect(()=>{
+    const saved=readLaunchQaStatus();
+    if(saved.stage5At){
+      setLastStage5At(saved.stage5At);
+      setE2eStep("done");
+      setE2eMsg(`✓ 5. aşama daha önce production ortamında başarıyla tamamlandı (${formatLaunchQaTime(saved.stage5At)}). İsterseniz testi tekrar çalıştırabilirsiniz.`);
+    }
+  },[]);
+
   async function run(){
     setBusy(true);setMsg("");
     try{
@@ -21,7 +33,7 @@ export default function TestCenter(){
       const r=await fetch("/api/admin-test-flow",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"start"})});
       const d=await r.json();if(!r.ok)throw new Error(d.error||"Müşteri testi başlatılamadı.");
       setEmailMasked(d.emailMasked||"");setE2eStep("code");setE2eMsg(`Doğrulama kodu ${d.emailMasked||"yönetici e-postasına"} gönderildi. E-postadaki 6 haneli kodu aşağıya girin.`);
-    }catch(e){setE2eStep("idle");setE2eMsg(e.message)}finally{setE2eBusy(false)}
+    }catch(e){setE2eStep(lastStage5At?"done":"idle");setE2eMsg(e.message)}finally{setE2eBusy(false)}
   }
   async function finishCustomerE2E(){
     if(code.replace(/\D/g,"").length!==6){setE2eMsg("6 haneli kodu girin.");return}
@@ -38,7 +50,8 @@ export default function TestCenter(){
       const report=await fetch("/api/client-portal/report?download=1",{cache:"no-store"});if(!report.ok)throw new Error("PDF rapor üretilemedi.");
       if(!String(report.headers.get("content-type")||"").toLowerCase().includes("application/pdf"))throw new Error("Rapor PDF olarak dönmedi.");
       await fetch("/api/client-auth/login",{method:"DELETE"}).catch(()=>{});
-      setE2eStep("done");setE2eMsg("✓ 5. aşama tamam: e-posta doğrulama → hesap → gerçek giriş → müşteri paneli → 42/100 test verisi → PDF rapor zinciri production ortamında geçti. Gerçek ücret alınmadı.");
+      const saved=markLaunchQaStage("stage5");setLastStage5At(saved.stage5At);
+      setE2eStep("done");setE2eMsg(`✓ 5. aşama tamam: e-posta doğrulama → hesap → gerçek giriş → müşteri paneli → 42/100 test verisi → PDF rapor zinciri production ortamında geçti. Gerçek ücret alınmadı. Doğrulama zamanı: ${formatLaunchQaTime(saved.stage5At)}.`);
     }catch(e){await fetch("/api/client-auth/login",{method:"DELETE"}).catch(()=>{});setE2eStep("code");setE2eMsg("× "+(e.message||"Müşteri E2E testi başarısız."));}finally{setE2eBusy(false)}
   }
   return <>
@@ -49,6 +62,7 @@ export default function TestCenter(){
     </section>
     <section className="panel test-center" style={{marginTop:16,border:"1px solid #246c72"}}>
       <div className="section-title"><div><h2>5. Aşama · Gerçek Müşteri Akışı</h2><small>Production üzerinde sentetik test müşterisi kullanır; gerçek para çekmez ve gerçek müşteri verisine dokunmaz.</small></div>{e2eStep==="done"?<span className="ready">✓ Tamamlandı</span>:<span className="waiting">Kontrol bekliyor</span>}</div>
+      {lastStage5At&&<small style={{display:"block",marginBottom:12,opacity:.8}}>Son başarılı doğrulama: {formatLaunchQaTime(lastStage5At)}</small>}
       {e2eStep==="idle"&&<button onClick={startCustomerE2E} disabled={e2eBusy} style={{minHeight:48,fontSize:16,fontWeight:800}}>{e2eBusy?"Hazırlanıyor…":"5. aşama testini başlat"}</button>}
       {e2eStep==="code"&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr)",gap:12,maxWidth:520,width:"100%"}}><label style={{display:"grid",gap:7,fontWeight:800}}>E-postaya gelen 6 haneli kod<input value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" style={{fontSize:26,letterSpacing:8,minHeight:54}}/></label><button onClick={finishCustomerE2E} disabled={e2eBusy||code.length!==6} style={{minHeight:50,fontSize:16,fontWeight:800}}>{e2eBusy?"Uçtan uca kontrol ediliyor…":"Kodu doğrula ve 5. aşamayı bitir"}</button>{emailMasked&&<small>Kod gönderilen adres: {emailMasked}</small>}<button type="button" onClick={startCustomerE2E} disabled={e2eBusy}>Yeni doğrulama kodu gönder</button><small>Yeni kod istendiğinde önceki kod geçersiz olur. En son e-postadaki kodu 10 dakika içinde girin.</small></div>}
       {e2eStep==="done"&&<button onClick={startCustomerE2E} disabled={e2eBusy}>Testi tekrar çalıştır</button>}
