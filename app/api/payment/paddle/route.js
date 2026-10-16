@@ -1,7 +1,7 @@
 import {verifyPaymentAccessToken} from '../../../../lib/admin-auth';
 import {getClientProfile} from '../../../../lib/client-profile';
 import {getOrCreatePaymentIntent,recordPaymentConsent} from '../../../../lib/repository';
-import {servicePrice,SERVICE_CODES} from '../../../../lib/regional-pricing';
+import {servicePrice,PADDLE_SERVICE_CODES} from '../../../../lib/regional-pricing';
 import {paymentMatchesPlan} from '../../../../lib/hosted-checkout';
 import {checkRateLimit,enforceSameOrigin} from '../../../../lib/api-security';
 import {buildPaddleTransactionPayload,createPaddleLiveTransaction} from '../../../../lib/paddle-checkout';
@@ -14,7 +14,7 @@ export async function POST(req){
     if(body?.consent!==true)return Response.json({error:'Sözleşme ve hizmet başlangıcı onayı gerekli.'},{status:400});
     const access=await verifyPaymentAccessToken(body?.token||'');
     if(!access)return Response.json({error:'Ödeme bağlantısı geçersiz veya süresi dolmuş.'},{status:401});
-    if(!SERVICE_CODES.includes(access.service))return Response.json({error:'Paddle ödemesi için hizmete bağlı ödeme bağlantısı gerekli.'},{status:400});
+    if(!PADDLE_SERVICE_CODES.includes(access.service))return Response.json({error:'Bu ürün Paddle üzerinden satılan yazılım planlarından biri değil.'},{status:400});
     const profile=await getClientProfile(access.clientId);
     const plan=servicePrice({service:access.service,country:profile?.country||'Türkiye',language:'tr'});
     const payment=await getOrCreatePaymentIntent(access.clientId,plan.name,plan.setupAmount,plan.monthlyAmount,plan.currency);
@@ -25,7 +25,7 @@ export async function POST(req){
     if(!apiKey||!clientToken)return Response.json({error:'Paddle canlı ödeme yapılandırması tamamlanmamış.'},{status:503});
     const payload=buildPaddleTransactionPayload({
       plan,payment,clientId:access.clientId,
-      taxCategory:process.env.PADDLE_LIVE_TAX_CATEGORY||'professional-services'
+      taxCategory:process.env.PADDLE_LIVE_TAX_CATEGORY||'saas'
     });
     const transaction=await createPaddleLiveTransaction({apiKey,payload});
     await recordPaymentConsent(payment.id,'2026-10-16');

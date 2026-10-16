@@ -47,13 +47,13 @@ test('homepage exposes critical discovery and conversion links', async ({ page }
   }
 });
 
-test('pricing package CTAs preserve service and country context', async ({ page }) => {
+test('pricing SaaS CTAs preserve service and country context', async ({ page }) => {
   await page.goto(`${BASE}/hizmetler?country=Germany`, { waitUntil: 'networkidle' });
   const hrefs = await page.locator('a[href^="/yeni-musteri?service="]').evaluateAll(links => links.map(link => link.getAttribute('href')));
-  expect(hrefs.length).toBeGreaterThanOrEqual(3);
+  expect(hrefs.length).toBeGreaterThanOrEqual(2);
   expect(hrefs.some(href => href.includes('service=business-diagnosis') && href.includes('country=Germany'))).toBeTruthy();
-  expect(hrefs.some(href => href.includes('service=business-solution') && href.includes('country=Germany'))).toBeTruthy();
   expect(hrefs.some(href => href.includes('service=business-monitoring') && href.includes('country=Germany'))).toBeTruthy();
+  expect(hrefs.some(href => href.includes('service=business-solution'))).toBeFalsy();
 });
 
 test('private customer and admin surfaces remain noindex', async ({ page }) => {
