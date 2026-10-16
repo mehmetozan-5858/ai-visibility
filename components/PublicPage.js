@@ -17,7 +17,21 @@ const legal=[
 ];
 
 export default function PublicPage({title,subtitle,children}){
+  const schema={
+    "@context":"https://schema.org",
+    "@type":"WebPage",
+    name:title,
+    inLanguage:"tr-TR",
+    isPartOf:{
+      "@type":"WebSite",
+      name:"AI Visibility Works",
+      url:"https://www.aivisibilityworks.com/"
+    }
+  };
+  const schemaJson=JSON.stringify(schema).replace(/</g,"\\u003c");
+
   return <main style={{maxWidth:1160,margin:"0 auto",padding:"0 20px 60px"}}>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:schemaJson}} />
     <header style={{minHeight:74,display:"flex",justifyContent:"space-between",gap:18,alignItems:"center",flexWrap:"wrap",borderBottom:"1px solid #143541",marginBottom:34}}>
       <Link href="/" style={{display:"flex",alignItems:"center",gap:11,textDecoration:"none",fontWeight:800,fontSize:18}}>
         <span style={{width:20,height:20,border:"2px solid #48eadb",transform:"rotate(45deg)",display:"inline-block",boxShadow:"0 0 16px #43e3d666"}}/>
