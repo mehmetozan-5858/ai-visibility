@@ -7,8 +7,6 @@ import DashboardAgentActivity from "./DashboardAgentActivity";
 import BottomNavigation from "./BottomNavigation";
 import LogoutButton from "./LogoutButton";
 
-
-
 export default function MobileDashboard(){
   const [summary,setSummary]=useState(null);
   const [loading,setLoading]=useState(true),[error,setError]=useState(""),[attempt,setAttempt]=useState(0);
@@ -54,7 +52,7 @@ export default function MobileDashboard(){
     ["✦","Perplexity",providerCounts.Perplexity||0]
   ];
 
-return <div className="mv">
+return <div className="mv" style={{paddingBottom:'calc(150px + env(safe-area-inset-bottom))'}}>
 <header className="mv-top"><div className="mv-menu">☰</div><Link href="/" className="mv-brand"><span>A</span><div><b>AI VISIBILITY</b><small>GEO / AEO ABONELİK YÖNETİM PANELİ</small></div></Link><div className="mv-safe">{authReady?"● CANLI / KORUMALI":"○ DURUM DOĞRULANMADI"}</div><div className="mv-avatar"><LogoutButton compact/></div></header>
 <section className="mv-hero"><div className="mv-copy"><h1>Markanızı<br/>her yerde <em>görünür yapın</em></h1><p>Yapay zeka, arama motorları ve dijital platformlarda markanızın görünürlüğünü artırın.</p></div><div className="mv-globe"><div className="earth">AI</div><span className="g">G</span><span className="c">◎</span><span className="b">B</span><span className="p">✦</span></div></section>
 {(loading||error)&&<section className="mv-card" aria-live="polite" aria-busy={loading}>{loading?<p>Panel verileri yükleniyor…</p>:error?<div role="alert"><p>{error}</p><button type="button" onClick={()=>setAttempt(x=>x+1)}>Tekrar dene</button>{error.includes("Oturum")&&<Link href="/login">Yeniden giriş yap</Link>}</div>:null}</section>}
