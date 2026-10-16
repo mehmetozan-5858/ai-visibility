@@ -1,6 +1,7 @@
 "use client";
 import {useState} from "react";
 import {currencyForCountry,formatMoney} from "../lib/regional-pricing";
+import {trackAnalyticsEvent} from "../lib/analytics-client";
 import {useLanguage} from "./LanguageProvider";
 
 const sectors=["Otel / Konaklama","Restoran / Kafe","Sağlık","Hukuk","Emlak","Otomotiv","E-ticaret","Tekstil / Giyim","Eğitim","Turizm","B2B / Sanayi","Diğer"];
@@ -24,6 +25,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
       const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||c.fail);
       if(d.ok!==true||!d.lead?.id)throw new Error(c.fail);
       setOk(true);setMsg(c.ok);
+      trackAnalyticsEvent("generate_lead",{service:form.service||"unspecified",country:form.country||"unspecified",language:lang});
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }
   return <form lang={lang} data-localized className="panel scan-form" onSubmit={submit} style={{marginBottom:16}}>
