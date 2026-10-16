@@ -14,5 +14,7 @@ jobs:
         with:
           node-version: "24"
       - run: npm install
+      - name: Security audit diagnostic
+        run: npm audit --json || true
       - run: npm test
       - run: npm run build
