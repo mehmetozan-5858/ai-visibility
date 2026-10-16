@@ -15,7 +15,7 @@ test('rejects stale or altered Paddle live signatures',()=>{
   const secret='whsec_test_secret',ts=1730000000,raw='{"ok":true}';
   const header=`ts=${ts};h1=${sign(raw,secret,ts)}`;
   assert.equal(verifyPaddleLiveSignature(raw,header,secret,{now:(ts+301)*1000}),false);
-  assert.equal(verifyPaddleLiveSignature(raw+'x',header,{now:ts*1000}),false);
+  assert.equal(verifyPaddleLiveSignature(raw+'x',header,secret,{now:ts*1000}),false);
 });
 
 test('normalizes supported transaction event and customer link metadata',()=>{
