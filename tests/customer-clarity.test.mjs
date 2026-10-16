@@ -53,9 +53,27 @@ test('published legal pages do not tell customers legal identity will be added b
   assert.doesNotMatch(contact,/Ticari yayına geçmeden önce/);
 });
 
-test('customer login sends new visitors to application rather than promising account creation',()=>{
+test('customer login sends new visitors to application and localizes customer-facing hero copy',()=>{
   const source=fs.readFileSync(new URL('../components/CustomerLoginForm.js',import.meta.url),'utf8');
   assert.match(source,/Yeni müşteriyim \/ Başvuruyu başlat/);
   assert.match(source,/I’m a new customer \/ Start application/);
+  assert.match(source,/Manage your AI visibility from one place/);
+  assert.match(source,/Secure customer area/);
   assert.match(source,/href="\/yeni-musteri"/);
+});
+
+test('Paddle live checkout is localized and emits consent-gated checkout analytics',()=>{
+  const source=fs.readFileSync(new URL('../components/PaddleLiveCheckout.js',import.meta.url),'utf8');
+  assert.match(source,/Secure card payment/);
+  assert.match(source,/Continue securely with Paddle/);
+  assert.match(source,/trackAnalyticsEvent\('begin_checkout'/);
+  assert.match(source,/payment_provider:'paddle'/);
+});
+
+test('analytics consent controls have English and Turkish customer copy',()=>{
+  const source=fs.readFileSync(new URL('../components/AnalyticsConsent.js',import.meta.url),'utf8');
+  assert.match(source,/Cookie preferences/);
+  assert.match(source,/Necessary only/);
+  assert.match(source,/Çerez tercihleri/);
+  assert.match(source,/Yalnız zorunlu/);
 });
