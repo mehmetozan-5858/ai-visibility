@@ -25,3 +25,12 @@ test('launch console restores stage 5 and stage 6 status without persisting cred
   assert.match(source,/Son başarılı Paddle LIVE doğrulaması/);
   assert.doesNotMatch(source,/localStorage\.setItem\([^\n]*(password|email|code)/);
 });
+
+test('admin settings label unused launch integrations as optional instead of broken',()=>{
+  const source=fs.readFileSync(new URL('../components/SettingsManager.js',import.meta.url),'utf8');
+  assert.match(source,/SMS kurtarma · Opsiyonel \/ eski kanal/);
+  assert.match(source,/e-posta \+ Authenticator kurtarması yeterli/);
+  assert.match(source,/PayTR · Opsiyonel \/ yedek/);
+  assert.match(source,/Paddle LIVE birincil ödeme kanalı/);
+  assert.match(source,/key!=="sms"&&key!=="card"/);
+});
