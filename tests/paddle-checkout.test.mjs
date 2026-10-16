@@ -15,6 +15,7 @@ test('builds one-time checkout with payment linkage metadata',()=>{
     clientId:'550e8400-e29b-41d4-a716-446655440001'
   });
   assert.equal(payload.collection_mode,'automatic');
+  assert.equal(payload.enable_checkout,true);
   assert.equal(payload.items[0].price.billing_cycle,null);
   assert.equal(payload.items[0].price.unit_price.amount,'12900');
   assert.equal(payload.custom_data.payment_id,'550e8400-e29b-41d4-a716-446655440000');
@@ -27,6 +28,7 @@ test('builds monthly recurring Paddle item',()=>{
     payment:{id:'550e8400-e29b-41d4-a716-446655440000'},
     clientId:'550e8400-e29b-41d4-a716-446655440001'
   });
+  assert.equal(payload.enable_checkout,true);
   assert.deepEqual(payload.items[0].price.billing_cycle,{interval:'month',frequency:1});
   assert.equal(payload.items[0].price.unit_price.amount,'13900');
 });
