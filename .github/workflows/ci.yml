@@ -16,10 +16,10 @@ jobs:
       - run: npm install
       - name: Inspect candidate dependency versions
         run: |
-          npm view ai@5 version --json
+          npm view ai@6 version --json
           npm view next@16.4.2 version
       - name: Test patched dependency set
-        run: npm install --no-save next@16.4.2 ai@5
+        run: npm install --no-save next@16.4.2 ai@6
       - name: Security audit diagnostic
         run: npm audit --json || true
       - run: npm test
