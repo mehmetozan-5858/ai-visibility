@@ -1,6 +1,6 @@
 "use client";
 import {useState} from "react";
-import {currencyForCountry,formatMoney} from "../lib/regional-pricing";
+import {currencyForCountry,formatMoney,PADDLE_SERVICE_CODES} from "../lib/regional-pricing";
 import {trackAnalyticsEvent} from "../lib/analytics-client";
 import {useLanguage} from "./LanguageProvider";
 
@@ -8,11 +8,11 @@ const sectors=["Otel / Konaklama","Restoran / Kafe","Sağlık","Hukuk","Emlak","
 const sectorEnglish=["Hotel / Accommodation","Restaurant / Cafe","Healthcare","Legal services","Real estate","Automotive","E-commerce","Textiles / Clothing","Education","Tourism","B2B / Industry","Other"];
 const countries=["Türkiye","United Kingdom","United States","Germany","France","Italy","Spain","Netherlands","Belgium","Austria","Ireland","Portugal","Poland","Romania","Bulgaria","Greece","Sweden","Norway","Denmark","Finland","Switzerland","Canada","Australia","United Arab Emirates","Saudi Arabia","Qatar","Japan","South Korea","India","China","Brazil","Mexico","South Africa"];
 const text={
- tr:{title:"Ücretsiz ön değerlendirme başlat",help:"Ön değerlendirme başvurusu ücretsizdir; başvuru tek başına müşteri paneli hesabı açmaz. Hesap, onaylı ücretsiz pilot daveti veya ödeme doğrulaması ve e-posta onayı sonrasında oluşturulur.",name:"Ad Soyad",business:"İşletme adı",website:"Web sitesi",country:"Ülke",city:"Şehir",sector:"Sektör",select:"Seçin",email:"E-posta",phone:"Telefon / WhatsApp",send:"Ön değerlendirme iste",sending:"Gönderiliyor…",done:"Başvuru alındı ✓",ok:"Başvurunuz alındı. İşletmenizi inceleyip size uygun analiz ve teklif süreci hazırlanacak.",fail:"Başvuru gönderilemedi.",countryHelp:"Ülkeniz fiyat para birimini belirler: Türkiye ₺, Avrupa €, Birleşik Krallık £, ABD ve diğer ülkeler $."},
- en:{title:"Start a free assessment",help:"The assessment request is free and does not create a portal account. Account setup follows an approved free pilot invitation or verified payment and email confirmation.",name:"Full name",business:"Business name",website:"Website",country:"Country",city:"City",sector:"Industry",select:"Select",email:"Email",phone:"Phone / WhatsApp",send:"Request assessment",sending:"Sending…",done:"Application received ✓",ok:"Your application has been received. We will review your business and prepare the appropriate analysis and offer process.",fail:"Could not submit your application.",countryHelp:"Your country determines the pricing currency: Türkiye ₺, Europe €, United Kingdom £, United States and all other countries $."}
+ tr:{title:"Ücretsiz ön değerlendirme başlat",help:"Ön değerlendirme başvurusu ücretsizdir; başvuru tek başına müşteri paneli hesabı açmaz. Hesap, onaylı ücretsiz pilot daveti veya yazılım planı ödemesi ve e-posta onayı sonrasında oluşturulur.",name:"Ad Soyad",business:"İşletme adı",website:"Web sitesi",country:"Ülke",city:"Şehir",sector:"Sektör",select:"Seçin",email:"E-posta",phone:"Telefon / WhatsApp",send:"Ön değerlendirme iste",sending:"Gönderiliyor…",done:"Başvuru alındı ✓",ok:"Başvurunuz alındı. İşletmeniz için uygun yazılım erişim akışı hazırlanacak.",fail:"Başvuru gönderilemedi.",countryHelp:"Ülkeniz fiyat para birimini belirler: Türkiye ₺, Avrupa €, Birleşik Krallık £, ABD ve diğer ülkeler $."},
+ en:{title:"Start a free assessment",help:"The assessment request is free and does not create a portal account. Account setup follows an approved free pilot invitation or verified software-plan payment and email confirmation.",name:"Full name",business:"Business name",website:"Website",country:"Country",city:"City",sector:"Industry",select:"Select",email:"Email",phone:"Phone / WhatsApp",send:"Request assessment",sending:"Sending…",done:"Application received ✓",ok:"Your application has been received. We will prepare the appropriate software access flow for your business.",fail:"Could not submit your application.",countryHelp:"Your country determines the pricing currency: Türkiye ₺, Europe €, United Kingdom £, United States and all other countries $."}
 };
 
-const services=["business-diagnosis","business-solution","business-monitoring"];
+const services=[...PADDLE_SERVICE_CODES];
 export default function NewCustomerLeadForm({initialService="",initialCountry="",initialLanguage="",prices={}}){
   const {lang:sharedLang}=useLanguage();const lang=initialLanguage||sharedLang;const c=text[lang]||text.tr;
   const [form,setForm]=useState({name:"",businessName:"",website:"",country:initialCountry||"Türkiye",city:"",sector:"",email:"",phone:"",service:services.includes(initialService)?initialService:""});
@@ -30,7 +30,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
   }
   return <form lang={lang} data-localized className="panel scan-form" onSubmit={submit} style={{marginBottom:16}}>
     <div><h2>{c.title}</h2><p>{c.help}</p></div>
-    <label>{lang==="en"?"Selected service":"Seçilen hizmet"}<select value={form.service} onChange={e=>change("service",e.target.value)} required><option value="">{lang==="en"?"Select a service":"Hizmet seçin"}</option>{(prices[currencyForCountry(form.country)]||[]).map(p=><option key={p.code} value={p.code}>{p.name} — {formatMoney(p.amount,p.currency,lang==="en"?"en-GB":"tr-TR")}{p.kind==="monthly"?(lang==="en"?" / month":" / ay"):p.kind==="from"?(lang==="en"?" starting from":" başlangıç"):""}</option>)}</select></label>
+    <label>{lang==="en"?"Selected software plan":"Seçilen yazılım planı"}<select value={form.service} onChange={e=>change("service",e.target.value)} required><option value="">{lang==="en"?"Select a software plan":"Yazılım planı seçin"}</option>{(prices[currencyForCountry(form.country)]||[]).map(p=><option key={p.code} value={p.code}>{p.name} — {formatMoney(p.amount,p.currency,lang==="en"?"en-GB":"tr-TR")}{p.kind==="monthly"?(lang==="en"?" / month":" / ay"):""}</option>)}</select></label>
     <label>{c.name}<input value={form.name} onChange={e=>change("name",e.target.value)} required/></label>
     <label>{c.business}<input value={form.businessName} onChange={e=>change("businessName",e.target.value)} required/></label>
     <label>{c.website}<input value={form.website} onChange={e=>change("website",e.target.value)} placeholder="https://..." inputMode="url"/></label>
