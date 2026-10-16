@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
-import {verifyPaddleLiveSignature,normalizePaddleLiveEvent,subscriptionAccessState} from '../lib/paddle-live.js';
+import {verifyPaddleLiveSignature,normalizePaddleLiveEvent,subscriptionAccessState,transactionPricedAmount} from '../lib/paddle-live.js';
 
 function sign(raw,secret,ts){return createHmac('sha256',secret).update(`${ts}:${raw}`).digest('hex')}
 
@@ -24,6 +24,13 @@ test('normalizes supported transaction event and customer link metadata',()=>{
   assert.equal(item.type,'transaction.completed');
   assert.equal(item.paymentId,event.data.custom_data.payment_id);
   assert.equal(item.clientId,event.data.custom_data.client_id);
+});
+
+test('reads the original Paddle item price rather than tax-adjusted grand total',()=>{
+  const data={items:[{quantity:1,price:{unit_price:{amount:'16900'}}}],details:{totals:{grand_total:'20280',tax:'3380'}}};
+  assert.equal(transactionPricedAmount(data),16900);
+  assert.equal(transactionPricedAmount({items:[{quantity:2,price:{unit_price:{amount:'9900'}}}]}),19800);
+  assert.equal(transactionPricedAmount({items:[]}),null);
 });
 
 test('ignores unsupported event types and rejects malformed entities',()=>{
