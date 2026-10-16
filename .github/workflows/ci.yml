@@ -14,8 +14,12 @@ jobs:
         with:
           node-version: "24"
       - run: npm install
+      - name: Inspect candidate dependency versions
+        run: |
+          npm view ai@5 version --json
+          npm view next@16.4.2 version
       - name: Test patched dependency set
-        run: npm install --no-save next@16.4.2 ai@5.0.278
+        run: npm install --no-save next@16.4.2 ai@5
       - name: Security audit diagnostic
         run: npm audit --json || true
       - run: npm test
