@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
-import {verifyPaddleLiveSignature,normalizePaddleLiveEvent} from '../lib/paddle-live.js';
+import {verifyPaddleLiveSignature,normalizePaddleLiveEvent,subscriptionAccessState} from '../lib/paddle-live.js';
 
 function sign(raw,secret,ts){return createHmac('sha256',secret).update(`${ts}:${raw}`).digest('hex')}
 
@@ -15,7 +15,7 @@ test('rejects stale or altered Paddle live signatures',()=>{
   const secret='whsec_test_secret',ts=1730000000,raw='{"ok":true}';
   const header=`ts=${ts};h1=${sign(raw,secret,ts)}`;
   assert.equal(verifyPaddleLiveSignature(raw,header,secret,{now:(ts+301)*1000}),false);
-  assert.equal(verifyPaddleLiveSignature(raw+'x',header,secret,{now:ts*1000}),false);
+  assert.equal(verifyPaddleLiveSignature(raw+'x',header,{now:ts*1000}),false);
 });
 
 test('normalizes supported transaction event and customer link metadata',()=>{
@@ -30,4 +30,19 @@ test('ignores unsupported event types and rejects malformed entities',()=>{
   const base={event_id:'evt_abc123',occurred_at:'2026-10-16T00:00:00Z'};
   assert.equal(normalizePaddleLiveEvent({...base,event_type:'customer.created',data:{id:'ctm_123'}}),null);
   assert.throws(()=>normalizePaddleLiveEvent({...base,event_type:'transaction.completed',data:{id:'sub_wrong'}}),/invalid-entity/);
+});
+
+test('subscription lifecycle blocks access for paused, past-due and canceled states',()=>{
+  for(const type of ['subscription.paused','subscription.past_due','subscription.canceled']){
+    assert.equal(subscriptionAccessState({type,status:''}),'payment-review');
+  }
+  assert.equal(subscriptionAccessState({type:'subscription.updated',status:'past_due'}),'payment-review');
+});
+
+test('subscription lifecycle restores access only on explicit active states',()=>{
+  assert.equal(subscriptionAccessState({type:'subscription.activated',status:'active'}),'active');
+  assert.equal(subscriptionAccessState({type:'subscription.resumed',status:'active'}),'active');
+  assert.equal(subscriptionAccessState({type:'subscription.updated',status:'active'}),'active');
+  assert.equal(subscriptionAccessState({type:'subscription.created',status:'active'}),null);
+  assert.equal(subscriptionAccessState({type:'transaction.completed',status:'completed'}),null);
 });
