@@ -7,6 +7,8 @@ on:
       - 'app/**'
       - 'components/**'
       - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
       - 'tests/mobile-production-smoke.spec.js'
       - '.github/workflows/mobile-production-smoke.yml'
 
