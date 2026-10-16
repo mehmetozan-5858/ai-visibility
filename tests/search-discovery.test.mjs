@@ -22,7 +22,7 @@ test('anonymous crawlers can fetch discovery documents without opening private r
 });
 test('sitemap contains unique canonical public pages, excluding customer and payment URLs',()=>{
  const urls=sitemap().map(x=>x.url);assert.equal(new Set(urls).size,urls.length);
- assert.ok(urls.includes('https://www.aivisibilityworks.com'));
+ assert.ok(urls.includes('https://www.aivisibilityworks.com/'));
  for(const url of urls){assert.equal(new URL(url).origin,'https://www.aivisibilityworks.com');assert.ok(!/\/api\/|\/admin|\/musteri-panel|\/odeme|token=/.test(url))}
 });
 test('robots advertises the public sitemap and restricts API and customer routes',()=>{
