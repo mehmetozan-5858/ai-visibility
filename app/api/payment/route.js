@@ -37,7 +37,7 @@ export async function GET(req){
     const tokenService=String(access?.service||"");
     if(tokenService==="pilot-diagnosis"){
       const pilot=await getPilotAccess(client.id);if(!pilot)return Response.json({error:"Pilot süresi dolmuş veya erişimi kaldırılmış."},{status:403});
-      return Response.json({client,pilot,accountCreated:Boolean(await getClientCredential(client.id)),plan:{currency:"TRY",amount:0,setupAmount:0,monthlyAmount:0},payment:null,bank:{},profile,transferReady:false,cardReady:false});
+      return Response.json({client,pilot,accountCreated:Boolean(await getClientCredential(client.id)),plan:{currency:"TRY",amount:0,setupAmount:0,monthlyAmount:0},payment:null,bank:{},profile,transferReady:false,cardReady:false,paddleReady:false});
     }
 
     const requestedService=tokenService||String(url.searchParams.get("service")||"business-diagnosis");
@@ -51,10 +51,12 @@ export async function GET(req){
     const tryRail=plan.currency==="TRY";
     const bank=bankTransfer(plan.currency);
     const hostedReady=Boolean(tokenService&&shopierProduct({...plan,code:service}));
+    const paddleReady=Boolean(tokenService&&SERVICE_CODES.includes(tokenService)&&process.env.PADDLE_LIVE_API_KEY&&process.env.NEXT_PUBLIC_PADDLE_LIVE_CLIENT_TOKEN);
     return Response.json({
       client,
       accountCreated:Boolean(await getClientCredential(client.id)),
       hostedReady,
+      paddleReady,
       profile:{country:selectedCountry,city:profile?.city||"",sector:profile?.sector||""},
       plan,
       pricingCatalog:catalog,
@@ -63,7 +65,7 @@ export async function GET(req){
       bank:bank||{},
       transferReady:Boolean(bank),
       cardReady:tryRail&&Boolean(process.env.PAYTR_MERCHANT_ID&&process.env.PAYTR_MERCHANT_KEY&&process.env.PAYTR_MERCHANT_SALT),
-      internationalPaymentPending:!tryRail&&!bank&&!hostedReady
+      internationalPaymentPending:!tryRail&&!bank&&!hostedReady&&!paddleReady
     });
   }catch(e){return Response.json({error:"Odeme bilgileri okunamadi.",detail:String(e?.message||e).slice(0,220)},{status:500})}
 }
