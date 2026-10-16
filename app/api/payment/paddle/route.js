@@ -31,7 +31,26 @@ export async function POST(req){
     await recordPaymentConsent(payment.id,'2026-10-16');
     return Response.json({transactionId:transaction.transactionId,status:transaction.status});
   }catch(error){
-    console.error('Paddle live checkout creation failed',String(error?.message||error).slice(0,120));
-    return Response.json({error:'Paddle güvenli ödeme oturumu hazırlanamadı.'},{status:502});
+    const code=String(error?.message||error).slice(0,120);
+    console.error('Paddle live checkout creation failed',code);
+    if(code==='transaction_checkout_not_enabled'){
+      return Response.json({
+        code:'paddle-live-not-enabled',
+        error:'Paddle canlı ödeme hesabı henüz ödeme almaya açılmamış. Paddle hesap doğrulaması tamamlandıktan sonra tekrar deneyin.'
+      },{status:503});
+    }
+    if(code==='transaction_default_checkout_url_not_set'){
+      return Response.json({
+        code:'paddle-default-checkout-missing',
+        error:'Paddle varsayılan ödeme bağlantısı ayarlanmamış. Paddle Checkout ayarları tamamlandıktan sonra tekrar deneyin.'
+      },{status:503});
+    }
+    if(code==='transaction_checkout_url_domain_is_not_approved'){
+      return Response.json({
+        code:'paddle-domain-not-approved',
+        error:'Bu alan adı Paddle tarafından canlı ödeme için henüz onaylanmamış.'
+      },{status:503});
+    }
+    return Response.json({error:'Paddle güvenli ödeme oturumu hazırlanamadı. Lütfen daha sonra tekrar deneyin.'},{status:502});
   }
 }
