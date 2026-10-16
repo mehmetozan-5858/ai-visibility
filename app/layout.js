@@ -1,6 +1,7 @@
 import "./globals.css";
 import "./mobile-dashboard.css";
 import DemoReportGate from "../components/DemoReportGate";
+import AnalyticsConsent from "../components/AnalyticsConsent";
 import {LanguageProvider} from "../components/LanguageProvider";
 
 export const metadata={
@@ -26,5 +27,5 @@ export const metadata={
 };
 
 export default function RootLayout({children}){
-  return <html lang="tr" suppressHydrationWarning><body><LanguageProvider><DemoReportGate/>{children}</LanguageProvider></body></html>;
+  return <html lang="tr" suppressHydrationWarning><body><LanguageProvider><DemoReportGate/>{children}<AnalyticsConsent/></LanguageProvider></body></html>;
 }
