@@ -19,7 +19,11 @@ export default function SettingsManager(){
    <div><b>Şifre kurtarma · E-posta</b><span className={s.auth?.recovery?.email?.configured?"ready":"waiting"}>{s.auth?.recovery?.email?.configured?"● Hazır · "+s.auth.recovery.email.masked:"○ Kurulum gerekli"}</span></div>
    <div><b>Şifre kurtarma · Authenticator</b><span className={s.auth?.recovery?.totp?.configured?"ready":"waiting"}>{s.auth?.recovery?.totp?.configured?"● Hazır":"○ Cihaz kurulumu gerekli"}{!s.auth?.recovery?.totp?.configured&&<a href="/admin/guvenlik" style={{display:"block",marginTop:6}}>Ücretsiz kurulum →</a>}</span></div>
    <div><b>Ödeme sistemi</b><span className={s.billing?.configured?"ready":"waiting"}>{s.billing?.configured?"● Hazır":"○ Kart ödeme kapalı"}</span></div>
-   {Object.entries(s.integrations||{}).map(([key,x])=><div key={key}><b>{{sms:"SMS kurtarma",card:"PayTR kart",shopier:"Shopier ürünleri",inbox:"Gelen e-posta",cms:"WordPress bağlantısı",budget:"AI bütçesi"}[key]||key}</b><span className={x.configured?"ready":"waiting"}>{x.configured?"● Yapılandırıldı":"○ Eksik: "+x.missing.join(", ")}</span></div>)}
+   {Object.entries(s.integrations||{}).map(([key,x])=>{
+     const label={sms:"SMS kurtarma",card:"PayTR kart",shopier:"Shopier ürünleri",inbox:"Gelen e-posta",cms:"WordPress bağlantısı",budget:"AI bütçesi"}[key]||key;
+     const optional=key==="cms";
+     return <div key={key}><b>{label}{optional?" · Opsiyonel":""}</b><span className={x.configured?"ready":optional?"":"waiting"}>{x.configured?"● Yapılandırıldı":optional?"○ Kullanılmıyor · Vercel yayını için gerekli değil":"○ Eksik: "+x.missing.join(", ")}</span></div>;
+   })}
    <div><b>Dış iletişim</b><span>İnsan onayı gerekli</span></div>
  </section>;
 }
