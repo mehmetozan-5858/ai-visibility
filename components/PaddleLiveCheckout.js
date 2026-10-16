@@ -1,5 +1,5 @@
 "use client";
-import {useState} from "react";
+import {useEffect,useState} from "react";
 
 const CLIENT_TOKEN=process.env.NEXT_PUBLIC_PADDLE_LIVE_CLIENT_TOKEN||"";
 let paddlePromise;
@@ -20,8 +20,18 @@ function loadPaddle(){
 }
 
 export default function PaddleLiveCheckout({token}){
-  const [consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
-  if(!CLIENT_TOKEN||!token)return null;
+  const [eligible,setEligible]=useState(false),[checked,setChecked]=useState(false),[consent,setConsent]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    if(!CLIENT_TOKEN||!token){setChecked(true);return()=>{active=false};}
+    fetch('/api/payment?token='+encodeURIComponent(token),{cache:'no-store'})
+      .then(async r=>{const data=await r.json();return r.ok&&data?.paddleReady===true&&data?.payment?.status!=="paid"&&!data?.pilot;})
+      .then(ok=>{if(active)setEligible(Boolean(ok));})
+      .catch(()=>{if(active)setEligible(false);})
+      .finally(()=>{if(active)setChecked(true);});
+    return()=>{active=false};
+  },[token]);
+  if(!CLIENT_TOKEN||!token||!checked||!eligible)return null;
   async function start(){
     if(!consent)return;
     setBusy(true);setError('');
