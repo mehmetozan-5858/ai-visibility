@@ -71,13 +71,11 @@ test('local onboarding retains selected service and retries a failed submission'
     return route.fulfill({json:{ok:true,lead:{id:'local-fixture',status:'new'}}});
   });
   await page.goto(`${BASE}/yeni-musteri?service=business-monitoring&country=Germany`,{waitUntil:'networkidle'});
-  // Reproduce the owner browser's Turkish preference while this page explicitly
-  // uses English. Let the legacy DOM translator run before asserting labels.
   await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
   await page.waitForTimeout(500);
   await expect(page.getByRole('textbox',{name:'Business name',exact:true})).toBeVisible();
   await expect(page.getByRole('option',{name:'Other',exact:true})).toHaveAttribute('value','Diğer');
-  await expect(page.getByRole('combobox',{name:/^Selected service/})).toHaveValue('business-monitoring');
+  await expect(page.getByRole('combobox',{name:/^Selected software plan/})).toHaveValue('business-monitoring');
   await page.getByLabel('Full name',{exact:true}).fill('Local Test Customer');
   await page.getByLabel('Business name',{exact:true}).fill('Local Fixture Business');
   await page.getByRole('combobox',{name:/^Industry/}).selectOption('Tekstil / Giyim');
@@ -100,7 +98,6 @@ test('local onboarding retains selected service and retries a failed submission'
 });
 
 test('authenticated local settings and verification controls fit mobile width',async({page,context})=>{
-  // Never issue a fixture token or mock customer actions against an external site.
   test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local build fixture only');
   await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'}]);
   await page.route('**/api/status',route=>route.fulfill({json:{database:{configured:true},providers:[],auth:{configured:true,recovery:{}},billing:{configured:false},integrations:{cms:{configured:false,missing:['WORDPRESS_SITE_URL','WORDPRESS_USERNAME','WORDPRESS_APPLICATION_PASSWORD']}}}}));
