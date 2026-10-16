@@ -1,4 +1,5 @@
 import PaymentManager from "../../components/PaymentManager";
+import PaddleLiveCheckout from "../../components/PaddleLiveCheckout";
 import Link from "next/link";
 
 export const metadata={
@@ -21,7 +22,7 @@ export default async function Page({searchParams}){
         <h1 style={{fontSize:"clamp(32px,5vw,48px)",letterSpacing:"-.035em",margin:"0 0 8px"}}>Ödeme ve müşteri hesabı aktivasyonu</h1>
         <p style={{color:"#9fb2b8",maxWidth:720,lineHeight:1.7}}>Paketinizi, tutarı ve ödeme yöntemini kontrol edin. Ödeme onayından sonra e-posta doğrulamasıyla müşteri hesabınızı güvenli şekilde oluşturabilirsiniz.</p>
       </section>
-      {token?<PaymentManager token={token}/>:<section className="panel"><div className="empty">Ödeme bağlantısı geçersiz veya eksik.</div></section>}
+      {token?<><PaddleLiveCheckout token={token}/><PaymentManager token={token}/></>:<section className="panel"><div className="empty">Ödeme bağlantısı geçersiz veya eksik.</div></section>}
       <section className="panel" style={{marginTop:16}}>
         <small>Ödeme öncesi bilgilendirme:</small>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
