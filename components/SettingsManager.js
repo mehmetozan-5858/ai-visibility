@@ -11,6 +11,8 @@ export default function SettingsManager(){
  if(err)return <section className="panel settings"><div><b>Sistem durumu</b><span className="waiting">× {err}</span></div></section>;
  if(!s)return <section className="panel settings"><div><b>Sistem durumu</b><span>Kontrol ediliyor…</span></div></section>;
  const connected=s.providers?.filter(x=>x.status==="connected")||[];
+ const paddle=s.billing?.paddle||{};
+ const paddleText=paddle.liveApiVerified?"● LIVE API doğrulandı":paddle.configured?(paddle.reachable?"○ Yapılandırıldı · LIVE API yetkisi doğrulanamadı":"◐ Yapılandırıldı · Paddle API şu an doğrulanamadı"):"○ Kurulum gerekli";
  return <section className="panel settings">
    <div><b>Veritabanı</b><span className={s.database?.configured?"ready":"waiting"}>{s.database?.configured?"● Bağlı":"○ Bağlantı gerekli"}</span></div>
    <div><b>AI sağlayıcıları</b><span className={connected.length?"ready":"waiting"}>{connected.length?connected.map(x=>x.name).join(", "):"Bağlantı gerekli"}</span></div>
@@ -18,7 +20,8 @@ export default function SettingsManager(){
    <div><b>Yönetici girişi</b><span className={s.auth?.configured?"ready":"waiting"}>{s.auth?.configured?"● Korumalı":"○ ADMIN_PASSWORD + AUTH_SECRET gerekli"}</span></div>
    <div><b>Şifre kurtarma · E-posta</b><span className={s.auth?.recovery?.email?.configured?"ready":"waiting"}>{s.auth?.recovery?.email?.configured?"● Hazır · "+s.auth.recovery.email.masked:"○ Kurulum gerekli"}</span></div>
    <div><b>Şifre kurtarma · Authenticator</b><span className={s.auth?.recovery?.totp?.configured?"ready":"waiting"}>{s.auth?.recovery?.totp?.configured?"● Hazır":"○ Cihaz kurulumu gerekli"}{!s.auth?.recovery?.totp?.configured&&<a href="/admin/guvenlik" style={{display:"block",marginTop:6}}>Ücretsiz kurulum →</a>}</span></div>
-   <div><b>Ödeme sistemi</b><span className={s.billing?.configured?"ready":"waiting"}>{s.billing?.configured?"● Hazır":"○ Kart ödeme kapalı"}</span></div>
+   <div><b>Paddle LIVE</b><span className={paddle.liveApiVerified?"ready":paddle.configured?"waiting":"waiting"}>{paddleText}</span></div>
+   <div><b>PayTR · Opsiyonel / yedek</b><span className={s.billing?.paytr?.configured?"ready":""}>{s.billing?.paytr?.configured?"● Yapılandırıldı":"○ Kullanılmıyor"}</span></div>
    {Object.entries(s.integrations||{}).map(([key,x])=>{
      const label={sms:"SMS kurtarma",card:"PayTR kart",shopier:"Shopier ürünleri",inbox:"Gelen e-posta",cms:"WordPress bağlantısı",budget:"AI bütçesi"}[key]||key;
      const optional=key==="cms";
