@@ -3,6 +3,7 @@ import {useState} from "react";
 
 export default function LaunchQAConsole(){
   const [phase,setPhase]=useState("idle"),[result,setResult]=useState(null),[code,setCode]=useState(""),[error,setError]=useState("");
+  const [paddlePhase,setPaddlePhase]=useState("idle"),[paddleResult,setPaddleResult]=useState(null),[paddleError,setPaddleError]=useState("");
   const busy=phase==="starting"||phase==="finishing";
 
   async function call(body){
@@ -26,6 +27,26 @@ export default function LaunchQAConsole(){
     try{const data=await call({action:"finish",code:clean});setResult(prev=>({...prev,...data}));setPhase("done");}
     catch(e){setError(e?.message||"Test tamamlanamadı.");setPhase("code");}
   }
+
+  async function verifyPaddle(){
+    setPaddlePhase("checking");setPaddleError("");setPaddleResult(null);
+    try{
+      const response=await fetch("/api/status",{cache:"no-store"});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data?.error||"Paddle LIVE durumu okunamadı.");
+      const paddle=data?.billing?.paddle||{};
+      setPaddleResult({
+        configured:Boolean(paddle.configured),
+        authenticated:Boolean(paddle.liveApiVerified),
+        reachable:Boolean(paddle.reachable),
+        status:Number(paddle.status)||0,
+        eventTypes:Number(paddle.eventTypes)||0
+      });
+      setPaddlePhase("done");
+    }catch(e){setPaddleError(e?.message||"Paddle LIVE kontrolü tamamlanamadı.");setPaddlePhase("idle");}
+  }
+
+  const paddleOk=paddleResult?.configured&&paddleResult?.authenticated&&paddleResult?.reachable;
 
   return <div style={{display:"grid",gap:16}}>
     <section className="panel">
@@ -66,8 +87,21 @@ export default function LaunchQAConsole(){
     </section>}
 
     <section className="panel">
+      <div style={{fontSize:11,letterSpacing:".16em",fontWeight:900,color:"#54dfd0",textTransform:"uppercase",marginBottom:8}}>6. Aşama · Paddle LIVE</div>
+      <h2 style={{marginTop:0}}>Canlı ödeme sağlayıcısı hazırlık kontrolü</h2>
+      <p>Bu kontrol yalnız Paddle LIVE API&apos;ye salt-okunur <code>GET /event-types</code> isteği gönderir. Transaction, checkout veya kart tahsilatı oluşturmaz.</p>
+      <button type="button" onClick={verifyPaddle} disabled={paddlePhase==="checking"}>{paddlePhase==="checking"?"Paddle LIVE doğrulanıyor…":"Paddle LIVE kontrolünü çalıştır"}</button>
+      {paddleError&&<p className="client-message" role="alert" style={{marginTop:12}}>{paddleError}</p>}
+      {paddleResult&&<div role="status" style={{marginTop:14,padding:14,borderRadius:14,background:paddleOk?"#083329":"#392718"}}>
+        <b>{paddleOk?"✓ Paddle LIVE API doğrulandı":"⚠ Paddle LIVE henüz doğrulanmadı"}</b>
+        <div style={{marginTop:8,fontSize:14}}>Yapılandırma: {paddleResult.configured?"hazır":"eksik"} · Erişim: {paddleResult.reachable?"ulaşılabilir":"ulaşılamıyor"} · Yetki: {paddleResult.authenticated?"doğrulandı":"doğrulanmadı"}</div>
+        {paddleResult.authenticated&&<small style={{display:"block",marginTop:6,opacity:.78}}>HTTP {paddleResult.status||200} · {paddleResult.eventTypes} Paddle event tipi okundu. Gerçek ücret alınmadı.</small>}
+      </div>}
+    </section>
+
+    <section className="panel">
       <h2>Canlı ödeme güvenliği</h2>
-      <p>Bu konsol Paddle’da gerçek tahsilat veya gerçek kart işlemi başlatmaz. Paddle production checkout’un provider seviyesinde açılma kontrolü ayrı tutulur ve müşteri açıkça ödeme düğmesine basmadan transaction oluşturulmaz.</p>
+      <p>Bu konsol Paddle’da gerçek tahsilat veya gerçek kart işlemi başlatmaz. Müşteri açıkça ödeme düğmesine basmadan transaction oluşturulmaz.</p>
     </section>
   </div>;
 }
