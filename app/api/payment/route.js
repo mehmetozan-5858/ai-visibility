@@ -1,3 +1,4 @@
+import {paddleLiveReadiness} from '../../../lib/paddle-readiness';
 import {getPilotAccess} from "../../../lib/pilot-access";
 import {shopierProduct,paymentMatchesPlan} from "../../../lib/hosted-checkout";
 import {bankTransfer} from "../../../lib/bank-transfer";
@@ -51,7 +52,7 @@ export async function GET(req){
     const tryRail=plan.currency==="TRY";
     const bank=bankTransfer(plan.currency);
     const hostedReady=Boolean(tokenService&&shopierProduct({...plan,code:service}));
-    const paddleReady=Boolean(tokenService&&SERVICE_CODES.includes(tokenService)&&process.env.PADDLE_LIVE_API_KEY&&process.env.NEXT_PUBLIC_PADDLE_LIVE_CLIENT_TOKEN);
+    const paddleReady=paddleLiveReadiness({service:tokenService,origin:req.url}).ready;
     return Response.json({
       client,
       accountCreated:Boolean(await getClientCredential(client.id)),

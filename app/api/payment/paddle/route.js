@@ -1,3 +1,4 @@
+import {paddleLiveReadiness} from '../../../../lib/paddle-readiness';
 import {verifyPaymentAccessToken} from '../../../../lib/admin-auth';
 import {getClientProfile} from '../../../../lib/client-profile';
 import {getOrCreatePaymentIntent,recordPaymentConsent} from '../../../../lib/repository';
@@ -15,6 +16,7 @@ export async function POST(req){
     const access=await verifyPaymentAccessToken(body?.token||'');
     if(!access)return Response.json({error:'Ödeme bağlantısı geçersiz veya süresi dolmuş.'},{status:401});
     if(!PADDLE_SERVICE_CODES.includes(access.service))return Response.json({error:'Bu ürün Paddle üzerinden satılan yazılım planlarından biri değil.'},{status:400});
+    if(!paddleLiveReadiness({service:access.service,origin:req.url}).ready)return Response.json({code:'paddle-unavailable',error:'Kartla ödeme henüz kullanıma açık değil. Destek ekibiyle iletişime geçebilirsiniz.'},{status:503});
     const profile=await getClientProfile(access.clientId);
     const plan=servicePrice({service:access.service,country:profile?.country||'Türkiye',language:'tr'});
     const payment=await getOrCreatePaymentIntent(access.clientId,plan.name,plan.setupAmount,plan.monthlyAmount,plan.currency);
