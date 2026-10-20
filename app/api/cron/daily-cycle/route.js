@@ -1,3 +1,4 @@
+import {retryBrokerContact} from '../../../../lib/broker-contact-runtime';
 import {enqueuePreparation,preparationAvailability} from '../../../../lib/preparation-queue';
 import {implementationReport} from '../../../../lib/implementation-report';
 import {dailyAnswerEvidence} from "../../../../lib/answer-evidence-daily";
@@ -56,7 +57,9 @@ export async function GET(req){
   const client=await databasePool(url).connect();let locked=false;
   try{locked=Boolean((await client.query("SELECT pg_try_advisory_lock(741852964) AS acquired")).rows[0]?.acquired);
    if(!locked)return Response.json({ok:true,skipped:"already-running"},{headers:{"cache-control":"no-store"}});
-   return await runCycle(req);
+   const result=await runCycle(req);
+   await retryBrokerContact().catch(()=>null);
+   return result;
   }finally{if(locked)await client.query("SELECT pg_advisory_unlock(741852964)").catch(()=>{});client.release()}
  });
 }

@@ -1,0 +1,9 @@
+'use client';
+import {useEffect,useState} from 'react';
+export default function BrokerMessages(){
+ const [rows,setRows]=useState([]),[message,setMessage]=useState('Mesajlar yükleniyor…'),[busy,setBusy]=useState(false);
+ async function load(){setBusy(true);try{const r=await fetch('/api/broker-contact',{cache:'no-store'});if(!r.ok)throw Error('Gelen kutusu için yönetici girişi gerekli veya hizmet şu anda kullanılamıyor.');const x=await r.json();setRows(x.messages||[]);setMessage(x.messages?.length?'':'Henüz mesaj yok.')}catch(e){setRows([]);setMessage(e.message)}finally{setBusy(false)}}
+ async function retry(id){setBusy(true);try{const r=await fetch('/api/broker-contact',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id})});if(!r.ok)throw Error('İletim tekrar denenemedi.');await load()}catch(e){setMessage(e.message)}finally{setBusy(false)}}
+ useEffect(()=>{load()},[]);
+ return <main className="panel" style={{maxWidth:900,margin:'30px auto',padding:24}}><a href="/admin">← Yönetim paneli</a><h1>Global Broker · Gelen mesajlar</h1><p>İletişim formu mesajları ve yönetici e-postasına yönlendirme durumu.</p><button disabled={busy} onClick={load}>Yenile</button><p role="status">{message}</p>{rows.map(row=><article key={row.id} style={{border:'1px solid #ccc',borderRadius:12,padding:18,marginTop:16,overflowWrap:'anywhere'}}><h2>{row.body.topic}</h2><p>{row.body.name} · {row.body.email}</p><p style={{whiteSpace:'pre-wrap'}}>{row.body.message}</p><small>{row.created_at} · {row.status==='email_accepted'?'E-posta servisi kabul etti':row.status==='needs_review'?'İletim elle kontrol edilmeli':'E-posta iletimi bekliyor'}</small>{row.status==='queued'&&<div><button disabled={busy} onClick={()=>retry(row.id)}>İletimi tekrar dene</button></div>}</article>)}</main>
+}
