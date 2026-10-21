@@ -1,4 +1,5 @@
 "use client";
+import EcosystemNavigation from "./EcosystemNavigation";
 import Link from "next/link";
 import {usePathname} from "next/navigation";
 import {LanguageSwitcher,useLanguage} from "./LanguageProvider";
@@ -23,7 +24,7 @@ export default function CustomerShell({title,subtitle,children}){
         <LanguageSwitcher/>
         <button onClick={logout}>{t("logout")}</button>
       </div>
-    </header>
+    </header><EcosystemNavigation/>
     {displayTitle&&<section className="page-head"><div><h1>{displayTitle}</h1><p>{displaySubtitle}</p></div></section>}
     {children}
   </main>;
