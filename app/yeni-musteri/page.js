@@ -1,5 +1,6 @@
 import {servicePrice,PADDLE_SERVICE_CODES} from "../../lib/regional-pricing";
 import Link from "next/link";
+import EcosystemNavigation from "../../components/EcosystemNavigation";
 import NewCustomerLeadForm from "../../components/NewCustomerLeadForm";
 
 export const metadata={
@@ -22,7 +23,7 @@ export default async function NewCustomerPage({searchParams}){
       <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,padding:"8px 0 30px",flexWrap:"wrap"}}>
         <Link href="/" style={{display:"flex",alignItems:"center",gap:12,textDecoration:"none",color:"#eff8f8",fontWeight:800,fontSize:19}}><span style={{width:22,height:22,border:"2px solid #4be5d6",transform:"rotate(45deg)",display:"inline-block"}}/>AI Visibility</Link>
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}><Link href="/hizmetler" style={{textDecoration:"none"}}>{en?"Pricing":"Fiyatlandırma"}</Link><Link href="/musteri-giris" style={{padding:"10px 14px",border:"1px solid rgba(81,218,208,.28)",borderRadius:10,textDecoration:"none"}}>{en?"Customer Login":"Müşteri Girişi"}</Link></div>
-      </header>
+      </header><EcosystemNavigation/>
       <section style={{textAlign:"center",maxWidth:760,margin:"12px auto 28px"}}><div style={{fontSize:11,letterSpacing:".2em",fontWeight:900,color:"#54dfd0",textTransform:"uppercase"}}>{en?"Free assessment":"Ücretsiz ön değerlendirme"}</div><h1 style={{fontSize:"clamp(38px,5vw,58px)",lineHeight:1.05,letterSpacing:"-.04em",margin:"12px 0 14px"}}>{en?"See where your brand stands in AI search.":"Markanızın AI dünyasındaki yerini görün."}</h1><p style={{color:"#9fb2b8",fontSize:16,lineHeight:1.7}}>{en?"Tell us about your business. Your selected software plan is included in your application; the total price is shown before payment.":"İşletmenizi tanıyalım. Seçtiğiniz yazılım planı başvurunuza otomatik eklenir; toplam ücret ödeme öncesinde gösterilir."}</p></section>
       <div style={{maxWidth:780,margin:"0 auto"}}><NewCustomerLeadForm initialService={service} initialCountry={country} initialLanguage={language} prices={prices}/></div>
       <div className="new-customer-followup-grid" style={{display:"grid",gridTemplateColumns:"1.4fr .6fr",gap:16,maxWidth:980,margin:"18px auto 0"}}>
