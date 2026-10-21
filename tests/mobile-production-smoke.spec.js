@@ -1,5 +1,6 @@
 import { test, expect, devices } from '@playwright/test';
-import {createAdminToken} from '../lib/admin-auth.js';
+import ecosystem from '../lib/ecosystem-contract.cjs';
+import {createClientToken,createAdminToken} from '../lib/admin-auth.js';
 
 const BASE = process.env.SMOKE_BASE_URL || 'https://www.aivisibilityworks.com';
 const routes = ['/', '/musteri-giris', '/yeni-musteri', '/hizmetler', '/demo', '/metodoloji', '/yapay-zeka-gorunurlugu'];
@@ -165,4 +166,43 @@ test('local customer recovery preserves errors and resets verification when the 
   await form.getByLabel('Yeni şifre',{exact:true}).fill('local-fixture-password');
   await form.getByRole('button',{name:'Şifremi yenile',exact:true}).click();
   await expect(page).toHaveURL(/\/musteri-giris$/);
+});
+
+
+test('local ecosystem uses the selected saved business without leaking account fields',async({page,context})=>{
+  test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only');
+  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'},{name:'ai_client',value:await createClientToken('eco-a'),url:BASE,httpOnly:true,sameSite:'Strict'},{name:'ai_lang',value:'tr',url:BASE}]);
+  const clients=[{id:'eco-a',name:'Ecosystem A',domain:'example.com',profile:{country:'Germany',sector:'B2B / Sanayi',phone:'PRIVATE_SENTINEL'}},{id:'eco-b',name:'Ecosystem B',domain:'example.org',profile:{country:'Türkiye',sector:'Tekstil / Giyim'}}];
+  const account=client=>({client,profile:client.profile,scans:[],payments:[],activity:[],workItems:[],access:{kind:'pilot',expiresAt:'2030-01-01'}});
+  let writes=0;
+  await page.route('**/api/**',route=>{
+    if(!['GET','HEAD'].includes(route.request().method())){writes++;return route.abort();}
+    const url=new URL(route.request().url());
+    if(url.pathname==='/api/clients')return route.fulfill({json:{clients}});
+    if(url.pathname==='/api/client-activity')return route.fulfill({json:{account:account(clients.find(c=>c.id===url.searchParams.get('clientId')))}});
+    if(url.pathname==='/api/client-portal')return route.fulfill({json:{account:account(clients[0])}});
+    if(url.pathname==='/api/client-portal/solutions')return route.fulfill({json:{findings:[]}});
+    return route.fulfill({json:{}});
+  });
+  for(const width of [390,1280]){
+    await page.setViewportSize({width,height:900});
+    await page.goto(`${BASE}/isletme-hesabi`,{waitUntil:'networkidle'});
+    const navigation=page.getByRole('navigation',{name:'Ekosistem geçişleri'});
+    await expect(navigation.getByRole('link',{name:'Global Broker'})).toHaveAttribute('href',ecosystem.links.brokerAdmin);
+    const transfer=page.getByRole('region',{name:'Firma profili aktarımı'});
+    await expect(transfer).toContainText('Ecosystem A');
+    await page.getByRole('combobox',{name:'İşletme',exact:true}).selectOption('eco-b');
+    await expect(transfer).toContainText('Ecosystem B');
+    const data=ecosystem.parse(new URL(await transfer.getByRole('link').getAttribute('href')).hash);
+    expect(data.business).toEqual({businessName:'Ecosystem B',website:'https://example.org/',country:'Türkiye',sector:'Tekstil / Giyim'});
+    await page.goto(`${BASE}/musteri-panel`,{waitUntil:'networkidle'});
+    await expect(page.getByRole('navigation',{name:'Ekosistem geçişleri'}).getByRole('link',{name:'Global Broker'})).toHaveAttribute('href',ecosystem.links.brokerPortal);
+    await expect(transfer).toContainText('Ecosystem A');
+    const href=await transfer.getByRole('link').getAttribute('href');
+    expect(href).not.toContain('PRIVATE_SENTINEL');
+    expect(ecosystem.parse(new URL(href).hash).business.businessName).toBe('Ecosystem A');
+    const widths=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,viewport:document.documentElement.clientWidth}));
+    expect(widths.scroll).toBeLessThanOrEqual(widths.viewport+2);
+  }
+  expect(writes).toBe(0);
 });

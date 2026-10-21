@@ -1,4 +1,5 @@
 "use client";
+import EcosystemBusinessTransfer from "./EcosystemBusinessTransfer";
 import {useEffect,useMemo,useRef,useState} from "react";
 
 import Link from "next/link";
@@ -78,6 +79,7 @@ export default function ClientAccountManager(){
     {msg&&<p className="client-message" role="status">{msg} <button type="button" disabled={busy||loading} onClick={()=>setRevision(v=>v+1)}>Yeniden yükle</button></p>}
     {clientsReady&&!loading&&!clients.length&&<div className="empty">Henüz işletme kaydı yok.</div>}
     {loading?<div className="empty">İşletme hesabı yükleniyor…</div>:visibleAccount&&<>
+      <EcosystemBusinessTransfer account={{...visibleAccount,profile:visibleAccount.profile||clients.find(c=>c.id===clientId)?.profile}}/>
       <div className="report-kpis" style={{marginTop:14}}>
         <div><span>Yüklenen en eski ön puan</span><strong>{provisionalScore(first?.score)}</strong></div>
         <div><span>Yüklenen en yeni ön puan</span><strong>{provisionalScore(latest?.score)}</strong></div>
