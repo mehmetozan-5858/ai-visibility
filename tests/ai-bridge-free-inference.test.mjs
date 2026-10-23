@@ -42,3 +42,23 @@ test("provider claims a paid completion -> no successful output",async()=>{
  const r=await runFreeBridgeTask({modelId:id,prompt:"test",apiKey:"test",enabled:true,fetcher:f});
  assert.equal(r.reason,"nonzero-cost-reported");
 });
+
+test("provider routing permits only zero-priced requests and disables fallbacks",async()=>{
+ const calls=[];const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled:true,fetcher:mock(calls)});
+ assert.equal(r.ok,true);
+ const body=JSON.parse(calls[1].opts.body);
+ assert.equal(body.provider.allow_fallbacks,false);
+ assert.deepEqual(body.provider.max_price,{prompt:0,completion:0,request:0,image:0,audio:0});
+});
+test("missing provider cost cannot be classified as free",async()=>{
+ const fetcher=async url=>url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
+ {ok:true,json:async()=>({model:id,choices:[{message:{content:"ok"}}],usage:{}})};
+ const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled:true,fetcher});
+ assert.equal(r.reason,"nonzero-cost-reported");
+});
+test("missing returned model identity fails closed",async()=>{
+ const fetcher=async url=>url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
+ {ok:true,json:async()=>({choices:[{message:{content:"ok"}}],usage:{cost:0}})};
+ const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled:true,fetcher});
+ assert.equal(r.reason,"unexpected-model");
+});
