@@ -1,6 +1,7 @@
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {registerZeraPilot} from '../../../../pilot/zera-register.mjs';
-import {getClient} from '../../../../lib/repository';
+import {getClient,createScan,listScans} from '../../../../lib/repository';
+import {AUDIT_TASKS} from '../../../../pilot/zera-audit-queue.mjs';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const badOrigin=enforceSameOrigin(req);if(badOrigin)return badOrigin;
@@ -13,9 +14,18 @@ export async function POST(req){
    return Response.json({error:'Explicit ZERA public pilot confirmation required'},{status:400});
   const result=await registerZeraPilot({approved:true});
   const client=await getClient(result.clientId);
+  // Registering this authorized pilot creates its persistent audit queue,
+  // but intentionally never incurs provider charges or claims completed audits.
+  const queries=AUDIT_TASKS.map(t=>t.query);
+  const recent=await listScans(100);
+  const prior=recent.find(s=>s.clientId===result.clientId
+    && ['queued','awaiting-provider'].includes(s.status)
+    && JSON.stringify(s.queries)===JSON.stringify(queries));
+  const scan=prior||await createScan(result.clientId,queries);
+  if(!scan?.id||scan.persisted===false)throw new Error('Audit queue could not be persisted');
   return Response.json({pilotId:result.pilotId,clientId:result.clientId,created:result.created,
-    persisted:Boolean(client),status:result.status,role:'customer',adminAccessGranted:false,scanStarted:false,
-    authorization:{publicAuditOnly:true,websiteChanges:false,socialAccountChanges:false,googleBusinessChanges:false,emailSending:false},nextStep:'Review verified client record, then separately authorize provider calls'});
+    persisted:Boolean(client),status:result.status,role:'customer',adminAccessGranted:false,scanStarted:false,scanQueued:true,scanId:scan.id,queuedQueries:queries.length,
+    authorization:{publicAuditOnly:true,websiteChanges:false,socialAccountChanges:false,googleBusinessChanges:false,emailSending:false},nextStep:'Seven authorized public-audit queries queued. Provider execution requires a separately configured, cost-controlled worker; no verified AI answers yet.'});
  }catch(e){
   return Response.json({error:'Pilot could not be persisted',reason:String(e?.message||'unknown').slice(0,160)},{status:503});
  }
