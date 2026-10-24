@@ -25,9 +25,11 @@ export async function runGroundedZeraCheck({taskId,key,fetchImpl=fetch,model='ge
  if(!supported)return {taskId,status:'unverified',reason:'No grounded supporting citation returned'};
  const match=supported.groundingChunkIndices.map(i=>chunks[i]?.web?.uri).find(uri=>{try{return new URL(uri).protocol==='https:'}catch{return false}});
  if(!match)return {taskId,status:'unverified',reason:'No valid HTTPS citation returned'};
- return {taskId,status:'evidence_recorded',result:{taskId,evidence:{
+ const excerpt=String(supported.segment.text).slice(0,1200);
+ const brandMention=excerpt.toLocaleLowerCase('en').includes('zera')?'possible-mention':'not-observed-in-supported-segment';
+ return {taskId,status:'evidence_recorded',brandMention,result:{taskId,evidence:{
   type:'observed',sourceUrl:match,observedAt:new Date().toISOString(),query:task.query,
-  observation:String(supported.segment.text).slice(0,1200)}},
+  observation:excerpt}},
   provider:'Gemini + Google Search grounding',locale:task.locale,
   caveat:'A cited Gemini answer, not independent evidence of Google rank or ChatGPT visibility'};
 }
