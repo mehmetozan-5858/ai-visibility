@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildAuditQueue,recordAuditResult} from '../pilot/zera-audit-queue.mjs';
-import {buildPilotReport,formatPilotReportMarkdown} from '../pilot/zera-report.mjs';
+import {buildPilotReport,formatPilotReportMarkdown,resolveReportLanguage} from '../pilot/zera-report.mjs';
 test('unmeasured tasks remain pending rather than silently passing',()=>{
  const report=buildPilotReport(buildAuditQueue(),{asOf:'2026-10-24'});
  assert.equal(report.progress.completed,0);assert.equal(report.pendingTasks.length,7);
@@ -25,4 +25,15 @@ test('reports support Turkish and English while the evidence remains unchanged',
  assert.match(formatPilotReportMarkdown(report,{language:'tr'}),/Henüz doğrulanmış tarama sonucu yok/);
  assert.match(formatPilotReportMarkdown(report,{language:'en'}),/No verified scan results yet/);
  assert.equal(report.pendingTasks.length,7);
+});
+
+test('customer defaults: Turkey Turkish, international English, owner may override',()=>{
+ assert.equal(resolveReportLanguage({country:'Türkiye'}),'tr');
+ assert.equal(resolveReportLanguage({country:'TR'}),'tr');
+ assert.equal(resolveReportLanguage({country:'Germany'}),'en');
+ assert.equal(resolveReportLanguage({country:'DE'}),'en');
+ assert.equal(resolveReportLanguage({country:'DE',language:'tr'}),'tr');
+ const report=buildPilotReport(buildAuditQueue());
+ assert.match(formatPilotReportMarkdown(report,{country:'TR'}),/Henüz doğrulanmış tarama sonucu yok/);
+ assert.match(formatPilotReportMarkdown(report,{country:'DE'}),/No verified scan results yet/);
 });
