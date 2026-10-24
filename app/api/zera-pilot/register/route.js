@@ -42,7 +42,7 @@ export async function GET(req){
  };
  return Response.json({pilotId:'ZERA-DE-001',role:'customer',publicAuditQueries:AUDIT_TASKS.length,
   safeToRegister:previewIsolated,providerConfigured:Object.values(configuredProviders).some(Boolean),
-  evidenceProviderConnected:false,verifiedAuditCount:0,
+  evidenceProviderConnected:false,verifiedAuditCount:null,
   autoExecutionReady:false,reportReady:false,
   blockers:[...(!previewIsolated?['preview-database-isolation-unverified']:[]),
    'independent-provider-evidence-worker-not-connected','customer-report-automation-not-connected'],
