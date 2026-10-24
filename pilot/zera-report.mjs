@@ -1,5 +1,6 @@
 import {PILOT_ID} from './zera-pilot.mjs';
 import {AUDIT_TASKS,auditProgress} from './zera-audit-queue.mjs';
+import {calculateAuditCoverage} from './zera-evidence-score.mjs';
 /** Pure report builder. The caller supplies audited task records; no demo output is represented as live. */
 export function buildPilotReport(records,{asOf=new Date().toISOString()}={}){
  if(!Array.isArray(records))throw new Error('Audit records must be an array');
@@ -17,10 +18,11 @@ export function buildPilotReport(records,{asOf=new Date().toISOString()}={}){
      status:record.status,evidence:record.status==='evidence_recorded'?record.evidence:null};
  });
  const progress=auditProgress(tasks);
- return {pilotId:PILOT_ID,asOf,progress,observations:tasks.filter(x=>x.evidence),
+ const result={pilotId:PILOT_ID,asOf,progress,observations:tasks.filter(x=>x.evidence),
    pendingTasks:AUDIT_TASKS.filter(t=>!unique.has(t.id)||tasks.find(x=>x.id===t.id)?.status!=='evidence_recorded').map(t=>t.id),
    integrity:{evidenceOnly:true,sourceRequired:true,unknownNotZero:true},
    nextStep:progress.completed===AUDIT_TASKS.length?'review_findings':'execute_authorized_public_scans'};
+ return {...result,scores:calculateAuditCoverage(result)};
 }
 export function resolveReportLanguage({country='',language=''}={}){
  const explicit=String(language||'').trim().toLowerCase();
@@ -36,6 +38,7 @@ export function formatPilotReportMarkdown(report,{language='',country='DE'}={}){
  const lines=[`# ZERA ${tr?'Pilot Raporu':'Pilot Report'} — ${esc(report.asOf)}`,
   `${tr?'Pilot':'Pilot'}: ${esc(report.pilotId)}`,
   `${tr?'Doğrulanan taramalar':'Verified audits'}: ${report.progress.completed}/${AUDIT_TASKS.length} (${tr?'bekleyen':'remaining'} ${report.pendingTasks.length})`,
+  `${tr?'Kanıt kapsam puanı':'Evidence coverage score'}: ${report.scores.value}/100 (${tr?'görünürlük puanı henüz ölçülmedi':'visibility score not yet measured'})`,
   '',tr?'## Kaynaklı bulgular':'## Observed evidence'];
  if(!report.observations.length)lines.push(tr?'Henüz doğrulanmış tarama sonucu yok.':'No verified scan results yet.');
  for(const row of report.observations)lines.push(`- **${esc(row.id)}**: ${esc(row.evidence.observation)} — ${esc(row.evidence.sourceUrl)} (${esc(row.evidence.observedAt)})`);
