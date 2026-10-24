@@ -1,12 +1,14 @@
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {registerZeraPilot} from '../../../../pilot/zera-register.mjs';
 import {getClient} from '../../../../lib/repository';
+import {zeraRegistrationGate} from '../../../../pilot/zera-registration-gate.mjs';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const badOrigin=enforceSameOrigin(req);if(badOrigin)return badOrigin;
- // Preview cannot write until dedicated isolation has been independently verified.
- if(process.env.VERCEL_ENV!=='production' && process.env.ZERA_ISOLATED_PREVIEW_DB!=='verified')
-   return Response.json({error:'Preview DB isolation not verified; registration disabled'},{status:409});
+ // Never permit pilot writes in production, even if preview flags leak there.
+ const gate=zeraRegistrationGate(process.env);
+ if(!gate.allowed)
+   return Response.json({error:'Pilot registration disabled',reason:gate.reason},{status:409,headers:{'Cache-Control':'private, no-store'}});
  try{
   const body=await req.json();
   if(body?.pilotId!=='ZERA-DE-001'||body?.confirmPublicPilot!==true)
