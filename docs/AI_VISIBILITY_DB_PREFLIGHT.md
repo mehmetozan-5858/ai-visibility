@@ -18,3 +18,10 @@ The existing `docs/DATA_MODEL.md` describes Client, Scan and AgentJob as a conce
 - PR #93: prospective storage and offline previews.
 - Merge/rebase order and CI should be reviewed before combining these branches.
 - No production changes, API keys, paid inference, outbound communication, or customer-data reads in this PR.
+
+## Verified repository integration findings (2026-10-24)
+- `lib/db.js` reads `DATABASE_URL` or `STORAGE_URL` and normalizes SSL parameters.
+- `lib/database-runtime.js` uses PostgreSQL `pg.Pool` and a transactional schema initializer with a migration-key/version table.
+- `app/api/client-portal/route.js` verifies signed `ai_client` cookies, loads the account by `session.clientId`, and checks `customerAccess`.
+- These observations establish PostgreSQL support but **do not prove** a physical `clients(id UUID)` table or UUID client IDs.
+- Do not execute the draft migration until the repository's actual account storage schema and client ID type are verified. In particular, avoid coupling to `clients(id UUID)` merely because the conceptual data model uses `Client`.
