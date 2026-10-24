@@ -30,3 +30,21 @@ export async function POST(req){
   return Response.json({error:'Pilot could not be persisted',reason:String(e?.message||'unknown').slice(0,160)},{status:503});
  }
 }
+
+/** Owner-only operational status; never reports synthetic provider scores as verified audits. */
+export async function GET(req){
+ const denied=await requireAdmin(req);if(denied)return denied;
+ const previewIsolated=process.env.VERCEL_ENV==='production'||process.env.ZERA_ISOLATED_PREVIEW_DB==='verified';
+ const configuredProviders={
+  gemini:Boolean(process.env.GEMINI_API_KEY),
+  openai:Boolean(process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY||process.env.AI_GATEWAY_API_KEY),
+  perplexity:Boolean(process.env.PERPLEXITY_API_KEY)
+ };
+ return Response.json({pilotId:'ZERA-DE-001',role:'customer',publicAuditQueries:AUDIT_TASKS.length,
+  safeToRegister:previewIsolated,providerConfigured:Object.values(configuredProviders).some(Boolean),
+  evidenceProviderConnected:false,verifiedAuditCount:0,
+  autoExecutionReady:false,reportReady:false,
+  blockers:[...(!previewIsolated?['preview-database-isolation-unverified']:[]),
+   'independent-provider-evidence-worker-not-connected','customer-report-automation-not-connected'],
+  note:'Configuration readiness only; no customer record or live scan is asserted.'});
+}
