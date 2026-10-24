@@ -21,5 +21,12 @@ test('only a grounded supported HTTPS segment qualifies as evidence',async()=>{
  };
  const result=await runGroundedZeraCheck({taskId:'brand-ai-de',key:'test-only',fetchImpl});
  assert.equal(result.status,'evidence_recorded');
+ assert.equal(result.brandMention,'not-observed-in-supported-segment');
  assert.equal(result.result.evidence.sourceUrl,'https://example.org/evidence');
+});
+
+test('source citation with a ZERA mention only marks possible brand mention',async()=>{
+ const fetchImpl=async()=>({ok:true,json:async()=>({candidates:[{groundingMetadata:{groundingChunks:[{web:{uri:'https://example.org/evidence'}}],groundingSupports:[{segment:{text:'ZERA Clothing may appear in this result.'},groundingChunkIndices:[0]}]}}]})});
+ const result=await runGroundedZeraCheck({taskId:'brand-ai-de',key:'test-only',fetchImpl});
+ assert.equal(result.brandMention,'possible-mention');
 });
