@@ -28,7 +28,7 @@ export async function POST(req){
     persisted:Boolean(client),status:result.status,role:'customer',adminAccessGranted:false,scanStarted:false,scanQueued:true,scanId:scan.id,queuedQueries:queries.length,
     authorization:{publicAuditOnly:true,websiteChanges:false,socialAccountChanges:false,googleBusinessChanges:false,emailSending:false},nextStep:'Seven authorized public-audit queries queued. Provider execution requires a separately configured, cost-controlled worker; no verified AI answers yet.'});
  }catch(e){
-  return Response.json({error:'Pilot could not be persisted',reason:String(e?.message||'unknown').slice(0,160)},{status:503});
+  return Response.json({error:'Pilot could not be persisted'},{status:503,headers:{'Cache-Control':'private, no-store'}});
  }
 }
 
