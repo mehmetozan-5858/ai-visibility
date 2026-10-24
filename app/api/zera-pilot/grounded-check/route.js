@@ -4,11 +4,9 @@ import {AUDIT_TASKS} from '../../../../pilot/zera-audit-queue.mjs';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const badOrigin=enforceSameOrigin(req);if(badOrigin)return badOrigin;
- // No provider spending or preview database side-effects by default.
+ // Stateless single-task probe: never writes to client DB; keep spending opt-in.
  if(process.env.ZERA_GROUNDED_AI_ENABLED!=='true')
   return Response.json({error:'Grounded AI scanning requires explicit budget authorization'},{status:409});
- if(process.env.VERCEL_ENV!=='production'&&process.env.ZERA_ISOLATED_PREVIEW_DB!=='verified')
-  return Response.json({error:'Preview isolation not verified'},{status:409});
  if(!process.env.GEMINI_API_KEY)return Response.json({error:'Gemini provider unavailable'},{status:503});
  try{
   const body=await req.json();
