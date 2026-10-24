@@ -37,3 +37,14 @@ test('customer defaults: Turkey Turkish, international English, owner may overri
  assert.match(formatPilotReportMarkdown(report,{country:'TR'}),/Henüz doğrulanmış tarama sonucu yok/);
  assert.match(formatPilotReportMarkdown(report,{country:'DE'}),/No verified scan results yet/);
 });
+
+test('evidence coverage is not mistaken for AI visibility score',()=>{
+ const empty=buildPilotReport(buildAuditQueue());
+ assert.equal(empty.scores.value,0);
+ assert.equal(empty.scores.visibilityScore,null);
+ const task=buildAuditQueue()[0];
+ const verified=recordAuditResult(task,{taskId:task.id,evidence:{type:'observed',sourceUrl:'https://example.org',observedAt:'2026-10-25',observation:'Test citation'}});
+ const partial=buildPilotReport([verified]);
+ assert.equal(partial.scores.value,14);
+ assert.equal(partial.scores.visibilityScore,null);
+});
