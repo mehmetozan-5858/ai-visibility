@@ -22,13 +22,16 @@ export function buildPilotReport(records,{asOf=new Date().toISOString()}={}){
    integrity:{evidenceOnly:true,sourceRequired:true,unknownNotZero:true},
    nextStep:progress.completed===AUDIT_TASKS.length?'review_findings':'execute_authorized_public_scans'};
 }
-export function formatPilotReportMarkdown(report){
- const esc=s=>String(s??'').replace(/[\r\n|]/g,' ').slice(0,800);
- const lines=[`# ZERA Pilot — ${esc(report.asOf)}`,`Pilot: ${esc(report.pilotId)}`,
- `Verified audits: ${report.progress.completed}/${AUDIT_TASKS.length} (remaining ${report.pendingTasks.length})`,
- '', '## Observed evidence'];
- if(!report.observations.length)lines.push('No verified scan results yet.');
+export function formatPilotReportMarkdown(report,{language='en'}={}){
+ const tr=String(language).toLowerCase().startsWith('tr');
+ const esc=s=>String(s??'').replace(/[\\r\\n|]/g,' ').slice(0,800);
+ const lines=[`# ZERA ${tr?'Pilot Raporu':'Pilot Report'} — ${esc(report.asOf)}`,
+  `${tr?'Pilot':'Pilot'}: ${esc(report.pilotId)}`,
+  `${tr?'Doğrulanan taramalar':'Verified audits'}: ${report.progress.completed}/${AUDIT_TASKS.length} (${tr?'bekleyen':'remaining'} ${report.pendingTasks.length})`,
+  '',tr?'## Kaynaklı bulgular':'## Observed evidence'];
+ if(!report.observations.length)lines.push(tr?'Henüz doğrulanmış tarama sonucu yok.':'No verified scan results yet.');
  for(const row of report.observations)lines.push(`- **${esc(row.id)}**: ${esc(row.evidence.observation)} — ${esc(row.evidence.sourceUrl)} (${esc(row.evidence.observedAt)})`);
- lines.push('','## Pending tasks',...report.pendingTasks.map(id=>`- ${esc(id)}`),'','Attribution is not proof of incremental revenue.');
- return lines.join('\n');
+ lines.push('',tr?'## Bekleyen taramalar':'## Pending tasks',...report.pendingTasks.map(id=>`- ${esc(id)}`),'',
+  tr?'İlişkilendirme, ek gelirin nedensel kanıtı değildir.':'Attribution is not proof of incremental revenue.');
+ return lines.join('\\n');
 }
