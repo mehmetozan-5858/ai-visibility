@@ -35,16 +35,17 @@ export async function POST(req){
 export async function GET(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const previewIsolated=process.env.VERCEL_ENV==='production'||process.env.ZERA_ISOLATED_PREVIEW_DB==='verified';
+ const adminConfigured=Boolean(process.env.ADMIN_PASSWORD&&process.env.AUTH_SECRET);
  const configuredProviders={
   gemini:Boolean(process.env.GEMINI_API_KEY),
   openai:Boolean(process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY||process.env.AI_GATEWAY_API_KEY),
   perplexity:Boolean(process.env.PERPLEXITY_API_KEY)
  };
  return Response.json({pilotId:'ZERA-DE-001',role:'customer',publicAuditQueries:AUDIT_TASKS.length,
-  safeToRegister:previewIsolated,providerConfigured:Object.values(configuredProviders).some(Boolean),
+  safeToRegister:previewIsolated&&adminConfigured,adminConfigured,providerConfigured:Object.values(configuredProviders).some(Boolean),
   evidenceProviderConnected:false,verifiedAuditCount:null,
   autoExecutionReady:false,reportReady:false,
-  blockers:[...(!previewIsolated?['preview-database-isolation-unverified']:[]),
+  blockers:[...(!previewIsolated?['preview-database-isolation-unverified']:[]),...(!adminConfigured?['admin-auth-missing']:[]),
    'independent-provider-evidence-worker-not-connected','customer-report-automation-not-connected'],
   note:'Configuration readiness only; no customer record or live scan is asserted.'});
 }
