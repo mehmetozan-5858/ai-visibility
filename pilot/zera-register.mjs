@@ -1,10 +1,17 @@
-import {findClientByIdentity,addClient} from '../lib/repository.js';
-import {upsertClientProfile} from '../lib/client-profile.js';
 import {createPilot} from './zera-pilot.mjs';
-/** Owner-controlled one-time pilot registration. Never guesses an official website. */
-export async function registerZeraPilot({approved=false,find=findClientByIdentity,add=addClient,profile=upsertClientProfile}={}){
+/** Pilot registration: inject dependencies in tests, load actual Next.js repository only when invoked. */
+export async function registerZeraPilot({approved=false,find,add,profile}={}){
  if(!approved)throw new Error('Registration requires explicit owner approval');
  const p=createPilot();
+ if(!find||!add){
+   const repository=await import('../lib/repository.js');
+   find??=repository.findClientByIdentity;
+   add??=repository.addClient;
+ }
+ if(!profile){
+   const mod=await import('../lib/client-profile.js');
+   profile=mod.upsertClientProfile;
+ }
  const existing=await find(p.brand,'');
  if(existing)return {clientId:existing.id,created:false,status:'existing',pilotId:p.id};
  const row=await add({name:p.brand,domain:'',plan:'Pilot',competitors:[]});
