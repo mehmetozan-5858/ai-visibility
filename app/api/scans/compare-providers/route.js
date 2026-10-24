@@ -3,6 +3,7 @@ import {getClient} from '../../../../lib/repository';
 import {compareCustomerProviders} from '../../../../lib/customer-provider-comparison.mjs';
 import {storeCustomerComparison} from '../../../../lib/customer-comparison-storage.mjs';
 import {reservePilotAiAllowance} from '../../../../lib/customer-ai-allowance.mjs';
+import {zeraRegistrationGate} from '../../../../pilot/zera-registration-gate.mjs';
 /** Shared customer-neutral comparison, explicit admin-only and cost-gated. */
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
@@ -10,12 +11,13 @@ export async function POST(req){
  if(process.env.CUSTOMER_AI_COMPARE_ENABLED!=='true')return Response.json({error:'Provider calls disabled until explicitly budget-authorized'},{status:409});
  try{
   const {clientId,query,providers,persist=false,confirmPilotBudget=false}=await req.json();
-  if(persist===true&&process.env.VERCEL_ENV!=='production')return Response.json({error:'Preview database isolation unverified; saving disabled before any provider calls'},{status:409});
+  const gate=zeraRegistrationGate(process.env);
+  if(!gate.allowed)return Response.json({error:'Isolated pilot environment not enabled',reason:gate.reason},{status:409});
   if(typeof clientId!=='string'||!clientId.trim())return Response.json({error:'Client ID required'},{status:400});
   const client=await getClient(clientId);
   if(!client)return Response.json({error:'Customer not found'},{status:404});
   if(confirmPilotBudget!==true)return Response.json({error:'Explicit pilot budget confirmation required'},{status:409});
-  if(process.env.VERCEL_ENV!=='production')return Response.json({error:'Pilot calls require isolated production controls'},{status:409});
+
   if(String(client.name).trim().toLowerCase()!=='zera clothing'||client.plan!=='Pilot')return Response.json({error:'Budget authorization limited to ZERA pilot'},{status:403});
   const selected=providers??['gemini','openai','perplexity'];
   if(!Array.isArray(selected)||!selected.length||selected.length>3||new Set(selected).size!==selected.length||selected.some(p=>!['gemini','openai','perplexity'].includes(p)))return Response.json({error:'Invalid provider selection'},{status:400});
