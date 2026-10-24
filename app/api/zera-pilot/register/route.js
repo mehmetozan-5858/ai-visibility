@@ -1,6 +1,6 @@
-import {requireAdmin,enforceSameOrigin} from '../../../lib/api-security';
-import {registerZeraPilot} from '../../../pilot/zera-register.mjs';
-import {getClient} from '../../../lib/repository';
+import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
+import {registerZeraPilot} from '../../../../pilot/zera-register.mjs';
+import {getClient} from '../../../../lib/repository';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const badOrigin=enforceSameOrigin(req);if(badOrigin)return badOrigin;
