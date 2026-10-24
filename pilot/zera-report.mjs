@@ -22,7 +22,15 @@ export function buildPilotReport(records,{asOf=new Date().toISOString()}={}){
    integrity:{evidenceOnly:true,sourceRequired:true,unknownNotZero:true},
    nextStep:progress.completed===AUDIT_TASKS.length?'review_findings':'execute_authorized_public_scans'};
 }
-export function formatPilotReportMarkdown(report,{language='tr'}={}){
+export function resolveReportLanguage({country='',language=''}={}){
+ const explicit=String(language||'').trim().toLowerCase();
+ if(explicit==='tr'||explicit==='tr-tr')return 'tr';
+ if(explicit==='en'||explicit==='en-us'||explicit==='en-gb')return 'en';
+ const region=String(country||'').trim().toLowerCase();
+ return ['tr','turkey','türkiye','turkiye'].includes(region)?'tr':'en';
+}
+export function formatPilotReportMarkdown(report,{language='',country='DE'}={}){
+ language=resolveReportLanguage({country,language});
  const tr=String(language).toLowerCase().startsWith('tr');
  const esc=s=>String(s??'').replace(/[\\r\\n|]/g,' ').slice(0,800);
  const lines=[`# ZERA ${tr?'Pilot Raporu':'Pilot Report'} — ${esc(report.asOf)}`,
