@@ -25,3 +25,8 @@ The existing `docs/DATA_MODEL.md` describes Client, Scan and AgentJob as a conce
 - `app/api/client-portal/route.js` verifies signed `ai_client` cookies, loads the account by `session.clientId`, and checks `customerAccess`.
 - These observations establish PostgreSQL support but **do not prove** a physical `clients(id UUID)` table or UUID client IDs.
 - Do not execute the draft migration until the repository's actual account storage schema and client ID type are verified. In particular, avoid coupling to `clients(id UUID)` merely because the conceptual data model uses `Client`.
+
+## Confirmed physical schema (2026-10-24)
+- `lib/repository.js` defines `CREATE TABLE IF NOT EXISTS clients (id UUID PRIMARY KEY, ...)` and `scans.client_id UUID REFERENCES clients(id)`. Therefore the launch draft's UUID client FK matches this repository's PostgreSQL schema definition.
+- `addClient` uses `crypto.randomUUID()`; `getClient` queries by parameterized ID. Demo fallback uses non-UUID `demo-1` in `lib/store.js`, so never grant launch entitlements for demo-only clients.
+- This is code-level verification, not inspection of production DB state. Migration, RLS, permissions, pooling and tenant isolation still require isolated database tests and explicit approval.
