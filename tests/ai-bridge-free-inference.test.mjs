@@ -62,3 +62,27 @@ test("missing returned model identity fails closed",async()=>{
  const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled:true,fetcher});
  assert.equal(r.reason,"unexpected-model");
 });
+
+test("rejects free-token model with nonzero per-request or other prices",()=>{
+  assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:"0",request:"0.01"}}],id),null);
+  assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:"0",image:"0.1"}}],id),null);
+  assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:"0",web_search:"0.02"}}],id),null);
+});
+test("rejects unknown and invalid ancillary pricing values",()=>{
+  assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:"0",request:null}}],id),null);
+  assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:"0",request:""}}],id),null);
+  assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:"0",request:"unknown"}}],id),null);
+});
+test("accepts catalog model only when all listed pricing fields are zero",()=>{
+  assert.deepEqual(selectFreeModel([{...model,pricing:{prompt:"0",completion:"0",request:"0",image:0,web_search:"0"}}],id),{id});
+});
+test("rejects model with free token pricing but chargeable request before inference",async()=>{
+  const calls=[];
+  const fetcher=async (url,opts)=>{
+    calls.push(url);
+    return {ok:true,json:async()=>({data:[{...model,pricing:{prompt:"0",completion:"0",request:"0.03"}}]})};
+  };
+  const result=await runFreeBridgeTask({modelId:id,prompt:"review",apiKey:"test",enabled:true,fetcher});
+  assert.equal(result.reason,"model-not-verified-free");
+  assert.equal(calls.length,1);
+});
