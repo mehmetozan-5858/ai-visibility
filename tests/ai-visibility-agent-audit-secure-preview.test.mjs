@@ -67,3 +67,10 @@ test("invalid time and missing loader fail before querying entitlement",async()=
  assert.equal((await prepare({...base,loadAggregatedMetrics:null,entitlementDb:db})).reason,"metrics-loader-unavailable");
  assert.equal(queried,false);
 });
+
+test("rejects duplicate agent rows from trusted metrics loader",async()=>{
+ const r=await prepare({...base,loadAggregatedMetrics:async()=>[sample,{...sample,runs:40,failures:1}]});
+ assert.equal(r.ok,false);
+ assert.equal(r.reason,"duplicate-agent-id");
+ assert.equal(r.agents,undefined);
+});
