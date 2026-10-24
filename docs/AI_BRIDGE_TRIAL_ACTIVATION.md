@@ -14,3 +14,6 @@ Every trial is restricted to 1 model, 350 requested output tokens, a short user 
 No `AI_BRIDGE_INFERENCE_ENABLED` or API key environment variable has been created by this PR. No API requests to OpenRouter were made. The user's existing read-only **AI Bridge MCP plugin** has NOT changed. Adding an MCP model-call tool requires updating and redeploying the separate MCP server, which is not present in accessible GitHub repositories.
 
 To activate later: provider account with hard zero-spend controls, private key, server-side switch, a single explicit approved trial, cost verification, and disable when not needed. Do not deploy the trial route merely to make a test run. Continue AI Visibility development in the meantime.
+
+## Read-only Vercel environment check — 24 October 2026
+The existing `ai-visibility` Vercel project was inspected without decrypting values. Neither `OPENROUTER_API_KEY` nor `AI_BRIDGE_INFERENCE_ENABLED` was present among its environment-variable names. Therefore no real provider call is currently possible through this staged route. Do not invent a key, silently enable inference, or deploy as a workaround. Obtain a provider-issued server-side key and verified zero-spend controls before a user-approved sandbox activation.
