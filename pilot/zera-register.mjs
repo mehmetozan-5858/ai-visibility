@@ -9,6 +9,6 @@ export async function registerZeraPilot({approved=false,find=findClientByIdentit
  if(existing)return {clientId:existing.id,created:false,status:'existing',pilotId:p.id};
  const row=await add({name:p.brand,domain:'',plan:'Pilot',competitors:[]});
  if(!row?.persisted)throw new Error('Persistent database unavailable: registration not complete');
- await profile(row.id,{country:'Germany',city:'Wetzlar',sector:'Women's clothing',contactEmail:p.email,requestedService:'Free public-scope GEO/AEO pilot'});
+ await profile(row.id,{country:'Germany',city:'Wetzlar',sector:"Women's clothing",contactEmail:p.email,requestedService:'Free public-scope GEO/AEO pilot'});
  return {clientId:row.id,created:true,status:'registered',pilotId:p.id};
 }
