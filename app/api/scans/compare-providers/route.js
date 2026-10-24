@@ -9,6 +9,7 @@ export async function POST(req){
  if(process.env.CUSTOMER_AI_COMPARE_ENABLED!=='true')return Response.json({error:'Provider calls disabled until explicitly budget-authorized'},{status:409});
  try{
   const {clientId,query,providers,persist=false}=await req.json();
+  if(persist===true&&process.env.VERCEL_ENV!=='production')return Response.json({error:'Preview database isolation unverified; saving disabled before any provider calls'},{status:409});
   if(typeof clientId!=='string'||!clientId.trim())return Response.json({error:'Client ID required'},{status:400});
   const client=await getClient(clientId);
   if(!client)return Response.json({error:'Customer not found'},{status:404});
@@ -16,7 +17,6 @@ export async function POST(req){
    gemini:process.env.GEMINI_API_KEY,openai:process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY,perplexity:process.env.PERPLEXITY_API_KEY
   }});
   if(persist===true){
-   if(process.env.VERCEL_ENV!=='production')return Response.json({error:'Preview database isolation unverified; saving disabled',result,stored:false},{status:409});
    const storage=await storeCustomerComparison({clientId,comparison:result});
    return Response.json({...result,storage,stored:true,reportReady:false});
   }
