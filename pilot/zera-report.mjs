@@ -22,7 +22,7 @@ export function buildPilotReport(records,{asOf=new Date().toISOString()}={}){
    integrity:{evidenceOnly:true,sourceRequired:true,unknownNotZero:true},
    nextStep:progress.completed===AUDIT_TASKS.length?'review_findings':'execute_authorized_public_scans'};
 }
-export function formatPilotReportMarkdown(report,{language='en'}={}){
+export function formatPilotReportMarkdown(report,{language='tr'}={}){
  const tr=String(language).toLowerCase().startsWith('tr');
  const esc=s=>String(s??'').replace(/[\\r\\n|]/g,' ').slice(0,800);
  const lines=[`# ZERA ${tr?'Pilot Raporu':'Pilot Report'} — ${esc(report.asOf)}`,
