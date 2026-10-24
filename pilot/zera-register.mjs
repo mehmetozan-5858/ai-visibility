@@ -13,6 +13,7 @@ export async function registerZeraPilot({approved=false,find,add,profile}={}){
   add??=repository.addClient;
  }
  const existing=await find(p.brand,'');
+ if(existing && (String(existing.name||'').trim().toLocaleLowerCase('en')!==p.brand.toLocaleLowerCase('en') || String(existing.domain||'').trim()))throw new Error('Existing client identity requires manual review');
  const row=existing||await add({name:p.brand,domain:'',plan:'Pilot',competitors:[]});
  if(!row?.id || (!existing&&!row?.persisted))throw new Error('Persistent database unavailable: registration not complete');
  if(!profile){const mod=await import('../lib/client-profile.js');profile=mod.upsertClientProfile;}
