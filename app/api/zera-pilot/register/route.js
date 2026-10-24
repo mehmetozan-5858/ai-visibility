@@ -2,12 +2,13 @@ import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {registerZeraPilot} from '../../../../pilot/zera-register.mjs';
 import {getClient,createScan,listScans} from '../../../../lib/repository';
 import {AUDIT_TASKS} from '../../../../pilot/zera-audit-queue.mjs';
+import {zeraRegistrationGate} from '../../../../pilot/zera-registration-gate.mjs';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const badOrigin=enforceSameOrigin(req);if(badOrigin)return badOrigin;
  // Preview cannot write until dedicated isolation has been independently verified.
- if(process.env.VERCEL_ENV!=='production' && process.env.ZERA_ISOLATED_PREVIEW_DB!=='verified')
-   return Response.json({error:'Preview DB isolation not verified; registration disabled'},{status:409});
+ const gate=zeraRegistrationGate(process.env);
+ if(!gate.allowed)return Response.json({error:'Pilot registration unavailable',reason:gate.reason},{status:409,headers:{'Cache-Control':'private, no-store'}});
  try{
   const body=await req.json();
   if(body?.pilotId!=='ZERA-DE-001'||body?.confirmPublicPilot!==true)
