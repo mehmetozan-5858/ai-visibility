@@ -21,3 +21,22 @@ test("sensitive services require dated consent",async()=>{
  assert.equal((await read({...input,db:{query:async()=>({rows:[{...row,service_id:serviceId,consent_verified_at:"2026-01-01"}]})}})).allowed,true);
 });
 test("database failure denies access",async()=>assert.equal((await read({...base,db:{query:async()=>{throw Error("offline")}}})).allowed,false));
+
+test("explicit null consent never authorizes either sensitive service",async()=>{
+ for(const serviceId of ["candidate-rediscovery","voice-revenue-agent"]){
+  const result=await read({...base,serviceId,db:{query:async()=>({rows:[{...row,service_id:serviceId,consent_verified_at:null}]})}});
+  assert.equal(result.allowed,false);
+  assert.equal(result.reason,"consent-required");
+ }
+});
+test("future, invalid and missing consent fail closed",async()=>{
+ for(const consent_verified_at of ["2099-01-01T00:00:00Z","invalid",undefined]){
+  const result=await read({...base,serviceId:"candidate-rediscovery",db:{query:async()=>({rows:[{...row,service_id:"candidate-rediscovery",consent_verified_at}]})}});
+  assert.equal(result.allowed,false);
+ }
+});
+test("null validity start cannot be treated as 1970",async()=>{
+ const result=await read({...base,db:db([{...row,valid_from:null}])});
+ assert.equal(result.allowed,false);
+ assert.equal(result.reason,"entitlement-expired");
+});
