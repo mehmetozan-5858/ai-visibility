@@ -6,7 +6,7 @@ const product={clientId:id,productId:"sku_1",aiMentions:1,categoryMentions:20,ca
 test("produces high-priority human-review recommendations",()=>{
  const r=plan({authorizedClientId:id,products:[product]});
  assert.equal(r.ok,true);assert.equal(r.summary.actionCount,2);
- assert.deepEqual(r.actions.map(x=>x.action),["review-product-catalog-details","review-ai-discoverability"]);
+ assert.deepEqual(r.actions.map(x=>x.action),["review-ai-discoverability","review-product-catalog-details"]);
  assert.equal(r.actions[0].priority,"high");assert.equal(r.externalActionsEnabled,false);
 });
 test("rejects cross-tenant inputs",()=>{
