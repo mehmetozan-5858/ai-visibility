@@ -1,5 +1,6 @@
 import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
 import {runFreeBridgeTask} from "../../../lib/ai-bridge-free-inference.mjs";
+import {bridgeTrialReadiness} from "../../../lib/ai-bridge-trial-readiness.mjs";
 
 const noStore={"Cache-Control":"private, no-store, max-age=0"};
 const respond=(data,status=200)=>Response.json(data,{status,headers:noStore});
@@ -8,6 +9,11 @@ const MODEL_ALLOWLIST=new Set([
   "google/gemma-4-26b-a4b-it:free",
   "google/gemma-4-31b-it:free",
 ]);
+
+export async function GET(req){
+  const denied=await requireAdmin(req);if(denied)return denied;
+  return respond(bridgeTrialReadiness(process.env));
+}
 
 /**
  * Admin-only explicit one-model trial. Disabled by default.
