@@ -19,3 +19,10 @@ test('verified result requires evidence',()=>{
  const report=buildPilotReport([observed]);
  assert.equal(report.progress.completed,1);assert.equal(report.pendingTasks.length,6);
 });
+
+test('reports support Turkish and English while the evidence remains unchanged',()=>{
+ const report=buildPilotReport(buildAuditQueue(),{asOf:'2026-10-24'});
+ assert.match(formatPilotReportMarkdown(report,{language:'tr'}),/Henüz doğrulanmış tarama sonucu yok/);
+ assert.match(formatPilotReportMarkdown(report,{language:'en'}),/No verified scan results yet/);
+ assert.equal(report.pendingTasks.length,7);
+});
