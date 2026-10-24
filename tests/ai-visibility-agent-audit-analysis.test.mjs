@@ -25,3 +25,14 @@ test("does not copy raw prompts or secrets to output",()=>{
  assert.equal(JSON.stringify(r).includes("PRIVATE PROMPT"),false);
  assert.equal(JSON.stringify(r).includes("SECRET"),false);
 });
+
+test("rejects duplicate agent identifiers to prevent double-counted reports",()=>{
+ const r=analyze({agents:[agent,{...agent,runs:10,failures:1,humanHandoffs:0}]});
+ assert.equal(r.ok,false);
+ assert.equal(r.reason,"duplicate-agent-id");
+});
+test("different agent identifiers remain independent",()=>{
+ const r=analyze({agents:[agent,{...agent,id:"agent_2"}]});
+ assert.equal(r.ok,true);
+ assert.equal(r.summary.agentCount,2);
+});
