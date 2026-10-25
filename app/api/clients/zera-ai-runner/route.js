@@ -49,6 +49,8 @@ export async function POST(req){
    client_id UUID NOT NULL,task_id TEXT NOT NULL,status TEXT NOT NULL,
    comparison_id UUID,created_at TIMESTAMPTZ DEFAULT NOW(),
    PRIMARY KEY(client_id,task_id))`);
+  const prior=await existing(pool,client.id);
+  if(prior.length)return Response.json({error:'Previous attempt exists; automatic further calls blocked',attempts:prior},{status:409,headers:noStore});
   const results=[];
   for(const task of TASKS){
    // A durable claim is made BEFORE each call; parallel clicks cannot duplicate requests.
@@ -72,6 +74,6 @@ export async function POST(req){
     break;
    }
   }
-  return Response.json({results,googleSearchTasks:'not-executed',visibilityScore:null},{headers:noStore});
+  return Response.json({results,googleSearchTasks:'not-executed',visibilityScore:null,summary:results.find(r=>r.status==='provider-failed'||r.status==='error')?.reason||'Completed or already attempted'},{headers:noStore});
  }catch{return Response.json({error:'Queue execution stopped; check attempt status before any retry'},{status:503,headers:noStore})}
 }

@@ -26,7 +26,7 @@ export default function ZeraCustomerDetail(){
  async function startOneScan(){if(!run.ready||run.used||run.busy)return;
   setRun(v=>({...v,busy:true,message:"Gemini görevleri sırayla çalışıyor…"}));
   try{const response=await fetch("/api/clients/zera-ai-runner",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({confirmTwoFreeGeminiTasks:true})});const data=await response.json();
-   setRun(v=>({...v,busy:false,used:true,ready:false,message:response.ok?(data.results||[]).some(r=>r.status==="stored")?"Kaydedilen AI yanıtları var. Sonuçları görmek için sayfayı yenile.":"Sağlayıcı yanıtı kaydedilemedi; otomatik tekrar denenmeyecek.":"Tarama sonucu: "+(data.error||data.status||"Hata")+"; otomatik tekrar denenmeyecek."}));
+   setRun(v=>({...v,busy:false,used:true,ready:false,message:response.ok?(data.results||[]).some(r=>r.status==="stored")?"Kaydedilen AI yanıtları var. Sonuçları görmek için sayfayı yenile.":"Sağlayıcı yanıtı kaydedilemedi: "+(data.summary||"neden belirtilmedi")+"; otomatik tekrar denenmeyecek.":"Tarama sonucu: "+(data.error||data.status||"Hata")+"; otomatik tekrar denenmeyecek."}));
   }catch{setRun(v=>({...v,busy:false,used:true,ready:false,message:"Bağlantı kesildi; kayıt kontrol edilmeden yeniden denemeyin."}))}
  }
  return <main style={{maxWidth:820,margin:"36px auto",padding:20,lineHeight:1.6}}>
