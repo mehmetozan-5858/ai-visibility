@@ -9,6 +9,7 @@ export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const invalidOrigin=enforceSameOrigin(req);if(invalidOrigin)return invalidOrigin;
  if(process.env.CUSTOMER_AI_COMPARE_ENABLED!=='true')return Response.json({error:'Provider calls disabled until explicitly budget-authorized'},{status:409});
+ if(process.env.ZERA_PROVIDER_BILLING_CAP_VERIFIED!=='true')return Response.json({error:'Provider billing cap must be verified before paid pilot scans'},{status:409});
  try{
   const {clientId,query,providers,persist=false,confirmPilotBudget=false}=await req.json();
   const gate=zeraRegistrationGate(process.env);
