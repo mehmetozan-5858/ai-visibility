@@ -19,7 +19,7 @@ export async function proxy(req){
   if(sandboxPreview&&!paddleSandboxPath)return new NextResponse("Not found",{status:404});
   if(authorizedAgentCycle(req))return NextResponse.next();
   const publicPages=["/robots.txt","/sitemap.xml","/AIVisibilityWorks-IndexNow-20261016-A7K9M2Q4.txt","/metodoloji","/yapay-zeka-gorunurlugu","/","/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/musteri-sifre-sifirla","/demo","/yeni-musteri","/on-degerlendirme"];
-  const publicPath=(pathname==="/api/broker-contact"&&req.method==="POST")||pathname==="/api/free-assessment"||pathname==="/api/paddle/webhook"||pathname==="/api/webhooks/resend"||pathname==="/login"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname==="/api/leads"||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/")||pathname.startsWith("/api/cron/")||pathname==="/api/creator-hunt";
+  const publicPath=(pathname==="/api/broker-contact"&&req.method==="POST")||pathname==="/api/free-assessment"||pathname==="/api/paddle/webhook"||pathname==="/api/webhooks/resend"||pathname==="/login"||pathname==="/api/zera-pilot/db-health"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname==="/api/leads"||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/")||pathname.startsWith("/api/cron/")||pathname==="/api/creator-hunt";
   if(paddleSandboxPath){
     if(sandboxPreview)return NextResponse.next();
     return new NextResponse("Not found",{status:404});
