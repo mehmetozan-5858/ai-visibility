@@ -9,12 +9,13 @@ export default function ZeraPilotPage(){
  const report=buildPilotReport(buildAuditQueue(pilot),{asOf:'2026-10-24'});
  const card={border:'1px solid #d1d5db',padding:'16px',borderRadius:'12px',marginBottom:'12px'};
  return <main style={{maxWidth:880,margin:'36px auto',padding:20,fontFamily:'Arial,sans-serif',lineHeight:1.55}}>
-  <aside style={{padding:14,background:"#fff1c2",color:"#423006",borderRadius:10,fontWeight:700,marginBottom:18}}>TEST ORTAMI — Bu pilot ayrı veritabanındadır. Ana AI Visibility raporları burada görünmez.</aside>\n  <p style={{fontSize:12,letterSpacing:2}}>AI VISIBILITY / PILOT 001</p>
+  <aside style={{padding:14,background:"#fff1c2",color:"#423006",borderRadius:10,fontWeight:700,marginBottom:18}}>TEST ORTAMI — Bu pilot ayrı veritabanındadır. Ana AI Visibility raporları burada görünmez.</aside>
+  <p style={{fontSize:12,letterSpacing:2}}>AI VISIBILITY / PILOT 001</p>
   <h1>ZERA Clothing — Wetzlar</h1>
   <p>Customer report default: <strong>{resolveReportLanguage({country:pilot.country})==='en'?'English':'Türkçe'}</strong>. Owner may choose Turkish or English independently.</p>
   <p><strong>Consent:</strong> public-information analysis approved. Private accounts, order data, and changes to business profiles are not authorized.</p>
   <RegisterPilotButton/>
-  <section style={card}><h2>Audit status</h2><p><strong>{report.progress.completed} of {report.progress.total}</strong> provider audits verified.</p><p>Live scan provider is not configured for this pilot; no test or example output is displayed as a result.</p></section>
+  <section style={card}><h2>Audit status</h2><p><strong>{report.progress.completed} of {report.progress.total}</strong> provider audits verified.</p><p>No verified live AI analysis has been recorded for this pilot. Queued queries are not completed results.</p></section>
   <section style={card}><h2>Starting reference</h2><p>Instagram: {pilot.baseline.instagramFollowers.toLocaleString('tr-TR')} followers, {pilot.baseline.instagramPosts} posts (owner-provided screenshot dated {pilot.baseline.asOf}; not API verified).</p><p>Company-owned website: not yet confirmed. Search branding ambiguity: exploratory research lead, not a measured sales loss.</p></section>
   <section style={card}><h2>Provider scan queue</h2><ul>{buildAuditQueue(pilot).map(t=><li key={t.id}><strong>{t.channel}</strong> / {t.locale}: {t.query} — <em>awaiting verified scan</em></li>)}</ul></section>
   <section style={card}><h2>Outcome measurement</h2><p>Verified attributable orders: not connected. Revenue: unknown. An unknown value must never be reported as zero.</p><p>Final customer report: not ready. English is the default for this German customer; Turkish is available for owner review.</p></section>
