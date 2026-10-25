@@ -39,5 +39,5 @@ export async function POST(req){
 
 export async function GET(req){
  const denied=await requireAdmin(req);if(denied)return denied;
- return Response.json({enabled:process.env.CUSTOMER_AI_COMPARE_ENABLED==='true',providers:{gemini:Boolean(process.env.GEMINI_API_KEY),openai:Boolean(process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY),perplexity:Boolean(process.env.PERPLEXITY_API_KEY)},costHardCap:false},{headers:{'Cache-Control':'no-store'}});
+ return Response.json({enabled:process.env.CUSTOMER_AI_COMPARE_ENABLED==='true',providers:{gemini:Boolean(process.env.GEMINI_API_KEY),openai:Boolean(process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY),perplexity:Boolean(process.env.PERPLEXITY_API_KEY)},billingCapVerified:process.env.ZERA_PROVIDER_BILLING_CAP_VERIFIED==='true',costHardCap:false},{headers:{'Cache-Control':'no-store'}});
 }
