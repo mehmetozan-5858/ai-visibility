@@ -44,3 +44,12 @@ test("truthy misconfigured feature flags cannot unlock any role",()=>{
   assert.equal(result.reason,"feature-disabled",role);
  }
 });
+
+test("unknown and inherited Object property roles have no permissions",()=>{
+ for(const role of ["constructor","toString","__proto__","hasOwnProperty","unknown",null,undefined,{},[],1]) {
+  assert.deepEqual(launchRolePermissions(role),[],String(role));
+ }
+ for(const role of ["owner","manager","analyst","viewer","agent"]) {
+  assert.ok(launchRolePermissions(role).includes("service:read"),role);
+ }
+});
