@@ -62,3 +62,62 @@ test("missing returned model identity fails closed",async()=>{
  const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled:true,fetcher});
  assert.equal(r.reason,"unexpected-model");
 });
+
+
+test("catalog zero price requires explicit numeric or canonical zero-string values",()=>{
+ for (const bad of ["", " ", " 0", "0 ", false, true, null, [], {}, "unknown", "-0.00", "0.0001"]) {
+   assert.equal(selectFreeModel([{...model,pricing:{prompt:bad,completion:"0"}}],id),null,String(bad));
+   assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:bad}}],id),null,String(bad));
+ }
+ for (const good of [0,"0","0.0","0.000","0e-8"]) {
+   assert.deepEqual(selectFreeModel([{...model,pricing:{prompt:good,completion:"0"}}],id),{id});
+ }
+});
+test("additional catalog charge dimensions must also be explicitly zero",()=>{
+ for (const extra of [{request:"0.01"},{image:1},{audio:"unknown"},{input_cache_read:null},{web_search:" "}]){
+   assert.equal(selectFreeModel([{...model,pricing:{...model.pricing,...extra}}],id),null,JSON.stringify(extra));
+ }
+ assert.deepEqual(selectFreeModel([{...model,pricing:{...model.pricing,request:"0",image:0}}],id),{id});
+});
+test("invalid catalog prices block inference before a completion request",async()=>{
+ const calls=[];
+ const fetcher=async url=>{
+   calls.push(url);
+   return {ok:true,json:async()=>({data:[{...model,pricing:{prompt:"",completion:"0"}}]})};
+ };
+ const r=await runFreeBridgeTask({modelId:id,prompt:"test",apiKey:"test",enabled:true,fetcher});
+ assert.equal(r.reason,"model-not-verified-free");
+ assert.equal(calls.length,1);
+});
+test("ambiguous reported provider cost is not accepted as free",async()=>{
+ for (const cost of ["", " ", false, [], {}, "0 ", "0.01"]) {
+   const fetcher=async url=>url.endsWith("/models")?
+     {ok:true,json:async()=>({data:[model]})}:
+     {ok:true,json:async()=>({model:id,choices:[{message:{content:"ok"}}],usage:{cost}})};
+   const r=await runFreeBridgeTask({modelId:id,prompt:"test",apiKey:"test",enabled:true,fetcher});
+   assert.equal(r.reason,"nonzero-cost-reported",String(cost));
+ }
+});
+
+test("only boolean true can enable inference; malformed flags make no requests",async()=>{
+ for(const enabled of ["false","true",1,0,null,{},[]]){
+  const calls=[];
+  const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled,fetcher:mock(calls)});
+  assert.equal(r.reason,"inference-disabled",String(enabled));
+  assert.equal(calls.length,0,String(enabled));
+ }
+});
+test("duplicate catalog identities fail closed even if one record is free",async()=>{
+ const paid={...model,pricing:{prompt:"0.01",completion:"0"}};
+ assert.equal(selectFreeModel([model,paid],id),null);
+ assert.equal(selectFreeModel([paid,model],id),null);
+ assert.equal(selectFreeModel([model,model],id),null);
+ const calls=[];
+ const fetcher=async url=>{
+  calls.push(url);
+  return {ok:true,json:async()=>({data:[model,paid]})};
+ };
+ const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled:true,fetcher});
+ assert.equal(r.reason,"model-not-verified-free");
+ assert.equal(calls.length,1);
+});
