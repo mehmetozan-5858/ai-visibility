@@ -65,3 +65,15 @@ test("no arbitrary entitlement metadata, prompts or secrets are reflected",()=>{
  assert.equal(JSON.stringify(r).includes("DO_NOT_EXPOSE"),false);
  assert.equal(JSON.stringify(r).includes("PRIVATE"),false);
 });
+
+test("plan boundary rejects malformed revocation flags for all services",()=>{
+ for(const [id,capability,sensitive] of catalog){
+  const base=request(id,capability);
+  assert.equal(plan({...base,entitlement:{...base.entitlement,revoked:"true"}}).ok,false);
+  assert.equal(plan({...base,entitlement:{...base.entitlement,revoked:null}}).ok,false);
+  if(sensitive){
+   assert.equal(plan({...base,entitlement:{...base.entitlement,consentRevoked:"true"}}).reason,"verified-consent-required");
+   assert.equal(plan({...base,entitlement:{...base.entitlement,consentRevoked:null}}).reason,"verified-consent-required");
+  }
+ }
+});
