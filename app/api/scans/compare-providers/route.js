@@ -24,6 +24,7 @@ export async function POST(req){
   const providerKeys={gemini:process.env.GEMINI_API_KEY,openai:process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY,perplexity:process.env.PERPLEXITY_API_KEY};
   const unavailable=selected.filter(p=>!providerKeys[p]);
   if(unavailable.length)return Response.json({error:'Provider credentials unavailable',providers:unavailable},{status:409});
+  if(typeof query!=='string'||!query.trim()||query.length>500)return Response.json({error:'Invalid query'},{status:400});
   const reservation=await reservePilotAiAllowance({pilotId:'ZERA-DE-001',providerCount:selected.length});
   if(!reservation.allowed)return Response.json({error:'Pilot request allowance exhausted'},{status:429});
   const result=await compareCustomerProviders({client,query,providers:selected,keys:providerKeys});
