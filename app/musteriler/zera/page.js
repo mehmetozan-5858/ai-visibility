@@ -18,15 +18,15 @@ export default function ZeraCustomerDetail(){
   if(alive)setMeasurements({loading:false,error:"",comparisons:data.comparisons||[],verifiedCount:data.verifiedCount||0});
  }catch(e){if(alive)setMeasurements({loading:false,error:e.message,comparisons:[],verifiedCount:0})}})();return()=>{alive=false}},[]);
  useEffect(()=>{let alive=true;(async()=>{try{
-  const [a,b]=await Promise.all([fetch("/api/clients/zera-scan-readiness",{credentials:"same-origin",cache:"no-store"}),fetch("/api/clients/zera-single-scan",{credentials:"same-origin",cache:"no-store"})]);
+  const [a,b]=await Promise.all([fetch("/api/clients/zera-scan-readiness",{credentials:"same-origin",cache:"no-store"}),fetch("/api/clients/zera-ai-runner",{credentials:"same-origin",cache:"no-store"})]);
   if(!a.ok||!b.ok)throw Error("Hazırlık durumu okunamadı");
   const readiness=await a.json(),history=await b.json();
-  if(alive)setRun({ready:readiness.ready===true,loading:false,busy:false,used:history.attemptUsed===true,message:history.attemptUsed?"Önceki deneme: "+history.status:readiness.ready?"Tek denemeye hazır":"Tarama güvenlik kilidi kapalı; ücretli çağrı yapılmadı."});
+  if(alive)setRun({ready:readiness.ready===true,loading:false,busy:false,used:(history.attempts||[]).length>0,message:(history.attempts||[]).length>0?"AI görev durumu: "+history.tasks.map(t=>t.id+" "+t.status).join(", "):readiness.ready?"İki Gemini sorgusu tek onayla sırayla çalıştırılabilir.":"Tarama güvenlik kilidi kapalı; API çağrısı yapılmadı."});
  }catch{if(alive)setRun({ready:false,loading:false,busy:false,used:false,message:"Hazırlık durumu şu anda kontrol edilemiyor."})}})();return()=>{alive=false}},[]);
  async function startOneScan(){if(!run.ready||run.used||run.busy)return;
-  setRun(v=>({...v,busy:true,message:"Tek Gemini denemesi yapılıyor…"}));
-  try{const response=await fetch("/api/clients/zera-single-scan",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({confirmOneFreeGeminiAttempt:true})});const data=await response.json();
-   setRun(v=>({...v,busy:false,used:true,ready:false,message:response.ok?"Yanıt kaydedildi. Sonuçları görmek için sayfayı yenile.":"Tarama sonucu: "+(data.error||data.status||"Hata")+"; otomatik tekrar denenmeyecek."}));
+  setRun(v=>({...v,busy:true,message:"Gemini görevleri sırayla çalışıyor…"}));
+  try{const response=await fetch("/api/clients/zera-ai-runner",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({confirmTwoFreeGeminiTasks:true})});const data=await response.json();
+   setRun(v=>({...v,busy:false,used:true,ready:false,message:response.ok?(data.results||[]).some(r=>r.status==="stored")?"Kaydedilen AI yanıtları var. Sonuçları görmek için sayfayı yenile.":"Sağlayıcı yanıtı kaydedilemedi; otomatik tekrar denenmeyecek.":"Tarama sonucu: "+(data.error||data.status||"Hata")+"; otomatik tekrar denenmeyecek."}));
   }catch{setRun(v=>({...v,busy:false,used:true,ready:false,message:"Bağlantı kesildi; kayıt kontrol edilmeden yeniden denemeyin."}))}
  }
  return <main style={{maxWidth:820,margin:"36px auto",padding:20,lineHeight:1.6}}>
@@ -50,10 +50,10 @@ export default function ZeraCustomerDetail(){
      <p><a href="/taramalar">Taramalar bölümünü aç →</a></p>
     </section>
     <section className="panel" style={{padding:18,marginBottom:16}}>
-     <h2>Tek kontrollü AI denemesi</h2>
+     <h2>İki AI görevini sırayla çalıştır</h2>
      <p>{run.loading?"Güvenlik koşulları kontrol ediliyor…":run.message}</p>
-     <button disabled={run.loading||run.busy||run.used||!run.ready} onClick={startOneScan} style={{padding:"12px 18px",borderRadius:9,cursor:run.ready&&!run.used?"pointer":"not-allowed"}}>{run.busy?"Çalışıyor…":"ZERA için tek Gemini sorgusunu çalıştır"}</button>
-     <p style={{fontSize:13}}>Bu işlem yalnızca açık onayla bir kez çalışır. Ücretli grounding, Perplexity ve OpenAI çağrıları kapalıdır.</p>
+     <button disabled={run.loading||run.busy||run.used||!run.ready} onClick={startOneScan} style={{padding:"12px 18px",borderRadius:9,cursor:run.ready&&!run.used?"pointer":"not-allowed"}}>{run.busy?"Çalışıyor…":"ZERA Gemini görevlerini tek onayla çalıştır"}</button>
+     <p style={{fontSize:13}}>Bu işlem en fazla iki Gemini API çağrısı yapar, ilk hatada durur ve otomatik tekrar denemez. Google arama görevleri bu çalıştırıcıya dahil değildir. Ücretli grounding, Perplexity ve OpenAI çağrıları kapalıdır.</p>
     </section>
     <section className="panel" style={{padding:18}}>
      <h2>Sonraki aşama</h2><p>API model erişimini doğrula; maliyeti sınırlı gerçek sorguları çalıştır; ham yanıtları ve kaynak kanıtlarını bu müşteriyle ilişkilendir.</p>
