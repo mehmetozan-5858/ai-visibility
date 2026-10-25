@@ -41,5 +41,5 @@ export async function GET(req){
  if(!exists.rows[0]?.table_name)return Response.json({status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
  const result=await pool.query("SELECT created_at,result FROM zera_first_gemini_attempts WHERE id='ZERA-GEMINI-INITIAL'");
  const entry=result.rows[0];
- return Response.json(entry?{status:entry.result?'completed':'attempt-started',createdAt:entry.created_at,comparison:entry.result}:{status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
+ return Response.json(entry?{status:entry.result?(entry.result.results?.some(r=>r.status==='failed'||r.status==='empty-answer'||r.status==='not-configured')?'failed':'response-recorded'):'attempt-started',createdAt:entry.created_at,comparison:entry.result}:{status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
 }
