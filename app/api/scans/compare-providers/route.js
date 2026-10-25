@@ -34,3 +34,8 @@ export async function POST(req){
   return Response.json({...result,stored:false,reportReady:false});
  }catch(e){return Response.json({error:'Provider comparison failed',detail:String(e?.message||e).slice(0,120)},{status:400})}
 }
+
+export async function GET(req){
+ const denied=await requireAdmin(req);if(denied)return denied;
+ return Response.json({enabled:process.env.CUSTOMER_AI_COMPARE_ENABLED==='true',providers:{gemini:Boolean(process.env.GEMINI_API_KEY),openai:Boolean(process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY),perplexity:Boolean(process.env.PERPLEXITY_API_KEY)},costHardCap:false},{headers:{'Cache-Control':'no-store'}});
+}
