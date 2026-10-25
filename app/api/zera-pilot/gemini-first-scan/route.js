@@ -31,3 +31,15 @@ export async function POST(req){
  await pool.query('UPDATE zera_first_gemini_attempts SET result=$1 WHERE id=$2',[JSON.stringify(comparison),'ZERA-GEMINI-INITIAL']);
  return Response.json({comparison,warning:'One observed provider answer is not a verified visibility ranking.'},{headers:{'Cache-Control':'private, no-store'}});
 }
+
+export async function GET(req){
+ const denied=await requireAdmin(req);if(denied)return denied;
+ const gate=zeraRegistrationGate(process.env);
+ if(!gate.allowed)return Response.json({error:'Isolated preview required'},{status:403});
+ const pool=databasePool(getDatabaseUrl());
+ const exists=await pool.query("SELECT to_regclass('public.zera_first_gemini_attempts') AS table_name");
+ if(!exists.rows[0]?.table_name)return Response.json({status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
+ const result=await pool.query("SELECT created_at,result FROM zera_first_gemini_attempts WHERE id='ZERA-GEMINI-INITIAL'");
+ const entry=result.rows[0];
+ return Response.json(entry?{status:entry.result?'completed':'attempt-started',createdAt:entry.created_at,comparison:entry.result}:{status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
+}
