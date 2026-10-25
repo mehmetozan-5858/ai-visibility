@@ -50,3 +50,19 @@ test("invalid server evaluation time cannot grant access",()=>{
    assert.equal(resolve({...base,now:invalidNow}).reason,"entitlement-expired-or-unverifiable");
  }
 });
+
+test("malformed revocation fields never grant active service access",()=>{
+ for (const revoked of ["true","false",null,0,1,{},[]]) {
+  assert.equal(resolve({...base,entitlement:{...base.entitlement,revoked}}).reason,"service-entitlement-required");
+ }
+ assert.equal(resolve({...base,entitlement:{...base.entitlement,revoked:false}}).allowed,true);
+});
+test("malformed consent revocation fields cannot unlock sensitive services",()=>{
+ for (const serviceId of ["candidate-rediscovery","voice-revenue-agent"]) {
+  const entitlement={...base.entitlement,serviceId,consentVerified:true};
+  for (const consentRevoked of ["true","false",null,0,1,{},[]]) {
+   assert.equal(resolve({...base,serviceId,entitlement:{...entitlement,consentRevoked}}).reason,"verified-consent-required");
+  }
+  assert.equal(resolve({...base,serviceId,entitlement:{...entitlement,consentRevoked:false}}).allowed,true);
+ }
+});
