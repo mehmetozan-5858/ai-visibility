@@ -62,3 +62,19 @@ test("mutable catalogue response copies cannot modify server policy", () => {
     tenantId:"t", serviceId:"candidate-rediscovery", capability:"unapproved-action", consent:true
   }).reason, "unsupported-capability");
 });
+
+test("launch plans reject malformed tenant identifiers before authorization wiring", () => {
+  for (const tenantId of [" tenant_01", "tenant_01 ", "../tenant", "tenant\nother", "tenant@other", "x".repeat(129)]) {
+    const result=planLaunchService({tenantId,serviceId:"agent-audit-control",capability:"agent-run-review"});
+    assert.deepEqual(result,{ok:false,reason:"invalid-tenant"},JSON.stringify(tenantId));
+  }
+});
+
+test("launch plans preserve valid UUID and scoped tenant identifiers", () => {
+  for (const tenantId of ["customer_01", "f93c9a78-0c2d-4e32-a1be-66dd99ff0001"]) {
+    const result=planLaunchService({tenantId,serviceId:"agent-audit-control",capability:"agent-run-review"});
+    assert.equal(result.ok,true,tenantId);
+    assert.equal(result.tenantId,tenantId);
+    assert.equal(result.executes,false);
+  }
+});
