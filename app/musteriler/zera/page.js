@@ -2,6 +2,7 @@
 import {useEffect,useState} from "react";
 export default function ZeraCustomerDetail(){
  const [state,setState]=useState({loading:true,client:null,error:""});
+ const [measurements,setMeasurements]=useState({loading:true,error:"",comparisons:[],verifiedCount:0});
  useEffect(()=>{let alive=true;(async()=>{try{
   const response=await fetch("/api/clients",{cache:"no-store",credentials:"same-origin"});
   if(!response.ok)throw Error("Yönetici oturumu veya müşteri listesi erişimi gerekiyor.");
@@ -9,6 +10,12 @@ export default function ZeraCustomerDetail(){
   const client=(data.clients||[]).find(c=>c.name==="ZERA Clothing"&&c.plan==="Pilot");
   if(alive)setState({loading:false,client,error:client?"":"ZERA Production müşteri kaydı bulunamadı."});
  }catch(e){if(alive)setState({loading:false,client:null,error:e.message})}})();return()=>{alive=false}},[]);
+ useEffect(()=>{let alive=true;(async()=>{try{
+  const response=await fetch("/api/clients/zera-results",{cache:"no-store",credentials:"same-origin"});
+  if(!response.ok)throw Error("Kayıtlı AI sonuçları şu anda okunamıyor.");
+  const data=await response.json();
+  if(alive)setMeasurements({loading:false,error:"",comparisons:data.comparisons||[],verifiedCount:data.verifiedCount||0});
+ }catch(e){if(alive)setMeasurements({loading:false,error:e.message,comparisons:[],verifiedCount:0})}})();return()=>{alive=false}},[]);
  return <main style={{maxWidth:820,margin:"36px auto",padding:20,lineHeight:1.6}}>
   <a href="/musteriler">← Müşteriler</a>
   <h1>ZERA Clothing</h1><p>Production müşteri profili · Wetzlar, Germany</p>
@@ -21,7 +28,11 @@ export default function ZeraCustomerDetail(){
     </section>
     <section className="panel" style={{padding:18,marginBottom:16}}>
      <h2>Gerçek AI ölçümü</h2>
-     <p>Bu müşteri için Production ortamında doğrulanmış Gemini/Perplexity analizi henüz kaydedilmedi. Preview testindeki 7 planlı sorgu, Production ölçüm sonucu değildir.</p>
+     {measurements.loading?<p>Kaydedilmiş AI sonuçları okunuyor…</p>:measurements.error?<p role="alert">{measurements.error}</p>:<>
+      <p><b>Kaydedilmiş karşılaştırma:</b> {measurements.comparisons.length} · <b>Kaynak destekli yanıt:</b> {measurements.verifiedCount}</p>
+      {measurements.comparisons.length===0?<p>Production ortamında henüz kayıtlı AI karşılaştırması yok. Preview testindeki 7 planlı sorgu, Production ölçüm sonucu değildir.</p>:
+       <ul>{measurements.comparisons.map(row=><li key={row.id} style={{marginBottom:12}}><b>{row.query}</b><ul>{row.results.map((result,index)=><li key={result.provider+"-"+index}>{result.provider}: {result.status} · {result.verified?"Kaynak destekli":"Doğrulanmamış"}{result.sourceUrl?<span> · <a href={result.sourceUrl} target="_blank" rel="noopener noreferrer">Kaynak</a></span>:null}</li>)}</ul></li>)}</ul>}
+     </>}
      <p>Başarısız HTTP yanıtları, marka görünürlük ölçümüne dahil edilemez. Ölçüm tamamlanmadan skor veya satış tahmini verilmez.</p>
      <p><a href="/taramalar">Taramalar bölümünü aç →</a></p>
     </section>
