@@ -10,7 +10,7 @@ export default function GeminiPilotMonitor(){
   }catch{setStatus({error:'Durum okunamadı'})}finally{setBusy(false)}
  }
  async function runOnce(){
-  if(busy||status?.status==='completed'||status?.status==='attempt-started')return;
+  if(busy||['completed','response-recorded','failed','attempt-started'].includes(status?.status))return;
   setBusy(true);
   try{
    const response=await fetch('/api/zera-pilot/gemini-first-scan',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({confirmSingleGeminiScan:true})});
@@ -24,10 +24,10 @@ export default function GeminiPilotMonitor(){
   <h2>Gerçek Gemini pilot izlemesi</h2>
   <p>İlk test tek sorguyla sınırlandırılmıştır. Tekrar çalıştırma otomatik engellenir. Sonuçlar kaydedilerek gözden geçirilir.</p>
   <button type="button" disabled={busy} onClick={readStatus} style={{padding:10,marginRight:8}}>Kaydedilmiş sonucu kontrol et</button>
-  <button type="button" disabled={busy||status?.status==='completed'||status?.status==='attempt-started'} onClick={runOnce} style={{padding:10}}>İlk tek sorguyu başlat</button>
+  <button type="button" disabled={busy||['completed','response-recorded','failed','attempt-started'].includes(status?.status)} onClick={runOnce} style={{padding:10}}>İlk tek sorguyu başlat</button>
   {busy&&<p role="status">İşlem sürüyor…</p>}
   {status?.error&&<p role="alert">{status.error} {status.httpStatus||''}</p>}
-  {status?.status&&<p role="status">Tarama durumu: {status.status}</p>}
+  {status?.status&&<p role="status">Tarama durumu: {status.status==='failed'?'Başarısız deneme kaydedildi':status.status==='response-recorded'?'Yanıt kaydedildi':status.status==='attempt-started'?'Deneme başlatıldı':status.status}</p>}
   {result&&<div><p>Sağlayıcı: {result.provider} · Yanıt durumu: {result.status} · Marka: {result.brandMention||'bilinmiyor'}</p><p>Kaynak desteği: {result.verified?'Var':'Doğrulanamadı'}</p>{result.evidence?.sourceUrl&&<p><a href={result.evidence.sourceUrl} target="_blank" rel="noopener noreferrer">Kaynak bağlantısı</a></p>}<p style={{whiteSpace:'pre-wrap'}}>{result.answer||result.reason||'Yanıt alınmadı'}</p><small>Bu sonuç, marka sıralaması veya satış artışının kanıtı değildir.</small></div>}
  </section>;
 }
