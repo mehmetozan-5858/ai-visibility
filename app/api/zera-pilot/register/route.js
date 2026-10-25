@@ -15,6 +15,7 @@ export async function POST(req){
    return Response.json({error:'Explicit ZERA public pilot confirmation required'},{status:400});
   const result=await registerZeraPilot({approved:true});
   const client=await getClient(result.clientId);
+  if(!client||String(client.id)!==String(result.clientId))throw Error('Pilot registration readback mismatch');
   // Registering this authorized pilot creates its persistent audit queue,
   // but intentionally never incurs provider charges or claims completed audits.
   const queries=AUDIT_TASKS.map(t=>t.query);
