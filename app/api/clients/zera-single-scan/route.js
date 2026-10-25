@@ -37,3 +37,20 @@ export async function POST(req){
   return Response.json({status:'stored',saved:true,comparisonId:saved.id,verifiedCount:comparison.verifiedCount,visibilityScore:null},{headers:{'Cache-Control':'private, no-store'}});
  }catch{return Response.json({error:'Attempt failed; verify state before any retry'},{status:503})}
 }
+
+
+/** Admin-only read of the one-shot attempt. Never starts scans or changes data. */
+export async function GET(req){
+ const denied=await requireAdmin(req);if(denied)return denied;
+ if(process.env.VERCEL_ENV!=='production')return Response.json({error:'Production only'},{status:403});
+ try{
+  const client=await findClientByIdentity('ZERA Clothing','');
+  if(!client?.id||client.plan!=='Pilot')return Response.json({error:'ZERA Pilot missing'},{status:404});
+  const db=getDatabaseUrl();if(!db)return Response.json({error:'Database unavailable'},{status:503});
+  const pool=databasePool(db);
+  const exists=await pool.query("SELECT to_regclass('public.zera_production_scan_attempts') AS table_name");
+  if(!exists.rows[0]?.table_name)return Response.json({status:'not-started',attemptUsed:false},{headers:{'Cache-Control':'private, no-store'}});
+  const result=await pool.query("SELECT status,created_at AS \"createdAt\" FROM zera_production_scan_attempts WHERE id='first-free-gemini' AND client_id=$1 LIMIT 1",[client.id]);
+  return Response.json(result.rows[0]?{status:result.rows[0].status,createdAt:result.rows[0].createdAt,attemptUsed:true}:{status:'not-started',attemptUsed:false},{headers:{'Cache-Control':'private, no-store'}});
+ }catch{return Response.json({error:'Attempt status unavailable'},{status:503})}
+}
