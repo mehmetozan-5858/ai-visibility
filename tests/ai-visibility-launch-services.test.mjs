@@ -64,7 +64,7 @@ test("mutable catalogue response copies cannot modify server policy", () => {
 });
 
 test("launch plans reject malformed tenant identifiers before authorization wiring", () => {
-  for (const tenantId of [" tenant_01", "tenant_01 ", "../tenant", "tenant\\nother", "tenant@other", "x".repeat(129)]) {
+  for (const tenantId of [" tenant_01", "tenant_01 ", "../tenant", "tenant\nother", "tenant@other", "x".repeat(129)]) {
     const result=planLaunchService({tenantId,serviceId:"agent-audit-control",capability:"agent-run-review"});
     assert.deepEqual(result,{ok:false,reason:"invalid-tenant"},JSON.stringify(tenantId));
   }
