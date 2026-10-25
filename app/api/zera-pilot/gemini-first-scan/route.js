@@ -23,12 +23,16 @@ export async function POST(req){
  if(!url)return Response.json({error:'Isolated database unavailable'},{status:503});
  const pool=databasePool(url);
  await pool.query('CREATE TABLE IF NOT EXISTS zera_first_gemini_attempts (id TEXT PRIMARY KEY, created_at TIMESTAMPTZ DEFAULT NOW(), result JSONB)');
- const claim=await pool.query("INSERT INTO zera_first_gemini_attempts(id) VALUES('ZERA-GEMINI-INITIAL') ON CONFLICT DO NOTHING RETURNING id");
- if(!claim.rows.length)return Response.json({error:'Initial scan already attempted; no duplicate API call permitted'},{status:409});
+ const first=await pool.query("SELECT result FROM zera_first_gemini_attempts WHERE id='ZERA-GEMINI-INITIAL'");
+ const failed=first.rows[0]?.result?.results?.some(r=>r.status==='failed');
+ if(first.rows.length&&!failed)return Response.json({error:'First scan already recorded or in progress'},{status:409});
+ const attemptId=first.rows.length?'ZERA-GEMINI-RETRY-1':'ZERA-GEMINI-INITIAL';
+ const claim=await pool.query('INSERT INTO zera_first_gemini_attempts(id) VALUES($1) ON CONFLICT DO NOTHING RETURNING id',[attemptId]);
+ if(!claim.rows.length)return Response.json({error:'This scan attempt already exists; further retries are blocked'},{status:409});
  const task=buildAuditQueue().find(item=>item.id==='brand-ai-de');
  const client={id:'ZERA-DE-001',name:'ZERA Clothing'};
  const comparison=await compareCustomerProviders({client,query:task.query,providers:['gemini'],keys:{gemini:process.env.GEMINI_API_KEY}});
- await pool.query('UPDATE zera_first_gemini_attempts SET result=$1 WHERE id=$2',[JSON.stringify(comparison),'ZERA-GEMINI-INITIAL']);
+ await pool.query('UPDATE zera_first_gemini_attempts SET result=$1 WHERE id=$2',[JSON.stringify(comparison),attemptId]);
  return Response.json({comparison,warning:'One observed provider answer is not a verified visibility ranking.'},{headers:{'Cache-Control':'private, no-store'}});
 }
 
@@ -39,7 +43,7 @@ export async function GET(req){
  const pool=databasePool(getDatabaseUrl());
  const exists=await pool.query("SELECT to_regclass('public.zera_first_gemini_attempts') AS table_name");
  if(!exists.rows[0]?.table_name)return Response.json({status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
- const result=await pool.query("SELECT created_at,result FROM zera_first_gemini_attempts WHERE id='ZERA-GEMINI-INITIAL'");
+ const result=await pool.query("SELECT created_at,result,id FROM zera_first_gemini_attempts WHERE id IN ('ZERA-GEMINI-INITIAL','ZERA-GEMINI-RETRY-1') ORDER BY created_at DESC,id DESC LIMIT 1");
  const entry=result.rows[0];
- return Response.json(entry?{status:entry.result?(entry.result.results?.some(r=>r.status==='failed'||r.status==='empty-answer'||r.status==='not-configured')?'failed':'response-recorded'):'attempt-started',createdAt:entry.created_at,comparison:entry.result}:{status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
+ return Response.json(entry?{status:entry.result?(entry.result.results?.some(r=>r.status==='failed'||r.status==='empty-answer'||r.status==='not-configured')?'failed':'response-recorded'):'attempt-started',createdAt:entry.created_at,attemptId:entry.id,comparison:entry.result}:{status:'not-started',provider:'gemini'},{headers:{'Cache-Control':'private, no-store'}});
 }
