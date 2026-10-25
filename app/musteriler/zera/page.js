@@ -3,6 +3,7 @@ import {useEffect,useState} from "react";
 export default function ZeraCustomerDetail(){
  const [state,setState]=useState({loading:true,client:null,error:""});
  const [measurements,setMeasurements]=useState({loading:true,error:"",comparisons:[],verifiedCount:0});
+ const [run,setRun]=useState({ready:false,loading:true,busy:false,used:false,message:""});
  useEffect(()=>{let alive=true;(async()=>{try{
   const response=await fetch("/api/clients",{cache:"no-store",credentials:"same-origin"});
   if(!response.ok)throw Error("Yönetici oturumu veya müşteri listesi erişimi gerekiyor.");
@@ -16,6 +17,18 @@ export default function ZeraCustomerDetail(){
   const data=await response.json();
   if(alive)setMeasurements({loading:false,error:"",comparisons:data.comparisons||[],verifiedCount:data.verifiedCount||0});
  }catch(e){if(alive)setMeasurements({loading:false,error:e.message,comparisons:[],verifiedCount:0})}})();return()=>{alive=false}},[]);
+ useEffect(()=>{let alive=true;(async()=>{try{
+  const [a,b]=await Promise.all([fetch("/api/clients/zera-scan-readiness",{credentials:"same-origin",cache:"no-store"}),fetch("/api/clients/zera-single-scan",{credentials:"same-origin",cache:"no-store"})]);
+  if(!a.ok||!b.ok)throw Error("Hazırlık durumu okunamadı");
+  const readiness=await a.json(),history=await b.json();
+  if(alive)setRun({ready:readiness.ready===true,loading:false,busy:false,used:history.attemptUsed===true,message:history.attemptUsed?"Önceki deneme: "+history.status:readiness.ready?"Tek denemeye hazır":"Tarama güvenlik kilidi kapalı; ücretli çağrı yapılmadı."});
+ }catch{if(alive)setRun({ready:false,loading:false,busy:false,used:false,message:"Hazırlık durumu şu anda kontrol edilemiyor."})}})();return()=>{alive=false}},[]);
+ async function startOneScan(){if(!run.ready||run.used||run.busy)return;
+  setRun(v=>({...v,busy:true,message:"Tek Gemini denemesi yapılıyor…"}));
+  try{const response=await fetch("/api/clients/zera-single-scan",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({confirmOneFreeGeminiAttempt:true})});const data=await response.json();
+   setRun(v=>({...v,busy:false,used:true,ready:false,message:response.ok?"Yanıt kaydedildi. Sonuçları görmek için sayfayı yenile.":"Tarama sonucu: "+(data.error||data.status||"Hata")+"; otomatik tekrar denenmeyecek."}));
+  }catch{setRun(v=>({...v,busy:false,used:true,ready:false,message:"Bağlantı kesildi; kayıt kontrol edilmeden yeniden denemeyin."}))}
+ }
  return <main style={{maxWidth:820,margin:"36px auto",padding:20,lineHeight:1.6}}>
   <a href="/musteriler">← Müşteriler</a>
   <h1>ZERA Clothing</h1><p>Production müşteri profili · Wetzlar, Germany</p>
@@ -35,6 +48,12 @@ export default function ZeraCustomerDetail(){
      </>}
      <p>Başarısız HTTP yanıtları, marka görünürlük ölçümüne dahil edilemez. Ölçüm tamamlanmadan skor veya satış tahmini verilmez.</p>
      <p><a href="/taramalar">Taramalar bölümünü aç →</a></p>
+    </section>
+    <section className="panel" style={{padding:18,marginBottom:16}}>
+     <h2>Tek kontrollü AI denemesi</h2>
+     <p>{run.loading?"Güvenlik koşulları kontrol ediliyor…":run.message}</p>
+     <button disabled={run.loading||run.busy||run.used||!run.ready} onClick={startOneScan} style={{padding:"12px 18px",borderRadius:9,cursor:run.ready&&!run.used?"pointer":"not-allowed"}}>{run.busy?"Çalışıyor…":"ZERA için tek Gemini sorgusunu çalıştır"}</button>
+     <p style={{fontSize:13}}>Bu işlem yalnızca açık onayla bir kez çalışır. Ücretli grounding, Perplexity ve OpenAI çağrıları kapalıdır.</p>
     </section>
     <section className="panel" style={{padding:18}}>
      <h2>Sonraki aşama</h2><p>API model erişimini doğrula; maliyeti sınırlı gerçek sorguları çalıştır; ham yanıtları ve kaynak kanıtlarını bu müşteriyle ilişkilendir.</p>
