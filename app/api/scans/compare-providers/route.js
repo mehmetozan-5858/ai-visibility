@@ -21,11 +21,12 @@ export async function POST(req){
   if(String(client.name).trim().toLowerCase()!=='zera clothing'||client.plan!=='Pilot')return Response.json({error:'Budget authorization limited to ZERA pilot'},{status:403});
   const selected=providers??['gemini','openai','perplexity'];
   if(!Array.isArray(selected)||!selected.length||selected.length>3||new Set(selected).size!==selected.length||selected.some(p=>!['gemini','openai','perplexity'].includes(p)))return Response.json({error:'Invalid provider selection'},{status:400});
+  const providerKeys={gemini:process.env.GEMINI_API_KEY,openai:process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY,perplexity:process.env.PERPLEXITY_API_KEY};
+  const unavailable=selected.filter(p=>!providerKeys[p]);
+  if(unavailable.length)return Response.json({error:'Provider credentials unavailable',providers:unavailable},{status:409});
   const reservation=await reservePilotAiAllowance({pilotId:'ZERA-DE-001',providerCount:selected.length});
   if(!reservation.allowed)return Response.json({error:'Pilot request allowance exhausted'},{status:429});
-  const result=await compareCustomerProviders({client,query,providers:selected,keys:{
-   gemini:process.env.GEMINI_API_KEY,openai:process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY,perplexity:process.env.PERPLEXITY_API_KEY
-  }});
+  const result=await compareCustomerProviders({client,query,providers:selected,keys:providerKeys});
   if(persist===true){
    const storage=await storeCustomerComparison({clientId,comparison:result});
    return Response.json({...result,storage,stored:true,reportReady:false});
