@@ -52,7 +52,7 @@ export default function ClientsManager(){
      <div className="empty tall"><b>Henüz gerçek müşteri yok.</b><span>“Yeni müşteri” ile eklediğiniz kayıt Neon veritabanında kalıcı tutulacak.</span></div>:
      <div className="client-list">{clients.map(c=><article className="client-row" key={c.id}>
        <div className="client-avatar">{(c.name||"?").slice(0,1).toUpperCase()}</div>
-       <div><b>{c.name}</b><small>{c.domain}</small><small>{[c.profile?.sector,c.profile?.city,c.profile?.country].filter(Boolean).join(" · ")}</small></div>
+       <div>{c.plan==="Pilot"&&c.name==="ZERA Clothing"?<a href="/zera-pilot" style={{color:"inherit",textDecoration:"underline",textUnderlineOffset:4,fontWeight:700}} aria-label="ZERA Clothing pilot detaylarını aç">{c.name} — Detayları aç</a>:<b>{c.name}</b>}<small>{c.domain}</small><small>{[c.profile?.sector,c.profile?.city,c.profile?.country].filter(Boolean).join(" · ")}</small></div>
        <span>{c.plan}</span><em>{c.status==="active"?"Aktif":c.status}</em>
      </article>)}</div>}
  </section>;
