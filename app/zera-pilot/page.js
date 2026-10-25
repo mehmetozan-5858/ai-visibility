@@ -9,7 +9,7 @@ export default function ZeraPilotPage(){
  const report=buildPilotReport(buildAuditQueue(pilot),{asOf:'2026-10-24'});
  const card={border:'1px solid #d1d5db',padding:'16px',borderRadius:'12px',marginBottom:'12px'};
  return <main style={{maxWidth:880,margin:'36px auto',padding:20,fontFamily:'Arial,sans-serif',lineHeight:1.55}}>
-  <p style={{fontSize:12,letterSpacing:2}}>AI VISIBILITY / PILOT 001</p>
+  <aside style={{padding:14,background:"#fff1c2",color:"#423006",borderRadius:10,fontWeight:700,marginBottom:18}}>TEST ORTAMI — Bu pilot ayrı veritabanındadır. Ana AI Visibility raporları burada görünmez.</aside>\n  <p style={{fontSize:12,letterSpacing:2}}>AI VISIBILITY / PILOT 001</p>
   <h1>ZERA Clothing — Wetzlar</h1>
   <p>Customer report default: <strong>{resolveReportLanguage({country:pilot.country})==='en'?'English':'Türkçe'}</strong>. Owner may choose Turkish or English independently.</p>
   <p><strong>Consent:</strong> public-information analysis approved. Private accounts, order data, and changes to business profiles are not authorized.</p>
