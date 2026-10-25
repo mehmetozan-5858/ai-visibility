@@ -27,3 +27,38 @@ test("valid operation creates a plan without executing", () => {
   assert.equal(plan.requiresAuthenticatedSession,true);
   assert.equal(plan.requiresProductionEnablement,true);
 });
+
+test("catalog and nested capabilities cannot be mutated to bypass consent", () => {
+  assert.equal(Object.isFrozen(LAUNCH_SERVICES), true);
+  for (const service of LAUNCH_SERVICES) {
+    assert.equal(Object.isFrozen(service), true, service.id);
+    assert.equal(Object.isFrozen(service.capabilities), true, service.id);
+  }
+  const candidate = LAUNCH_SERVICES.find(s => s.id === "candidate-rediscovery");
+  const voice = LAUNCH_SERVICES.find(s => s.id === "voice-revenue-agent");
+  assert.throws(() => { candidate.sensitive = false; }, TypeError);
+  assert.throws(() => { voice.capabilities.push("send-outbound-call"); }, TypeError);
+  assert.equal(planLaunchService({
+    tenantId:"t", serviceId:"candidate-rediscovery", capability:"candidate-match-preview"
+  }).reason, "consent-required");
+  assert.equal(planLaunchService({
+    tenantId:"t", serviceId:"voice-revenue-agent", capability:"inbound-call-plan"
+  }).reason, "consent-required");
+  assert.equal(planLaunchService({
+    tenantId:"t", serviceId:"voice-revenue-agent", capability:"send-outbound-call", consent:true
+  }).reason, "unsupported-capability");
+});
+
+test("mutable catalogue response copies cannot modify server policy", () => {
+  const copy = listLaunchServices();
+  const candidate = copy.find(s => s.id === "candidate-rediscovery");
+  candidate.sensitive = false;
+  candidate.capabilities.push("unapproved-action");
+  assert.equal(LAUNCH_SERVICES.find(s => s.id === "candidate-rediscovery").sensitive, true);
+  assert.equal(planLaunchService({
+    tenantId:"t", serviceId:"candidate-rediscovery", capability:"candidate-match-preview"
+  }).reason, "consent-required");
+  assert.equal(planLaunchService({
+    tenantId:"t", serviceId:"candidate-rediscovery", capability:"unapproved-action", consent:true
+  }).reason, "unsupported-capability");
+});
