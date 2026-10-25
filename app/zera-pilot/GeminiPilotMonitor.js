@@ -10,13 +10,13 @@ export default function GeminiPilotMonitor(){
   }catch{setStatus({error:'Durum okunamadı'})}finally{setBusy(false)}
  }
  async function runOnce(){
-  if(busy||['completed','response-recorded','failed','attempt-started'].includes(status?.status))return;
+  if(busy||(['completed','response-recorded','attempt-started'].includes(status?.status)||(status?.status==='failed'&&status?.attemptId==='ZERA-GEMINI-RETRY-1')))return;
   setBusy(true);
   try{
    const response=await fetch('/api/zera-pilot/gemini-first-scan',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({confirmSingleGeminiScan:true})});
    const result=await response.json();
    if(!response.ok){setStatus({error:result.error||'Tarama başlatılamadı',httpStatus:response.status});return;}
-   setStatus({status:'completed',comparison:result.comparison});
+   setStatus({status:result.comparison?.results?.some(r=>r.status==='failed')?'failed':'response-recorded',attemptId:'ZERA-GEMINI-RETRY-1',comparison:result.comparison});
   }catch{setStatus({error:'Bağlantı hatası; yeniden denemeden önce durum kontrolü yapın'})}finally{setBusy(false)}
  }
  const result=status?.comparison?.results?.[0];
@@ -24,7 +24,7 @@ export default function GeminiPilotMonitor(){
   <h2>Gerçek Gemini pilot izlemesi</h2>
   <p>İlk test tek sorguyla sınırlandırılmıştır. Tekrar çalıştırma otomatik engellenir. Sonuçlar kaydedilerek gözden geçirilir.</p>
   <button type="button" disabled={busy} onClick={readStatus} style={{padding:10,marginRight:8}}>Kaydedilmiş sonucu kontrol et</button>
-  <button type="button" disabled={busy||['completed','response-recorded','failed','attempt-started'].includes(status?.status)} onClick={runOnce} style={{padding:10}}>İlk tek sorguyu başlat</button>
+  <button type="button" disabled={busy||(['completed','response-recorded','attempt-started'].includes(status?.status)||(status?.status==='failed'&&status?.attemptId==='ZERA-GEMINI-RETRY-1'))} onClick={runOnce} style={{padding:10}}>{status?.status==='failed'?'Başarısız ilk denemeyi bir kez tekrar et':'İlk tek sorguyu başlat'}</button>
   {busy&&<p role="status">İşlem sürüyor…</p>}
   {status?.error&&<p role="alert">{status.error} {status.httpStatus||''}</p>}
   {status?.status&&<p role="status">Tarama durumu: {status.status==='failed'?'Başarısız deneme kaydedildi':status.status==='response-recorded'?'Yanıt kaydedildi':status.status==='attempt-started'?'Deneme başlatıldı':status.status}</p>}
