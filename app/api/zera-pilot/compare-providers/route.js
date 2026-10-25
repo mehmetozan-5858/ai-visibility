@@ -1,8 +1,11 @@
+import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {compareZeraProviders,ZERA_PROVIDERS} from '../../../../pilot/zera-three-providers.mjs';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const invalidOrigin=enforceSameOrigin(req);if(invalidOrigin)return invalidOrigin;
+ const spendGate=assessZeraProviderSpendGate(process.env);
+ if(!spendGate.allowed)return Response.json({error:spendGate.reason},{status:409,headers:{'Cache-Control':'private, no-store'}});
  if(process.env.ZERA_GROUNDED_AI_ENABLED!=='true')return Response.json({error:'Provider spending is disabled'},{status:409});
  try{
   const body=await req.json();
