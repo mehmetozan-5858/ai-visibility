@@ -1,4 +1,5 @@
 import {createPilot} from '../../pilot/zera-pilot.mjs';
+import RegisterPilotButton from './RegisterPilotButton';
 import {buildAuditQueue} from '../../pilot/zera-audit-queue.mjs';
 import {buildPilotReport,resolveReportLanguage} from '../../pilot/zera-report.mjs';
 export const metadata={title:'ZERA Pilot | AI Visibility'};
@@ -12,6 +13,7 @@ export default function ZeraPilotPage(){
   <h1>ZERA Clothing — Wetzlar</h1>
   <p>Customer report default: <strong>{resolveReportLanguage({country:pilot.country})==='en'?'English':'Türkçe'}</strong>. Owner may choose Turkish or English independently.</p>
   <p><strong>Consent:</strong> public-information analysis approved. Private accounts, order data, and changes to business profiles are not authorized.</p>
+  <RegisterPilotButton/>
   <section style={card}><h2>Audit status</h2><p><strong>{report.progress.completed} of {report.progress.total}</strong> provider audits verified.</p><p>Live scan provider is not configured for this pilot; no test or example output is displayed as a result.</p></section>
   <section style={card}><h2>Starting reference</h2><p>Instagram: {pilot.baseline.instagramFollowers.toLocaleString('tr-TR')} followers, {pilot.baseline.instagramPosts} posts (owner-provided screenshot dated {pilot.baseline.asOf}; not API verified).</p><p>Company-owned website: not yet confirmed. Search branding ambiguity: exploratory research lead, not a measured sales loss.</p></section>
   <section style={card}><h2>Provider scan queue</h2><ul>{buildAuditQueue(pilot).map(t=><li key={t.id}><strong>{t.channel}</strong> / {t.locale}: {t.query} — <em>awaiting verified scan</em></li>)}</ul></section>
