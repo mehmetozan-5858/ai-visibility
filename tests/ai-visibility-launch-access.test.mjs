@@ -29,3 +29,27 @@ test("permission copies do not mutate roles",()=>{
  const copy=launchRolePermissions("owner");copy.push("send:email");
  assert.ok(!launchRolePermissions("owner").includes("send:email"));
 });
+
+test("only explicit boolean true can enable launch preview access",()=>{
+ for(const value of ["false","true",1,0,null,undefined,{},[],["true"]]){
+  const result=ask({featureEnabled:value});
+  assert.deepEqual(result,{allowed:false,reason:"feature-disabled"});
+ }
+ assert.equal(ask({featureEnabled:true}).allowed,true);
+});
+test("truthy misconfigured feature flags cannot unlock any role",()=>{
+ for(const role of ["owner","manager","analyst","viewer","agent"]){
+  const result=ask({membership:{...membership,role},action:"service:read",featureEnabled:"false"});
+  assert.equal(result.allowed,false,role);
+  assert.equal(result.reason,"feature-disabled",role);
+ }
+});
+
+test("unknown and inherited Object property roles have no permissions",()=>{
+ for(const role of ["constructor","toString","__proto__","hasOwnProperty","unknown",null,undefined,{},[],1]) {
+  assert.deepEqual(launchRolePermissions(role),[],String(role));
+ }
+ for(const role of ["owner","manager","analyst","viewer","agent"]) {
+  assert.ok(launchRolePermissions(role).includes("service:read"),role);
+ }
+});
