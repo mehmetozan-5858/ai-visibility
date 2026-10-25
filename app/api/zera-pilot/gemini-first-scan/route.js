@@ -1,3 +1,4 @@
+import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
@@ -9,6 +10,8 @@ import {buildAuditQueue} from '../../../../pilot/zera-audit-queue.mjs';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const origin=enforceSameOrigin(req);if(origin)return origin;
+ const spendGate=assessZeraProviderSpendGate(process.env);
+ if(!spendGate.allowed)return Response.json({error:spendGate.reason},{status:409,headers:{'Cache-Control':'private, no-store'}});
  const gate=zeraRegistrationGate(process.env);
  if(!gate.allowed||process.env.VERCEL_GIT_COMMIT_REF!=='feat/zera-pilot-full-package')
   return Response.json({error:'Isolated preview required'},{status:403});

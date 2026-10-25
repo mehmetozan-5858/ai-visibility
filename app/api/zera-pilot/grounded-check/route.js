@@ -1,9 +1,12 @@
+import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {runGroundedZeraCheck} from '../../../../pilot/zera-grounded-gemini.mjs';
 import {AUDIT_TASKS} from '../../../../pilot/zera-audit-queue.mjs';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const badOrigin=enforceSameOrigin(req);if(badOrigin)return badOrigin;
+ const spendGate=assessZeraProviderSpendGate(process.env);
+ if(!spendGate.allowed)return Response.json({error:spendGate.reason},{status:409,headers:{'Cache-Control':'private, no-store'}});
  // Stateless single-task probe: never writes to client DB; keep spending opt-in.
  if(process.env.ZERA_GROUNDED_AI_ENABLED!=='true')
   return Response.json({error:'Grounded AI scanning requires explicit budget authorization'},{status:409});

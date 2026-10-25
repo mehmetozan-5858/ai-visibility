@@ -1,3 +1,4 @@
+import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
 import {buildAuditQueue} from '../../../../pilot/zera-audit-queue.mjs';
 import {createPilot} from '../../../../pilot/zera-pilot.mjs';
 import {requireAdmin} from '../../../../lib/api-security';
@@ -8,9 +9,11 @@ export async function GET(req){
  const preview=process.env.VERCEL_ENV==='preview';
  const production=process.env.VERCEL_ENV==='production';
  const databaseConfigured=Boolean(process.env.DATABASE_URL||process.env.STORAGE_URL);
- const isolationConfirmed=production || (!preview?false:process.env.ZERA_ISOLATED_PREVIEW_DB==='verified');
+ const isolationConfirmed=preview && process.env.ZERA_ISOLATED_PREVIEW_DB==='verified';
  const providerConfigured=Boolean(process.env.GEMINI_API_KEY||process.env.PERPLEXITY_API_KEY||process.env.OPENAI_API_KEY||process.env.AI_PROVIDER_API_KEY);
+ const spendGate=assessZeraProviderSpendGate(process.env);
  const blockers=[
+  !spendGate.allowed?'provider-spend-hold':null,
   !databaseConfigured?'database-not-configured':null,
   !isolationConfirmed?'database-isolation-not-confirmed':null,
   !providerConfigured?'provider-not-configured':null,
