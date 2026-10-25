@@ -1,3 +1,4 @@
+import {assessZeraOperatorRelease} from '../../../../lib/zera-operator-release-hold.mjs';
 import {requireAdmin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
 
