@@ -83,3 +83,21 @@ test("missing or invalid tenant identity never produces a plan",()=>{
   assert.equal(prepare({accountClientId:"tenant_01\nother"}).ok,false);
   assert.equal(prepare({membership:{...membership,tenantId:"tenant_01\nother"}}).ok,false);
 });
+
+
+test("tenant-owner catalog scope cannot be bypassed by generic agent:plan permission",()=>{
+  for (const role of ["manager","analyst","agent"]) {
+    const roleMembership={...membership,role};
+    for (const [serviceId,capability] of [
+      ["agent-audit-control","agent-run-review"],
+      ["agent-commerce-intelligence","catalog-readiness"],
+    ]) {
+      const scopedEntitlement={...entitlement,serviceId};
+      const result=prepare({membership:roleMembership,serviceId,capability,entitlement:scopedEntitlement});
+      assert.deepEqual(result,{ok:false,reason:"owner-required"});
+    }
+  }
+  assert.equal(prepare({}).ok,true);
+  assert.equal(prepare({serviceId:"agent-commerce-intelligence",capability:"catalog-readiness",
+    entitlement:{...entitlement,serviceId:"agent-commerce-intelligence"}}).ok,true);
+});
