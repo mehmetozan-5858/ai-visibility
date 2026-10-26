@@ -17,6 +17,7 @@ on:
       - 'tests/ai-visibility-launch-*.test.mjs'
       - 'scripts/smoke-arge-preview.mjs'
       - 'scripts/smoke-customer-results-browser.mjs'
+      - 'scripts/check-live-release-evidence.mjs'
       - '.github/workflows/mobile-production-smoke.yml'
   pull_request:
     paths:
@@ -32,6 +33,7 @@ on:
       - 'tests/ai-visibility-launch-*.test.mjs'
       - 'scripts/smoke-arge-preview.mjs'
       - 'scripts/smoke-customer-results-browser.mjs'
+      - 'scripts/check-live-release-evidence.mjs'
       - '.github/workflows/mobile-production-smoke.yml'
 
 permissions:
@@ -75,3 +77,5 @@ jobs:
         run: node scripts/smoke-arge-preview.mjs
       - name: Verify scoped customer result UI with synthetic TR and EN fixtures
         run: node scripts/smoke-customer-results-browser.mjs
+      - name: Verify live GitHub evidence for the previously tested candidate
+        run: node scripts/check-live-release-evidence.mjs 181db0084867bc732fe81f03a39ea1a3d37dcf0e 532ef879660a44f993af8451588f962918d6b7ae
