@@ -5,6 +5,7 @@ import {storeCustomerComparison} from '../../../../lib/customer-comparison-stora
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
 import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
+import {zeraAttemptsSelectQuery} from '../../../../lib/zera-attempts-query.mjs';
 
 const TASKS=ZERA_TASKS.filter(task=>task.channel==='ai-answer');
 const noStore={'Cache-Control':'private, no-store'};
@@ -32,7 +33,9 @@ async function context(){
 async function existing(pool,clientId){
  const table=await pool.query("SELECT to_regclass('public.zera_ai_task_attempts') AS name");
  if(!table.rows[0]?.name)return [];
- const result=await pool.query('SELECT task_id AS "taskId",status,comparison_id AS "comparisonId"'+failureField+' FROM zera_ai_task_attempts WHERE client_id=$1',[clientId]);
+ // Existing installations may not have the additive failure_reason column yet.
+ const column=await pool.query("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='zera_ai_task_attempts' AND column_name='failure_reason') AS present");
+ const result=await pool.query(zeraAttemptsSelectQuery(column.rows[0]?.present===true),[clientId]);
  return result.rows;
 }
 export async function GET(req){
