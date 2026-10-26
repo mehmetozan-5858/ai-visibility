@@ -64,3 +64,25 @@ test("even a catalog-verified free model cannot trigger inference",async()=>{
   assert.deepEqual(result,denied);
   assert.equal(calls,0);
 });
+
+
+test("catalog zero pricing remains strictly typed while execution is held",()=>{
+  for(const bad of ["", " ", " 0", "0 ", false, true, null, [], {}, "unknown", "-0.00", "0.0001"]){
+    assert.equal(selectFreeModel([{...model,pricing:{prompt:bad,completion:"0"}}],id),null,String(bad));
+    assert.equal(selectFreeModel([{...model,pricing:{prompt:"0",completion:bad}}],id),null,String(bad));
+  }
+  for(const good of [0,"0","0.0","0.000","0e-8"]){
+    assert.deepEqual(selectFreeModel([{...model,pricing:{prompt:good,completion:"0"}}],id),{id});
+  }
+});
+
+test("additional provider charges and duplicate catalog entries remain disallowed",()=>{
+  for(const extra of [{request:"0.01"},{image:1},{audio:"unknown"},{input_cache_read:null},{web_search:" "}]){
+    assert.equal(selectFreeModel([{...model,pricing:{...model.pricing,...extra}}],id),null,JSON.stringify(extra));
+  }
+  assert.deepEqual(selectFreeModel([{...model,pricing:{...model.pricing,request:"0",image:0}}],id),{id});
+  const paid={...model,pricing:{prompt:"0.01",completion:"0"}};
+  assert.equal(selectFreeModel([model,paid],id),null);
+  assert.equal(selectFreeModel([paid,model],id),null);
+  assert.equal(selectFreeModel([model,model],id),null);
+});
