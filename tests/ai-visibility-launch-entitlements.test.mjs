@@ -66,3 +66,25 @@ test("malformed consent revocation fields cannot unlock sensitive services",()=>
   assert.equal(resolve({...base,serviceId,entitlement:{...entitlement,consentRevoked:false}}).allowed,true);
  }
 });
+
+// The entitlement resolver is also a public pure policy boundary. It must not
+// approve malformed tenant IDs even when the session, account and grant match.
+test("malformed tenant IDs cannot pass direct service entitlement checks",()=>{
+ const invalidIds=["../other","tenant\\nother"," tenant_1 ","tenant/1","üser","a".repeat(129)];
+ for(const serviceId of ["agent-audit-control","agent-commerce-intelligence","candidate-rediscovery","voice-revenue-agent"]){
+  for(const clientId of invalidIds){
+   const entitlement={...base.entitlement,clientId,serviceId,
+    consentVerified:true,consentRevoked:false};
+   const result=resolve({...base,sessionClientId:clientId,accountClientId:clientId,serviceId,entitlement});
+   assert.deepEqual(result,{allowed:false,reason:"account-session-mismatch"},
+    `${serviceId} must reject malformed client ID ${JSON.stringify(clientId)}`);
+  }
+ }
+});
+
+test("canonical 128-character tenant ID remains valid",()=>{
+ const clientId="a".repeat(128);
+ const result=resolve({...base,sessionClientId:clientId,accountClientId:clientId,
+  entitlement:{...base.entitlement,clientId}});
+ assert.equal(result.allowed,true);
+});
