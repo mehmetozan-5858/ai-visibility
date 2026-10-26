@@ -1,6 +1,7 @@
 import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
 import {runFreeBridgeTask} from "../../../lib/ai-bridge-free-inference.mjs";
 import {bridgeTrialReadiness} from "../../../lib/ai-bridge-trial-readiness.mjs";
+import {assessBridgeInferenceRelease} from "../../../lib/ai-bridge-release-hold.mjs";
 
 const noStore={"Cache-Control":"private, no-store, max-age=0"};
 const respond=(data,status=200)=>Response.json(data,{status,headers:noStore});
@@ -12,7 +13,9 @@ const MODEL_ALLOWLIST=new Set([
 
 export async function GET(req){
   const denied=await requireAdmin(req);if(denied)return denied;
-  return respond(bridgeTrialReadiness(process.env));
+  const release=assessBridgeInferenceRelease();
+  return respond({...bridgeTrialReadiness(process.env), releaseApproved:release.allowed,
+    configuredForTrial:false, nextAction:"await-explicit-release-approval"});
 }
 
 /**
@@ -22,6 +25,8 @@ export async function GET(req){
 export async function POST(req){
   const denied=await requireAdmin(req);if(denied)return denied;
   const origin=enforceSameOrigin(req);if(origin)return origin;
+  const release=assessBridgeInferenceRelease();
+  if(!release.allowed)return respond({ok:false,reason:release.reason},409);
   const rate=checkRateLimit(req,{bucket:"ai-bridge-free-inference",limit:2,windowMs:60*60*1000});
   if(rate)return rate;
   if(process.env.AI_BRIDGE_INFERENCE_ENABLED!=="true")
