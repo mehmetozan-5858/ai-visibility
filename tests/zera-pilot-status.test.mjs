@@ -9,6 +9,6 @@ test('combined pilot status is admin-only, read-only and seven-task aware',()=>{
  assert.match(route,/zera_google_evidence_reviews/);
  assert.match(route,/zera_owned_site_observations/);
  assert.doesNotMatch(route,/INSERT INTO|ALTER TABLE|CREATE TABLE|compareCustomerProviders|collectZeraOwnedSite/);
- assert.match(route,/providerCallsExecuted:0/);
+ assert.match(route,/providerCallsTriggeredByStatusRequest:0/);
  assert.match(route,/visibilityScore:null/);
 });
