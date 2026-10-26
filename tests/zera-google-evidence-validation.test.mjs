@@ -30,3 +30,10 @@ test('review candidates stay unverified and cannot masquerade as completed evide
  assert.equal(candidate.evidence.status,'pending-review');
  assert.equal(validateZeraGoogleEvidence(base,{requireVerified:false}).ok,false);
 });
+
+test('private and numeric source hosts cannot be staged as evidence',()=>{
+ for(const sourceUrl of ['https://127.0.0.1/private','https://192.168.1.3/','https://10.0.0.4/','https://service.internal/','https://host.local/','https://[::1]/']){
+  const result=validateZeraGoogleEvidence({...base,sourceUrl,verified:false},{requireVerified:false});
+  assert.equal(result.ok,false,sourceUrl);
+ }
+});
