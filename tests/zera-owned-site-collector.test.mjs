@@ -29,3 +29,11 @@ test('endpoint is admin-only, same-origin and cannot mark Google tasks done',()=
  assert.match(source,/googleTasksCompleted:0/);
  assert.match(source,/saved:false/);
 });
+
+test('first-party collection stores only an unverified observation, never a Google score',()=>{
+ const source=readFileSync(new URL('../app/api/clients/zera-owned-site/route.js',import.meta.url),'utf8');
+ assert.match(source,/zera_owned_site_observations/);
+ assert.match(source,/ON CONFLICT\(client_id,source_url\)/);
+ assert.match(source,/verified:false,googleTasksCompleted:0,visibilityScore:null/);
+ assert.match(source,/result\.status!=='collected'/);
+});
