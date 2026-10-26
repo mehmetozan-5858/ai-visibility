@@ -5,11 +5,10 @@ import {storeCustomerComparison} from '../../../../lib/customer-comparison-stora
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
 import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
+import {safeZeraProviderReason} from '../../../../lib/zera-safe-provider-reason.mjs';
 
 const TASKS=ZERA_TASKS.filter(task=>task.channel==='ai-answer');
 const noStore={'Cache-Control':'private, no-store'};
-// These labels are intentionally safe: never expose provider keys, raw responses or DB details.
-const safeProviderReason=(reason)=>String(reason||'no-answer').slice(0,120);
 
 function permitted(){
  return process.env.VERCEL_ENV==='production'&&
@@ -64,7 +63,7 @@ export async function POST(req){
     const response=comparison.results.find(r=>r.provider==='gemini');
     if(!response||!['source-supported-answer','answer-received-unverified'].includes(response.status)){
      await pool.query("UPDATE zera_ai_task_attempts SET status='provider-failed' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]);
-     results.push({taskId:task.id,status:'provider-failed',stage:'provider',reason:safeProviderReason(response?.reason||response?.status)});
+     results.push({taskId:task.id,status:'provider-failed',stage:'provider',reason:safeZeraProviderReason(response?.reason||response?.status)});
      // Stop at first failure; never burn remaining quota on a failing provider.
      break;
     }
