@@ -67,7 +67,11 @@ export async function POST(req){
   for(const task of TASKS){
    // A durable claim is made BEFORE each call; parallel clicks cannot duplicate requests.
    const claim=await pool.query("INSERT INTO zera_ai_task_attempts(client_id,task_id,status) VALUES($1,$2,'started') ON CONFLICT DO NOTHING RETURNING task_id",[client.id,task.id]);
-   if(!claim.rows.length){results.push({taskId:task.id,status:'already-attempted'});continue}
+   if(!claim.rows.length){
+     // Another request owns this task. Never advance to a later provider call.
+     results.push({taskId:task.id,status:'already-attempted'});
+     break;
+    }
    try{
     const comparison=await compareCustomerProviders({client,query:task.query,providers:['gemini'],keys:{gemini:process.env.GEMINI_API_KEY}});
     const response=comparison.results.find(r=>r.provider==='gemini');
