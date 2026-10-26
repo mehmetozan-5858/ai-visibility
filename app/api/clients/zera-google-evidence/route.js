@@ -27,8 +27,9 @@ export async function POST(req){
  const origin=enforceSameOrigin(req);if(origin)return origin;
  // Recording a source for human review never performs a search or verifies the claim.
  let body;try{body=await req.json()}catch{return Response.json({error:'Invalid JSON'},{status:400,headers})}
- if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!['taskId','query','sourceUrl','observation','verified'].includes(k)))
+ if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!['taskId','query','sourceUrl','observation','verified','claimsZeraIdentity'].includes(k)))
   return Response.json({error:'Invalid evidence fields'},{status:400,headers});
+ // Identity claims must never be inferred from an ambiguous business name.
  const checked=validateZeraGoogleEvidence({...body,verified:true});
  if(!checked.ok)return Response.json({error:checked.reason},{status:400,headers});
  // Refuse caller-asserted verification. No API-only path to upgrade status to verified.
