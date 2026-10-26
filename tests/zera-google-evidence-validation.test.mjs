@@ -22,3 +22,11 @@ test('similarly named third-party businesses cannot prove the ZERA pilot identit
  assert.equal(validateZeraGoogleEvidence({...base,claimsZeraIdentity:true}).ok,false);
  assert.equal(validateZeraGoogleEvidence({...base,claimsZeraIdentity:true,sourceUrl:'https://ze-ra.de/'}).ok,true);
 });
+
+test('review candidates stay unverified and cannot masquerade as completed evidence',()=>{
+ const candidate=validateZeraGoogleEvidence({...base,verified:false},{requireVerified:false});
+ assert.equal(candidate.ok,true);
+ assert.equal(candidate.evidence.verified,false);
+ assert.equal(candidate.evidence.status,'pending-review');
+ assert.equal(validateZeraGoogleEvidence(base,{requireVerified:false}).ok,false);
+});
