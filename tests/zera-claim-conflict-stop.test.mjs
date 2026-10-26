@@ -8,7 +8,7 @@ import {readFileSync} from 'node:fs';
 const route=readFileSync(new URL('../app/api/clients/zera-ai-runner/route.js',import.meta.url),'utf8');
 
 test('ZERA concurrent claim conflict stops the queue before later provider calls',()=>{
- const block=route.match(/if\s*\(\s*!claim\.rows\.length\s*\)\s*\{([^}]*)\}/);
+ const block=route.match(/if\s*\(\s*!claim\.rows\.length\s*\)\s*\{([\s\S]*?)\n    \}/);
  assert.ok(block,'expected explicit conflict handling for durable claim');
  assert.match(block[1],/\bbreak\s*;/,'conflict must end the task loop');
  assert.doesNotMatch(block[1],/\bcontinue\s*;/,'conflict must not advance to the next task');
