@@ -1,19 +1,31 @@
-# AI Bridge inference activation checklist (AI Visibility Works)
+# AI Bridge inference — release hold and future activation checklist
 
-State: staged in PR #90; **not active in production**.
+**Current state (26 October 2026): HARD DISABLED / NOT RELEASED.**
+This document describes prerequisites for a possible future, separately approved trial. It is **not** an activation guide for the current branch or production.
 
-A new `POST /api/admin-ai-bridge-trial` endpoint can invoke one allowlisted free OpenRouter model only after:
-- Existing AI Visibility admin session is verified (same admin cookie as existing protected routes).
-- Same-origin request check passes and the admin trial rate limit is not exhausted (2 requests/hour/IP).
-- Server-only `AI_BRIDGE_INFERENCE_ENABLED=true` is deliberately configured.
-- Server-only `OPENROUTER_API_KEY` is configured; never put it in browser source, GitHub or messages.
-- The remote catalog reports exactly zero for both prompt and completion price at request time.
+## Current behavior in the stacked draft launch branch
 
-Every trial is restricted to 1 model, 350 requested output tokens, a short user prompt and a 10 second timeout. Unknown, paid or unavailable models fail closed. It does not enable 17 models simultaneously, cannot guarantee zero provider charges, and must be disabled again if billing/routing semantics change.
+- `lib/ai-bridge-release-hold.mjs` always returns `allowed: false` with `inference-release-not-approved`.
+- `POST /api/admin-ai-bridge-trial` requires the existing admin session and same-origin checks, then refuses inference **before** reading request JSON, a provider key, rate-limit state, or invoking an adapter.
+- `runFreeBridgeTask` independently enforces the same non-configurable hold before any model catalog or completion transport.
+- `GET /api/admin-ai-bridge-trial` reports `releaseApproved: false` and `configuredForTrial: false`.
+- Neither `AI_BRIDGE_INFERENCE_ENABLED=true`, a configured `OPENROUTER_API_KEY`, an allowlisted `:free` model, nor a zero-priced catalog entry can bypass this hold.
+- The external AI Bridge MCP connection remains read-only. It has **no enabled inference capability**. This PR does not register MCP tools, perform real inference, or approve spend.
 
-No `AI_BRIDGE_INFERENCE_ENABLED` or API key environment variable has been created by this PR. No API requests to OpenRouter were made. The user's existing read-only **AI Bridge MCP plugin** has NOT changed. Adding an MCP model-call tool requires updating and redeploying the separate MCP server, which is not present in accessible GitHub repositories.
+The hard hold is staged in draft PRs #136, #137 and the integrated draft #138, layered on #90. **None of these drafts is a production release.** Do not merge or deploy them automatically.
 
-To activate later: provider account with hard zero-spend controls, private key, server-side switch, a single explicit approved trial, cost verification, and disable when not needed. Do not deploy the trial route merely to make a test run. Continue AI Visibility development in the meantime.
+## Future trial requirements — NOT authorized or implemented as a release
 
-## Read-only Vercel environment check — 24 October 2026
-The existing `ai-visibility` Vercel project was inspected without decrypting values. Neither `OPENROUTER_API_KEY` nor `AI_BRIDGE_INFERENCE_ENABLED` was present among its environment-variable names. Therefore no real provider call is currently possible through this staged route. Do not invent a key, silently enable inference, or deploy as a workaround. Obtain a provider-issued server-side key and verified zero-spend controls before a user-approved sandbox activation.
+A later release would require a separate reviewed code change removing the hard hold, plus explicit owner approval and all of the following:
+
+1. Verify the existing admin session, same-origin request, rate limits (currently designed for 2 requests/hour/IP), and a single allowlisted model.
+2. Obtain a provider-issued **server-side** credential without exposing it in GitHub, browser source, chat or logs.
+3. Establish enforceable provider-side zero-spend/billing controls; the `:free` label and a zero-price catalog response alone **do not guarantee zero charges**.
+4. Revalidate catalog pricing for prompt, completion and ancillary charges; keep strict prompt/output limits (currently designed for 350 output tokens and a 10-second timeout).
+5. Run offline security/regression tests, review the deployment configuration and get separate approval before any real request or production release.
+
+No key, paid service, inference call, payment, external customer message, main merge or Vercel production deployment is authorized by this document.
+
+## Historical read-only environment observation (24 October 2026)
+
+A previous inspection of the `ai-visibility` Vercel project's environment-variable **names** found neither `OPENROUTER_API_KEY` nor `AI_BRIDGE_INFERENCE_ENABLED`. This was a point-in-time observation, **not a current environment guarantee**. The non-configurable release hold above remains necessary regardless of later environment changes.
