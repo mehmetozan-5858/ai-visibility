@@ -118,3 +118,21 @@ test('stored preview replay is denied after owner role downgrade, then resumes o
  assert.equal(replay.reportId,first.reportId);
  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
 });
+
+test('expired grant blocks stored preview replay and renewal reuses the original audit',async()=>{
+ const first=await createStoredRevenuePreview({pool,...context});
+ assert.equal(first.ok,true);
+ await db.query("UPDATE arge_entitlements SET expires_at='2000-01-01' WHERE tenant_id='tenant1'");
+ const denied=await createStoredRevenuePreview({pool,...context});
+ assert.equal(denied.ok,false);
+ assert.equal(denied.reason,'entitlement-expired-or-unverifiable');
+ assert.equal('report' in denied,false);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+ await db.query("UPDATE arge_entitlements SET expires_at='2099-01-01' WHERE tenant_id='tenant1'");
+ const replay=await createStoredRevenuePreview({pool,...context});
+ assert.equal(replay.ok,true);
+ assert.equal(replay.replayed,true);
+ assert.equal(replay.reportId,first.reportId);
+ assert.equal(replay.auditEventId,first.auditEventId);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+});
