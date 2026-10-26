@@ -30,7 +30,7 @@ test("admin POST denies before reading request, key or invoking model adapter",(
 
 test("admin readiness cannot report an approved trial",()=>{
   const get=route.slice(route.indexOf("export async function GET("),route.indexOf("export async function POST("));
-  assert.match(get,/releaseApproved:release\\.allowed/);
+  assert.match(get,/releaseApproved:release\.allowed/);
   assert.match(get,/configuredForTrial:false/);
   assert.match(get,/await-explicit-release-approval/);
 });
