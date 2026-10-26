@@ -70,7 +70,7 @@ test("malformed consent revocation fields cannot unlock sensitive services",()=>
 // The entitlement resolver is also a public pure policy boundary. It must not
 // approve malformed tenant IDs even when the session, account and grant match.
 test("malformed tenant IDs cannot pass direct service entitlement checks",()=>{
- const invalidIds=["../other","tenant\\nother"," tenant_1 ","tenant/1","üser","a".repeat(129)];
+ const invalidIds=["../other","tenant\nother"," tenant_1 ","tenant/1","üser","a".repeat(129)];
  for(const serviceId of ["agent-audit-control","agent-commerce-intelligence","candidate-rediscovery","voice-revenue-agent"]){
   for(const clientId of invalidIds){
    const entitlement={...base.entitlement,clientId,serviceId,
