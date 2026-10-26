@@ -48,3 +48,12 @@ test('operator can inspect saved first-party observations without starting a sca
  assert.doesNotMatch(getSource,/INSERT INTO/);
  assert.match(getSource,/googleTasksCompleted:0/);
 });
+
+test('collector cancels stream after exceeding its byte budget',async()=>{
+ let cancelled=false;
+ const stream=new ReadableStream({start(controller){controller.enqueue(new Uint8Array(66000));},cancel(){cancelled=true;}});
+ const response=new Response(stream,{headers:{'content-type':'text/html'}});
+ const result=await collectZeraOwnedSite({fetchImpl:async()=>response});
+ assert.equal(result.status,'oversize');
+ assert.equal(cancelled,true);
+});
