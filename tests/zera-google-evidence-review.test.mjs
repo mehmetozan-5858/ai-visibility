@@ -20,3 +20,9 @@ test('duplicate source submissions do not overwrite evidence',()=>{
 test('route has no provider calls or automatic scans',()=>{
  assert.doesNotMatch(route,/compareCustomerProviders|GEMINI_API_KEY|generateContent|google_search:/);
 });
+
+test('read-only status shows five pending tasks regardless of staged source count',()=>{
+ assert.match(route,/const taskStatus=tasks\.map/);
+ assert.match(route,/status:'pending',candidates:/);
+ assert.match(route,/verified:0,pending:tasks\.length,visibilityScore:null/);
+});
