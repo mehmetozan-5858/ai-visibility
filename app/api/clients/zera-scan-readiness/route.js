@@ -1,3 +1,4 @@
+import {assessZeraOperatorRelease} from '../../../../lib/zera-operator-release-hold.mjs';
 import {requireAdmin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
 
@@ -9,6 +10,7 @@ export async function GET(req){
   const customerReady=Boolean(client?.id&&client.name==='ZERA Clothing'&&client.plan==='Pilot');
   const conditions={
    production:process.env.VERCEL_ENV==='production',
+   providerExecutionReleased:assessZeraOperatorRelease().allowed,
    customerReady,
    singleScanEnabled:process.env.ZERA_SINGLE_SCAN_ENABLED==='true',
    freeTierConfirmed:process.env.ZERA_GEMINI_FREE_TIER_CONFIRMED==='true',
