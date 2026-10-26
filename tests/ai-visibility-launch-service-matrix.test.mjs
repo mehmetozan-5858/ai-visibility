@@ -86,3 +86,26 @@ test("both sensitive services require explicitly verified non-revoked consent",(
     assert.equal(plan(serviceId,capability,{...entitlement,consentRevoked:"false"}).reason,"verified-consent-required");
   }
 });
+
+test("all four services reject expired and future-dated grants before planning",()=>{
+  for (const [serviceId,capability,sensitive] of cases) {
+    const entitlement=grant(serviceId,sensitive);
+    const rejected=[
+      [{...entitlement,expiresAt:"2026-10-25T07:00:00.000Z"},"entitlement-expired-or-unverifiable"],
+      [{...entitlement,expiresAt:"2026-10-24T07:00:00.000Z"},"entitlement-expired-or-unverifiable"],
+      [{...entitlement,expiresAt:"invalid"},"entitlement-expired-or-unverifiable"],
+      [{...entitlement,notBefore:"2026-10-25T07:00:01.000Z"},"entitlement-not-yet-valid"],
+      [{...entitlement,notBefore:"invalid"},"entitlement-not-yet-valid"],
+      [{...entitlement,notBefore:"2026-11-25T00:00:00.000Z"},"entitlement-not-yet-valid"],
+    ];
+    for (const [invalid,reason] of rejected) {
+      assert.deepEqual(plan(serviceId,capability,invalid),{ok:false,reason},
+        `${serviceId} must reject ${reason}`);
+    }
+    const valid={...entitlement,notBefore:"2026-10-25T07:00:00.000Z"};
+    const prepared=plan(serviceId,capability,valid);
+    assert.equal(prepared.ok,true,serviceId);
+    assert.equal(prepared.executes,false,serviceId);
+    assert.equal(prepared.auditPersisted,false,serviceId);
+  }
+});
