@@ -32,6 +32,8 @@ async function context(){
 async function existing(pool,clientId){
  const table=await pool.query("SELECT to_regclass('public.zera_ai_task_attempts') AS name");
  if(!table.rows[0]?.name)return [];
+ const columns=await pool.query("SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='zera_ai_task_attempts' AND column_name='failure_reason'");
+ const failureField=columns.rows.length?',failure_reason AS "failureReason"':'';
  const result=await pool.query('SELECT task_id AS "taskId",status,comparison_id AS "comparisonId"'+failureField+' FROM zera_ai_task_attempts WHERE client_id=$1',[clientId]);
  return result.rows;
 }
