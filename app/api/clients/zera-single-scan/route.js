@@ -4,12 +4,15 @@ import {compareCustomerProviders} from '../../../../lib/customer-provider-compar
 import {storeCustomerComparison} from '../../../../lib/customer-comparison-storage.mjs';
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
+import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
 
 // Operator-triggered, one-attempt pilot. DISABLED unless explicitly enabled.
 // No cron, no OpenAI/Perplexity billing, no automatic retries.
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const origin=enforceSameOrigin(req);if(origin)return origin;
+ const spendGate=assessZeraProviderSpendGate();
+ if(!spendGate.allowed)return Response.json({error:spendGate.reason},{status:409,headers:{'Cache-Control':'private, no-store'}});
  if(process.env.VERCEL_ENV!=='production'||process.env.ZERA_SINGLE_SCAN_ENABLED!=='true')
   return Response.json({error:'ZERA single scan disabled'},{status:403});
  if(process.env.ZERA_GEMINI_FREE_TIER_CONFIRMED!=='true'||process.env.ZERA_GEMINI_SEARCH_GROUNDING_ENABLED==='true')

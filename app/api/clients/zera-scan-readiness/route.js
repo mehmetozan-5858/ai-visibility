@@ -1,9 +1,14 @@
 import {requireAdmin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
+import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
 
 /** Read-only operational gate status; never return credentials or call providers. */
 export async function GET(req){
  const denied=await requireAdmin(req);if(denied)return denied;
+ const spendGate=assessZeraProviderSpendGate();
+ if(!spendGate.allowed)return Response.json({ready:false,conditions:{providerSpendReleased:false},
+  customerReadiness:'not-checked',mode:'single-explicit-attempt',scanStarted:false,reason:spendGate.reason},
+  {headers:{'Cache-Control':'private, no-store'}});
  try{
   const client=await findClientByIdentity('ZERA Clothing','');
   const customerReady=Boolean(client?.id&&client.name==='ZERA Clothing'&&client.plan==='Pilot');

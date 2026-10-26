@@ -6,6 +6,7 @@ import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
 import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
 import {zeraAttemptsSelectQuery} from '../../../../lib/zera-attempts-query.mjs';
+import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
 
 const TASKS=ZERA_TASKS.filter(task=>task.channel==='ai-answer');
 const noStore={'Cache-Control':'private, no-store'};
@@ -18,7 +19,7 @@ function safeFailureReason(value){
  return 'provider-error-unspecified';
 }
 function permitted(){
- return process.env.VERCEL_ENV==='production'&&
+ return assessZeraProviderSpendGate().allowed&&process.env.VERCEL_ENV==='production'&&
   process.env.ZERA_SINGLE_SCAN_ENABLED==='true'&&
   process.env.ZERA_GEMINI_FREE_TIER_CONFIRMED==='true'&&
   process.env.ZERA_GEMINI_SEARCH_GROUNDING_ENABLED!=='true'&&
@@ -49,6 +50,8 @@ export async function GET(req){
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const origin=enforceSameOrigin(req);if(origin)return origin;
+ const spendGate=assessZeraProviderSpendGate();
+ if(!spendGate.allowed)return Response.json({error:spendGate.reason},{status:409,headers:noStore});
  if(!permitted())return Response.json({error:'Free-tier pilot gate closed'},{status:403,headers:noStore});
  let body;try{body=await req.json()}catch{return Response.json({error:'Invalid JSON'},{status:400})}
  if(body?.confirmTwoFreeGeminiTasks!==true||Object.keys(body).length!==1)

@@ -32,10 +32,10 @@ no merge request was activated and no Vercel deployment was requested.
 
 | Check | Result | Scope |
 |---|---|---|
-| `npm test` | 535 passed, 0 failed, 0 skipped | Complete Node test suite |
+| `npm test` | 544 passed, 0 failed, 0 skipped | Complete Node test suite, including provider release hold and GitHub evidence adapter |
 | PostgreSQL integration subset | 8 passed | File-backed PGlite/PostgreSQL: scope, atomic rollback, idempotency, revocation, expiry, restart persistence and daily budget |
 | `npm run build` | Passed | Next 16.4.2 optimized production build |
-| `node scripts/smoke-arge-preview.mjs` | 12 assertions passed | Real local production server: signed/tampered/missing customer sessions, admin isolation, exact paths, disabled flags, foreign origin, injected fields and oversized bodies |
+| `node scripts/smoke-arge-preview.mjs` | 15 assertions passed | Real local production server: customer auth/request boundaries plus admin-triggered ZERA calls blocked before DB/provider access and honest readiness |
 | Source transfer integrity | Canonical downloaded text checked against Git blob SHA-1 | EOF transport normalization only; intentional feature/package edits excluded |
 | Dependency review | No existing runtime package versions changed | Adds pinned development-only `@electric-sql/pglite@0.5.12` for real PostgreSQL tests |
 
@@ -45,6 +45,37 @@ test credentials and supplies no provider credentials or real database URL.
 PostgreSQL fixtures are isolated temporary files and synthetic tenant ledgers.
 
 ## Not established by these checks
+
+### Follow-up: existing provider safety drafts and source evidence
+
+The existing PR #120 provider release gate and PR #125 shared-engine hold have
+been incorporated into the current runner/single-scan routes and provider engine.
+The gate runs after admin/origin authorization and before credential checks,
+DB task claims or provider work. Environment flags and configured keys cannot
+override it. Readiness returns `ready:false` and `customerReadiness:not-checked`
+without probing customer storage when this release hold is closed. Actual local
+HTTP tests use only synthetic credentials and verify 409 responses on both POST
+routes plus a truthful non-starting readiness response.
+
+`collectAiVisibilityRelease` now maps public GitHub check-run metadata and a
+verified rollback commit into the existing Release Assurance gate. Repository,
+required check names and GitHub Actions app identity are server policy. It
+rejects partial pagination, untrusted apps, wrong commits and inconsistent source
+data; a newer failed rerun supersedes an old success. Requests are bounded,
+read-only and credential-free. Unit tests pass, but its direct live HTTP request
+timed out in this environment; runtime GitHub source acceptance is **not** proven.
+
+The bounded live TED probe examined two current notices and correctly failed
+with `official_notices_parsed:0`, `official_notices_failed:2`. Its secure downloader
+reported unresolvable public URLs; independent DNS lookups returned gaierror.
+Separate fixed official-URL reads intermittently returned an empty HTTP 202.
+An observed partial 200 response is not a complete parsed notice or attachment.
+The production SSRF/DNS guards have not been weakened to work around this host.
+
+The latest inspected Broker Vercel deployment remains BLOCKED at commit
+`1f5c974fc5c1ad71ade1e3deca92e52f4ed95018`. Available read responses did not
+expose the detailed blocking/billing reason or a reset date. Do not infer that
+a budget reset/unpause has occurred, promise an unblock time, or change billing.
 
 This is **not production acceptance**. No live migration, real customer write,
 provider inference, email, payment, Vercel change or customer delivery occurred.
