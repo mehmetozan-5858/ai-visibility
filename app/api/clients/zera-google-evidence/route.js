@@ -19,7 +19,8 @@ export async function GET(req){
   const {client,pool}=await context();
   const table=await pool.query("SELECT to_regclass('public.zera_google_evidence_reviews') AS name");
   const rows=table.rows[0]?.name?await pool.query('SELECT task_id AS "taskId",query,source_url AS "sourceUrl",observation,status,created_at AS "createdAt" FROM zera_google_evidence_reviews WHERE client_id=$1 ORDER BY created_at DESC LIMIT 50',[client.id]):{rows:[]};
-  return Response.json({tasks,observations:rows.rows,verified:0,note:'All collected records await independent source verification; not counted in ZERA 0/7.'},{headers});
+  const taskStatus=tasks.map(task=>({id:task.id,query:task.query,status:'pending',candidates:rows.rows.filter(row=>row.taskId===task.id&&row.status==='pending-review').length}));
+  return Response.json({tasks:taskStatus,observations:rows.rows,verified:0,pending:tasks.length,visibilityScore:null,note:'All collected records await independent source verification; not counted in ZERA 0/7.'},{headers});
  }catch{return Response.json({error:'Google evidence status unavailable'},{status:503,headers})}
 }
 export async function POST(req){
