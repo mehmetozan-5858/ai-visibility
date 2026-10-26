@@ -3,6 +3,7 @@ import {findClientByIdentity} from '../../../../lib/repository';
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
 import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
+import {buildZeraPilotDraft} from '../../../../lib/zera-pilot-draft.mjs';
 import {zeraAttemptsSelectQuery} from '../../../../lib/zera-attempts-query.mjs';
 
 const headers={'Cache-Control':'private, no-store'};
@@ -32,6 +33,6 @@ export async function GET(req){
    const candidate=google.rows.find(a=>a.taskId===t.id);
    return {id:t.id,channel:t.channel,status:attempt?.status||'pending',pendingReviewCandidates:candidate?.candidates||0};
   });
-  return Response.json({tasks,aiAttemptCount:attempts.length,ownedSiteObservations:owned.rows[0]?.count||0,googleEvidenceVerifiedByThisEndpoint:0,visibilityScore:null,providerCallsExecuted:0,note:'Read-only diagnostic; candidate counts and attempted calls do not establish verified visibility.'},{headers});
+  return Response.json({draftReport:buildZeraPilotDraft({attempts,googleCandidates:google.rows,ownedSiteCount:owned.rows[0]?.count||0}),tasks,aiAttemptCount:attempts.length,ownedSiteObservations:owned.rows[0]?.count||0,googleEvidenceVerifiedByThisEndpoint:0,visibilityScore:null,providerCallsExecuted:0,note:'Read-only diagnostic; candidate counts and attempted calls do not establish verified visibility.'},{headers});
  }catch{return Response.json({error:'pilot-status-unavailable'},{status:503,headers})}
 }
