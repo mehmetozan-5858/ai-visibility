@@ -31,3 +31,21 @@ export async function POST(req){
   return Response.json({status:'collection-or-storage-unavailable',saved:false,googleTasksCompleted:0,visibilityScore:null},{status:503,headers});
  }
 }
+
+export async function GET(req){
+ const denied=await requireAdmin(req);if(denied)return denied;
+ try{
+  const client=await findClientByIdentity('ZERA Clothing','');
+  const url=getDatabaseUrl();
+  if(!client?.id||client.name!=='ZERA Clothing'||client.plan!=='Pilot'||!url)
+   return Response.json({status:'unavailable',verified:false,googleTasksCompleted:0,visibilityScore:null},{status:503,headers});
+  const pool=databasePool(url);
+  const table=await pool.query("SELECT to_regclass('public.zera_owned_site_observations') AS name");
+  if(!table.rows[0]?.name)
+   return Response.json({status:'not-collected',observations:[],verified:false,googleTasksCompleted:0,visibilityScore:null},{headers});
+  const observed=await pool.query('SELECT source_url AS "sourceUrl",title,collected_at AS "collectedAt" FROM zera_owned_site_observations WHERE client_id=$1 ORDER BY collected_at DESC LIMIT 10',[client.id]);
+  return Response.json({status:observed.rows.length?'collected-unverified':'not-collected',observations:observed.rows,verified:false,googleTasksCompleted:0,visibilityScore:null},{headers});
+ }catch{
+  return Response.json({status:'status-unavailable',verified:false,googleTasksCompleted:0,visibilityScore:null},{status:503,headers});
+ }
+}
