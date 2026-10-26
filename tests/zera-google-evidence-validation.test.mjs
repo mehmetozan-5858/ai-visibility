@@ -17,3 +17,8 @@ test('unverified observations, insecure URLs and empty evidence are rejected',()
  for(const data of [{verified:false},{sourceUrl:'http://example.org'},{sourceUrl:'https://localhost/private'},{sourceUrl:'https://user:pass@example.org'},{observation:'   '}])
   assert.equal(validateZeraGoogleEvidence({...base,...data}).ok,false);
 });
+
+test('similarly named third-party businesses cannot prove the ZERA pilot identity',()=>{
+ assert.equal(validateZeraGoogleEvidence({...base,claimsZeraIdentity:true}).ok,false);
+ assert.equal(validateZeraGoogleEvidence({...base,claimsZeraIdentity:true,sourceUrl:'https://ze-ra.de/'}).ok,true);
+});
