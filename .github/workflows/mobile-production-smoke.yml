@@ -14,6 +14,7 @@ on:
       - 'tests/mobile-production-smoke.spec.js'
       - 'tests/mobile-onboarding-location.spec.js'
       - 'tests/web-production-smoke.spec.js'
+      - 'tests/ai-visibility-launch-*.test.mjs'
       - '.github/workflows/mobile-production-smoke.yml'
   pull_request:
     paths:
@@ -26,6 +27,7 @@ on:
       - 'tests/mobile-production-smoke.spec.js'
       - 'tests/mobile-onboarding-location.spec.js'
       - 'tests/web-production-smoke.spec.js'
+      - 'tests/ai-visibility-launch-*.test.mjs'
       - '.github/workflows/mobile-production-smoke.yml'
 
 permissions:
