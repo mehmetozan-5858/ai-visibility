@@ -101,3 +101,20 @@ test('identical request IDs remain isolated across two authorized tenants and th
  assert.equal(replayOne.reportId,one.reportId);assert.equal(replayTwo.reportId,two.reportId);
  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,2);
 });
+
+test('stored preview replay is denied after owner role downgrade, then resumes only after restoration',async()=>{
+ const first=await createStoredRevenuePreview({pool,...context});
+ assert.equal(first.ok,true);
+ await db.query("UPDATE arge_memberships SET role='viewer' WHERE tenant_id='tenant1' AND actor_id='tenant1'");
+ const denied=await createStoredRevenuePreview({pool,...context});
+ assert.equal(denied.ok,false);
+ assert.equal(denied.reason,'owner-required');
+ assert.equal('report' in denied,false);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+ await db.query("UPDATE arge_memberships SET role='owner' WHERE tenant_id='tenant1' AND actor_id='tenant1'");
+ const replay=await createStoredRevenuePreview({pool,...context});
+ assert.equal(replay.ok,true);
+ assert.equal(replay.replayed,true);
+ assert.equal(replay.reportId,first.reportId);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+});
