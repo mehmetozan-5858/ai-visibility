@@ -18,3 +18,18 @@ test("noncanonical time and sensitive free text are not accepted",()=>{
  assert.equal(prepareLaunchAuditEvent({...valid,occurredAt:"yesterday"}).reason,"invalid-timestamp");
  assert.equal(prepareLaunchAuditEvent({...valid,sourceId:"private candidate resume contents"}).reason,"invalid-source");
 });
+test("success events require a known launch service across all four catalog entries",()=>{
+ for (const serviceId of ["agent-audit-control","agent-commerce-intelligence","candidate-rediscovery","voice-revenue-agent"]) {
+  assert.equal(prepareLaunchAuditEvent({...valid,serviceId,eventType:"authorization-allowed"}).ok,true);
+ }
+ for (const eventType of ["authorization-allowed","report-prepared","agent-plan-prepared","approval-requested"]) {
+  assert.deepEqual(prepareLaunchAuditEvent({...valid,serviceId:"unknown-service",eventType}),{ok:false,reason:"unknown-service"});
+ }
+});
+test("denials and errors can audit attempts against unknown but syntactically safe services",()=>{
+ for (const eventType of ["authorization-denied","service-error"]) {
+  const result=prepareLaunchAuditEvent({...valid,serviceId:"unknown-service",eventType});
+  assert.equal(result.ok,true);
+  assert.equal(result.event.state,"prepared-not-persisted");
+ }
+});
