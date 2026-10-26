@@ -108,7 +108,7 @@ test('stored preview replay is denied after owner role downgrade, then resumes o
  await db.query("UPDATE arge_memberships SET role='viewer' WHERE tenant_id='tenant1' AND actor_id='tenant1'");
  const denied=await createStoredRevenuePreview({pool,...context});
  assert.equal(denied.ok,false);
- assert.equal(denied.reason,'owner-required');
+ assert.equal(denied.reason,'insufficient-permission');
  assert.equal('report' in denied,false);
  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
  await db.query("UPDATE arge_memberships SET role='owner' WHERE tenant_id='tenant1' AND actor_id='tenant1'");
