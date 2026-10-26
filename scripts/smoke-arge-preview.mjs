@@ -48,6 +48,11 @@ async function scenario(enabled){
    r=await fetch(origin+'/api/clients/zera-scan-readiness',{headers:{cookie:'ai_admin='+adminToken}});
    assert.equal(r.status,200);const readiness=await r.json();assert.equal(readiness.ready,false);
    assert.equal(readiness.scanStarted,false);assert.equal(readiness.customerReadiness,'not-checked');assertions++;
+   r=await fetch(origin+'/api/client-provider-results');assert.equal(r.status,401);assertions++;
+   r=await fetch(origin+'/api/client-provider-results?clientId=other',{headers:{cookie:'ai_client='+token}});
+   assert.equal(r.status,400);assert.equal((await r.json()).error,'customer-selectors-not-accepted');assertions++;
+   r=await fetch(origin+'/api/client-provider-results',{headers:{cookie:'ai_admin='+adminToken}});
+   assert.equal(r.status,401);assertions++;
   }
  }finally{server.kill('SIGTERM');await once(server,'exit');}
 }

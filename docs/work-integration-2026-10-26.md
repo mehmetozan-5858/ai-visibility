@@ -32,10 +32,10 @@ no merge request was activated and no Vercel deployment was requested.
 
 | Check | Result | Scope |
 |---|---|---|
-| `npm test` | 544 passed, 0 failed, 0 skipped | Complete Node test suite, including provider release hold and GitHub evidence adapter |
+| `npm test` | 549 passed, 0 failed, 0 skipped | Complete Node test suite, including provider release hold, GitHub evidence adapter and scoped customer comparison reader |
 | PostgreSQL integration subset | 8 passed | File-backed PGlite/PostgreSQL: scope, atomic rollback, idempotency, revocation, expiry, restart persistence and daily budget |
 | `npm run build` | Passed | Next 16.4.2 optimized production build |
-| `node scripts/smoke-arge-preview.mjs` | 15 assertions passed | Real local production server: customer auth/request boundaries plus admin-triggered ZERA calls blocked before DB/provider access and honest readiness |
+| `node scripts/smoke-arge-preview.mjs` | 18 assertions passed | Real local production server: customer auth/request boundaries, own-results route isolation, admin-triggered ZERA calls blocked before DB/provider access and honest readiness |
 | Source transfer integrity | Canonical downloaded text checked against Git blob SHA-1 | EOF transport normalization only; intentional feature/package edits excluded |
 | Dependency review | No existing runtime package versions changed | Adds pinned development-only `@electric-sql/pglite@0.5.12` for real PostgreSQL tests |
 
@@ -80,6 +80,10 @@ a budget reset/unpause has occurred, promise an unblock time, or change billing.
 This is **not production acceptance**. No live migration, real customer write,
 provider inference, email, payment, Vercel change or customer delivery occurred.
 The new preview API is not yet connected to a customer-facing report UI.
+The ordinary customer Scans UI is now connected to the shared stored-provider
+answer reader, including for ZERA as a customer. This is distinct from the
+Ar-Ge revenue preview API and from accepted scored reports. See
+`docs/customer-model-2026-10-26.md` for exact validation and the blocked browser QA.
 PGlite validates PostgreSQL statements and storage semantics locally, not the
 deployed database's permissions, concurrency, backups or performance. Exact
 remote CI on the final checkpoint SHA is still absent because no branch push

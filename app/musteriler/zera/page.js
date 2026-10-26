@@ -31,7 +31,7 @@ export default function ZeraCustomerDetail(){
  }
  return <main style={{maxWidth:820,margin:"36px auto",padding:20,lineHeight:1.6}}>
   <a href="/musteriler">← Müşteriler</a>
-  <h1>ZERA Clothing</h1><p>Production müşteri profili · Wetzlar, Germany</p>
+  <h1>ZERA Clothing</h1><p>Pilot müşteri · Wetzlar, Almanya</p>
   {state.loading?<p>Doğrulanmış müşteri kaydı yükleniyor…</p>:state.error?<p role="alert">{state.error}</p>:<>
     <section className="panel" style={{padding:18,marginBottom:16}}>
      <h2>Müşteri profili</h2>

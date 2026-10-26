@@ -32,7 +32,7 @@ export async function proxy(req){
   }
 
   if(pathname==="/musteri-panel"||pathname.startsWith("/musteri-panel/")||pathname.startsWith("/api/client-portal")||
-     pathname==="/api/client-launch-services"||pathname==="/api/client-audit-preview"){
+     pathname==="/api/client-launch-services"||pathname==="/api/client-audit-preview"||pathname==="/api/client-provider-results"){
     const clientToken=req.cookies.get("ai_client")?.value||"";
     if(await verifyClientToken(clientToken))return NextResponse.next();
     if(pathname.startsWith("/api/"))return Response.json({error:"Müşteri oturumu gerekli."},{status:401,headers:{"cache-control":"no-store"}});
