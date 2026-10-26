@@ -79,3 +79,25 @@ test('daily storage budget caps new reports while authorized replays remain avai
  assert.equal((await createStoredRevenuePreview({pool,...context,requestId:'request0'})).replayed,true);
  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,30);
 });
+
+test('identical request IDs remain isolated across two authorized tenants and their audit records',async()=>{
+ await db.query("INSERT INTO arge_entitlements(tenant_id,service_id,status,expires_at) VALUES('tenant2','agent-audit-control','active','2099-01-01')");
+ const tenant2={...context,session:{clientId:'tenant2'},accountClientId:'tenant2'};
+ const one=await createStoredRevenuePreview({pool,...context});
+ const two=await createStoredRevenuePreview({pool,...tenant2});
+ assert.equal(one.ok,true);assert.equal(two.ok,true);
+ assert.notEqual(one.reportId,two.reportId);
+ assert.notEqual(one.auditEventId,two.auditEventId);
+ assert.equal(one.report.tenantId,'tenant1');assert.equal(two.report.tenantId,'tenant2');
+ assert.equal(one.report.comparisons[0].subscriptionId,'sub1');
+ assert.equal(two.report.comparisons[0].subscriptionId,'sub2');
+ assert.equal(two.report.comparisons[0].status,'missing-invoice');
+ const rows=(await db.query('SELECT tenant_id,request_id,audit_event_id FROM arge_report_previews ORDER BY tenant_id')).rows;
+ assert.deepEqual(rows.map(row=>[row.tenant_id,row.request_id]),[['tenant1','request1'],['tenant2','request1']]);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,2);
+ const replayOne=await createStoredRevenuePreview({pool,...context});
+ const replayTwo=await createStoredRevenuePreview({pool,...tenant2});
+ assert.equal(replayOne.replayed,true);assert.equal(replayTwo.replayed,true);
+ assert.equal(replayOne.reportId,one.reportId);assert.equal(replayTwo.reportId,two.reportId);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,2);
+});
