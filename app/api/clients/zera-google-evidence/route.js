@@ -31,7 +31,7 @@ export async function POST(req){
  if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!['taskId','query','sourceUrl','observation','verified','claimsZeraIdentity'].includes(k)))
   return Response.json({error:'Invalid evidence fields'},{status:400,headers});
  // Identity claims must never be inferred from an ambiguous business name.
- const checked=validateZeraGoogleEvidence({...body,verified:true});
+ const checked=validateZeraGoogleEvidence(body,{requireVerified:false});
  if(!checked.ok)return Response.json({error:checked.reason},{status:400,headers});
  // Refuse caller-asserted verification. No API-only path to upgrade status to verified.
  if(body.verified===true)return Response.json({error:'Independent verification not available; submit an unverified review candidate'},{status:409,headers});
