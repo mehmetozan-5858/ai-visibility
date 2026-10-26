@@ -37,3 +37,14 @@ test('first-party collection stores only an unverified observation, never a Goog
  assert.match(source,/verified:false,googleTasksCompleted:0,visibilityScore:null/);
  assert.match(source,/result\.status!=='collected'/);
 });
+
+test('operator can inspect saved first-party observations without starting a scan',()=>{
+ const source=readFileSync(new URL('../app/api/clients/zera-owned-site/route.js',import.meta.url),'utf8');
+ const getSource=source.slice(source.indexOf('export async function GET(req)'));
+ assert.match(getSource,/requireAdmin\(req\)/);
+ assert.match(getSource,/to_regclass/);
+ assert.match(getSource,/SELECT source_url/);
+ assert.doesNotMatch(getSource,/collectZeraOwnedSite\(/);
+ assert.doesNotMatch(getSource,/INSERT INTO/);
+ assert.match(getSource,/googleTasksCompleted:0/);
+});
