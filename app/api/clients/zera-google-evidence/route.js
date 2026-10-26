@@ -3,7 +3,7 @@ import {findClientByIdentity} from '../../../../lib/repository';
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
 import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
-import {validateZeraGoogleEvidence} from '../../../../lib/zera-google-evidence-validation.mjs';
+import {validateZeraGoogleCandidate} from '../../../../lib/zera-google-evidence-validation.mjs';
 
 const headers={'Cache-Control':'private, no-store'};
 const tasks=ZERA_TASKS.filter(t=>t.channel==='google');
@@ -30,10 +30,10 @@ export async function POST(req){
  if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).some(k=>!['taskId','query','sourceUrl','observation','verified','claimsZeraIdentity'].includes(k)))
   return Response.json({error:'Invalid evidence fields'},{status:400,headers});
  // Identity claims must never be inferred from an ambiguous business name.
- const checked=validateZeraGoogleEvidence({...body,verified:true});
- if(!checked.ok)return Response.json({error:checked.reason},{status:400,headers});
- // Refuse caller-asserted verification. No API-only path to upgrade status to verified.
+ // Refuse caller-asserted verification before validating an unverified review candidate.
  if(body.verified===true)return Response.json({error:'Independent verification not available; submit an unverified review candidate'},{status:409,headers});
+ const checked=validateZeraGoogleCandidate(body);
+ if(!checked.ok)return Response.json({error:checked.reason},{status:400,headers});
  try{
   const {client,pool}=await context(),e=checked.evidence;
   await pool.query(`CREATE TABLE IF NOT EXISTS zera_google_evidence_reviews(

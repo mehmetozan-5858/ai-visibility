@@ -12,6 +12,8 @@ test('staged Google evidence cannot count as verified results',()=>{
  assert.match(route,/verified:false/);
  assert.match(route,/visibilityScore:null/);
  assert.match(route,/if\(body\.verified===true\)/);
+ assert.match(route,/validateZeraGoogleCandidate\(body\)/);
+ assert.doesNotMatch(route,/validateZeraGoogleEvidence\(\{\.\.\.body,verified:true\}\)/);
 });
 test('duplicate source submissions do not overwrite evidence',()=>{
  assert.match(route,/PRIMARY KEY\(client_id,task_id,source_url\)/);
