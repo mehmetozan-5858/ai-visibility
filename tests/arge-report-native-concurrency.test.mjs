@@ -209,8 +209,10 @@ if(!connectionString){
     entitlement,featureEnabled:true,globallyEnabled:true,now,
    });
   }
-  assert.equal((await plan('tenant1')).ok,true);
-  assert.equal((await plan('tenant2')).ok,true);
+  const firstTenant=await plan('tenant1');
+  assert.equal(firstTenant.ok,true,JSON.stringify(firstTenant));
+  const secondTenant=await plan('tenant2');
+  assert.equal(secondTenant.ok,true,JSON.stringify(secondTenant));
   const stolenGrant=await plan('tenant2','tenant1');
   assert.equal(stolenGrant.ok,false);
   assert.equal(stolenGrant.reason,'service-entitlement-required');
