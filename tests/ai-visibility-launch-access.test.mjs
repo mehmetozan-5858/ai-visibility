@@ -53,3 +53,16 @@ test("unknown and inherited Object property roles have no permissions",()=>{
   assert.ok(launchRolePermissions(role).includes("service:read"),role);
  }
 });
+
+test("explicitly revoked or inactive membership fails closed despite verified=true",()=>{
+ for(const revoked of [true,"false",null,1,{}]){
+  assert.equal(ask({membership:{...membership,revoked}}).reason,"unverified-membership",String(revoked));
+ }
+ for(const active of [false,"true",null,0,{}]){
+  assert.equal(ask({membership:{...membership,active}}).reason,"unverified-membership",String(active));
+ }
+ assert.equal(ask({membership:{...membership,revoked:false,active:true}}).allowed,true);
+ // A missing legacy field is not itself proof of revocation: callers must
+ // still load current membership status from trusted server-side storage.
+ assert.equal(ask({membership}).allowed,true);
+});
