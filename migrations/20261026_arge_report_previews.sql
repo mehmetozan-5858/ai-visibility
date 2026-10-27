@@ -33,4 +33,29 @@ CREATE TABLE IF NOT EXISTS arge_report_previews (
 -- This idempotent index also protects tables created by an earlier migration run.
 CREATE UNIQUE INDEX IF NOT EXISTS arge_report_previews_tenant_audit_unique
  ON arge_report_previews(tenant_id,audit_event_id);
+-- BEGIN ARGE AUDIT INDEX GUARD
+-- IF NOT EXISTS alone does not verify an existing same-named index is unique
+-- or covers the intended columns. Fail the whole operator transaction closed.
+DO $
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1
+  FROM pg_class idx
+  JOIN pg_namespace ns ON ns.oid=idx.relnamespace
+  JOIN pg_index meta ON meta.indexrelid=idx.oid
+  JOIN pg_class tbl ON tbl.oid=meta.indrelid
+  WHERE ns.nspname=current_schema()
+   AND tbl.relname='arge_report_previews'
+   AND idx.relname='arge_report_previews_tenant_audit_unique'
+   AND meta.indisunique AND meta.indisvalid AND meta.indisready
+   AND meta.indnkeyatts=2 AND meta.indnatts=2
+   AND meta.indpred IS NULL
+   AND pg_get_indexdef(idx.oid,1,true)='tenant_id'
+   AND pg_get_indexdef(idx.oid,2,true)='audit_event_id'
+ ) THEN
+  RAISE EXCEPTION 'arge_report_previews_tenant_audit_unique is missing or invalid';
+ END IF;
+END
+$;
+-- END ARGE AUDIT INDEX GUARD
 COMMIT;
