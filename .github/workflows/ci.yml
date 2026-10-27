@@ -16,3 +16,30 @@ jobs:
       - run: npm install
       - run: npm test
       - run: npm run build
+
+  native-postgres-concurrency:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: arge_ci
+          POSTGRES_DB: arge_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U arge_ci -d arge_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: npm install
+      - name: Verify real independent PostgreSQL connections and tenant isolation
+        env:
+          ARGE_NATIVE_PG_TEST_URL: postgres://arge_ci@127.0.0.1:5432/arge_ci
+        run: node --test tests/arge-report-native-concurrency.test.mjs
