@@ -20,5 +20,8 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "svix": "^2.6.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.12"
   }
 }

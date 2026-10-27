@@ -16,3 +16,5 @@ jobs:
       - run: npm install
       - run: npm test
       - run: npm run build
+      - name: Verify read-only diagnostics HTTP boundaries with synthetic auth
+        run: node scripts/smoke-zera-diagnostics.mjs
