@@ -93,3 +93,41 @@ test('operator migration rejects a same-named unique index over the wrong column
   assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,1);
  }finally{await db.close();}
 });
+
+async function removeTenantAuditForeignKey(db){
+ const constraints=(await db.query(`SELECT conname FROM pg_constraint
+  WHERE conrelid='arge_report_previews'::regclass AND contype='f'`)).rows;
+ assert.equal(constraints.length,1);
+ const name=constraints[0].conname.replaceAll('"','""');
+ await db.exec(`ALTER TABLE arge_report_previews DROP CONSTRAINT "${name}"`);
+}
+
+test('operator migration rejects an existing report table missing its tenant-scoped audit FK',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(legacySchema);
+  await insertAudit(db);
+  await insertReport(db,'report1','request1');
+  await removeTenantAuditForeignKey(db);
+  await assert.rejects(db.exec(schema),/tenant audit foreign key is missing or invalid/);
+  await db.exec('ROLLBACK');
+  assert.deepEqual((await db.query('SELECT id FROM arge_report_previews')).rows.map(r=>r.id),['report1']);
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+ }finally{await db.close();}
+});
+
+test('operator migration rejects a weakened audit-only FK even if existing data is valid',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(legacySchema);
+  await insertAudit(db);
+  await insertReport(db,'report1','request1');
+  await removeTenantAuditForeignKey(db);
+  await db.exec(`ALTER TABLE arge_report_previews ADD CONSTRAINT arge_audit_only_fk
+   FOREIGN KEY(audit_event_id) REFERENCES arge_audit_events(id)
+   DEFERRABLE INITIALLY DEFERRED`);
+  await assert.rejects(db.exec(schema),/tenant audit foreign key is missing or invalid/);
+  await db.exec('ROLLBACK');
+  assert.deepEqual((await db.query('SELECT id FROM arge_report_previews')).rows.map(r=>r.id),['report1']);
+ }finally{await db.close();}
+});
