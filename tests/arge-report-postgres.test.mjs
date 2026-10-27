@@ -136,3 +136,19 @@ test('expired grant blocks stored preview replay and renewal reuses the original
  assert.equal(replay.auditEventId,first.auditEventId);
  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
 });
+
+test('database rejects cross-tenant audit references even when a report insert bypasses application checks',async()=>{
+ const legitimate=await createStoredRevenuePreview({pool,...context});
+ assert.equal(legitimate.ok,true);
+ // A forged tenant2 report must never be able to reference tenant1 audit evidence.
+ // The composite tenant_id + audit_event_id FK is the last line of defense.
+ await assert.rejects(db.query(`
+  INSERT INTO arge_report_previews(id,tenant_id,request_id,kind,report,audit_event_id)
+  VALUES('forged-cross-tenant','tenant2','forged-request','revenue-integrity','{}'::jsonb,$1)
+ `,[legitimate.auditEventId]));
+ const rows=(await db.query('SELECT tenant_id,request_id,audit_event_id FROM arge_report_previews ORDER BY tenant_id')).rows;
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].tenant_id,'tenant1');
+ assert.equal(rows[0].audit_event_id,legitimate.auditEventId);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+});
