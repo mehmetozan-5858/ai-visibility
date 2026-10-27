@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: npm install
+      - run: npm ci
       - run: npm test
       - run: npm run build
 
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - run: npm install
+      - run: npm ci
       - name: Verify real independent PostgreSQL connections and tenant isolation
         env:
           ARGE_NATIVE_PG_TEST_URL: postgres://arge_ci@127.0.0.1:5432/arge_ci
