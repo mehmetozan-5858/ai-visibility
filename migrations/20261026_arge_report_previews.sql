@@ -58,6 +58,42 @@ BEGIN
 END
 $audit_guard$;
 -- END ARGE AUDIT INDEX GUARD
+-- BEGIN ARGE REQUEST IDEMPOTENCY GUARD
+-- CREATE TABLE IF NOT EXISTS does not repair an existing table lacking
+-- tenant-scoped request uniqueness. Without this index, concurrent requests
+-- can duplicate reports or fail ON CONFLICT(tenant_id,request_id).
+DO $request_guard$
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1
+  FROM pg_class idx
+  JOIN pg_namespace ns ON ns.oid=idx.relnamespace
+  JOIN pg_index meta ON meta.indexrelid=idx.oid
+  JOIN pg_class tbl ON tbl.oid=meta.indrelid
+  WHERE ns.nspname=current_schema()
+   AND tbl.relname='arge_report_previews'
+   AND meta.indisunique AND meta.indisvalid AND meta.indisready
+   AND meta.indnkeyatts=2 AND meta.indnatts=2
+   AND meta.indpred IS NULL AND meta.indexprs IS NULL
+   AND pg_get_indexdef(idx.oid,1,true)='tenant_id'
+   AND pg_get_indexdef(idx.oid,2,true)='request_id'
+ ) THEN
+  RAISE EXCEPTION 'arge_report_previews tenant request uniqueness is missing or invalid';
+ END IF;
+ IF NOT EXISTS (
+  SELECT 1 FROM pg_attribute col
+  JOIN pg_class tbl ON tbl.oid=col.attrelid
+  JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+  WHERE ns.nspname=current_schema()
+   AND tbl.relname='arge_report_previews'
+   AND col.attname='request_id'
+   AND col.attnum>0 AND NOT col.attisdropped AND col.attnotnull
+ ) THEN
+  RAISE EXCEPTION 'arge_report_previews request_id must be NOT NULL';
+ END IF;
+END
+$request_guard$;
+-- END ARGE REQUEST IDEMPOTENCY GUARD
 -- BEGIN ARGE TENANT AUDIT FK GUARD
 -- CREATE TABLE IF NOT EXISTS does not repair an existing table with a missing
 -- or weakened foreign key. Require the exact tenant-scoped, validated FK.
