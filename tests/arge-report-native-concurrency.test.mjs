@@ -183,4 +183,61 @@ if(!connectionString){
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
  });
 
+
+ test('native PostgreSQL tenant grants stay independent through revocation and expiry',async()=>{
+  const service=LAUNCH_SERVICES.find(item=>item.id==='candidate-rediscovery');
+  assert.ok(service?.sensitive);
+  const now=Date.parse('2026-10-27T10:00:00.000Z');
+  for(const tenant of ['tenant1','tenant2']){
+   await pool.query(`INSERT INTO arge_entitlements
+    (tenant_id,service_id,status,expires_at,consent_verified)
+    VALUES ($1,$2,'active','2099-01-01',true)`,[tenant,service.id]);
+  }
+  async function plan(tenantId,grantTenantId=tenantId){
+   const row=(await pool.query(`SELECT status,revoked,expires_at AS "expiresAt",
+    not_before AS "notBefore",consent_verified AS "consentVerified",
+    consent_revoked AS "consentRevoked" FROM arge_entitlements
+    WHERE tenant_id=$1 AND service_id=$2`,[grantTenantId,service.id])).rows[0];
+   // SQL NULL is not an entitlement timestamp; omit the optional field.
+   const {notBefore,...persisted}=row;
+   const entitlement={...persisted,source:'server',clientId:grantTenantId,serviceId:service.id,
+    expiresAt:row.expiresAt.toISOString(),
+    ...(notBefore==null?{}:{notBefore:notBefore.toISOString()})};
+   return prepareAuthorizedLaunchPlan({
+    actor:{id:tenantId,authenticated:true},
+    membership:{actorId:tenantId,tenantId,role:'owner',verified:true},
+    sessionClientId:tenantId,accountClientId:tenantId,
+    serviceId:service.id,capability:service.capabilities[0],
+    entitlement,featureEnabled:true,globallyEnabled:true,now,
+   });
+  }
+  const firstTenant=await plan('tenant1');
+  assert.equal(firstTenant.ok,true,JSON.stringify(firstTenant));
+  const secondTenant=await plan('tenant2');
+  assert.equal(secondTenant.ok,true,JSON.stringify(secondTenant));
+  const stolenGrant=await plan('tenant2','tenant1');
+  assert.equal(stolenGrant.ok,false);
+  assert.equal(stolenGrant.reason,'service-entitlement-required');
+
+  await pool.query(`UPDATE arge_entitlements SET consent_revoked=true
+   WHERE tenant_id='tenant1' AND service_id=$1`,[service.id]);
+  assert.equal((await plan('tenant1')).reason,'verified-consent-required');
+  assert.equal((await plan('tenant2')).ok,true);
+
+  await pool.query(`UPDATE arge_entitlements SET revoked=true
+   WHERE tenant_id='tenant2' AND service_id=$1`,[service.id]);
+  assert.equal((await plan('tenant2')).reason,'service-entitlement-required');
+
+  await pool.query(`UPDATE arge_entitlements SET revoked=false,expires_at='2026-10-26'
+   WHERE tenant_id='tenant2' AND service_id=$1`,[service.id]);
+  assert.equal((await plan('tenant2')).reason,'entitlement-expired-or-unverifiable');
+
+  await pool.query(`UPDATE arge_entitlements
+   SET expires_at='2099-01-01',not_before='2026-10-28'
+   WHERE tenant_id='tenant2' AND service_id=$1`,[service.id]);
+  assert.equal((await plan('tenant2')).reason,'entitlement-not-yet-valid');
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,0);
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
+ });
+
 }
