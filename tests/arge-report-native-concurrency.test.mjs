@@ -164,6 +164,30 @@ if(!connectionString){
   await pool.query(schema);
  });
 
+ test('native PostgreSQL rejects nullable legacy preview timestamps without deleting audit evidence',async()=>{
+  const existing=await createStoredRevenuePreview(context('tenant1','legacy-null-time'));
+  assert.equal(existing.ok,true);
+  await pool.query('ALTER TABLE arge_report_previews ALTER COLUMN created_at DROP NOT NULL');
+  try{
+   // A legacy NULL timestamp is invisible to the daily quota count.
+   await pool.query('UPDATE arge_report_previews SET created_at=NULL WHERE id=$1',[existing.reportId]);
+   const daily=(await pool.query(`SELECT COUNT(*)::int AS n FROM arge_report_previews
+    WHERE tenant_id=$1 AND created_at >=
+     (date_trunc('day',NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,['tenant1'])).rows[0].n;
+   assert.equal(daily,0);
+   await assert.rejects(pool.query(schema),/created_at must be NOT NULL/);
+   const rows=(await pool.query('SELECT id,created_at,audit_event_id FROM arge_report_previews')).rows;
+   assert.deepEqual(rows.map(row=>[row.id,row.created_at,row.audit_event_id]),
+    [[existing.reportId,null,existing.auditEventId]]);
+   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{
+   // Repair only the isolated test fixture before the next test.
+   await pool.query('UPDATE arge_report_previews SET created_at=NOW() WHERE created_at IS NULL');
+   await pool.query('ALTER TABLE arge_report_previews ALTER COLUMN created_at SET NOT NULL');
+  }
+  await pool.query(schema);
+ });
+
  test('native PostgreSQL grants scope all four launch service plans without execution or audit writes',async()=>{
   const now=Date.parse('2026-10-27T10:00:00.000Z');
   for(const service of LAUNCH_SERVICES.filter(item=>item.id!=='agent-audit-control')){
