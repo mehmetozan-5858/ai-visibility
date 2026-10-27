@@ -86,4 +86,49 @@ if(!connectionString){
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,30);
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,30);
  });
+
+ test('native PostgreSQL upgrades a populated legacy audit index without losing reports',async()=>{
+  const original=await createStoredRevenuePreview(context('tenant1','upgrade-existing'));
+  assert.equal(original.ok,true);
+  await pool.query('DROP INDEX arge_report_previews_tenant_audit_unique');
+  try{
+   // A pre-existing legacy table can have evidence but lack the new unique index.
+   await pool.query(schema);
+   const rows=(await pool.query(`SELECT r.id,r.tenant_id,r.audit_event_id,a.tenant_id AS audit_tenant
+    FROM arge_report_previews r JOIN arge_audit_events a ON a.id=r.audit_event_id`)).rows;
+   assert.deepEqual(rows.map(row=>[row.id,row.tenant_id,row.audit_event_id,row.audit_tenant]),
+    [[original.reportId,'tenant1',original.auditEventId,'tenant1']]);
+   const replay=await createStoredRevenuePreview(context('tenant1','upgrade-existing'));
+   assert.equal(replay.ok,true);
+   assert.equal(replay.replayed,true);
+   assert.equal(replay.reportId,original.reportId);
+   assert.equal(replay.auditEventId,original.auditEventId);
+   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{
+   // Restore the isolated test schema even if an assertion fails.
+   await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS arge_report_previews_tenant_audit_unique ON arge_report_previews(tenant_id,audit_event_id)');
+  }
+ });
+
+ test('native PostgreSQL rejects a legacy nonunique index and rolls back without deleting evidence',async()=>{
+  const original=await createStoredRevenuePreview(context('tenant1','invalid-index-existing'));
+  assert.equal(original.ok,true);
+  await pool.query('DROP INDEX arge_report_previews_tenant_audit_unique');
+  await pool.query('CREATE INDEX arge_report_previews_tenant_audit_unique ON arge_report_previews(tenant_id,audit_event_id)');
+  try{
+   await assert.rejects(pool.query(schema),/arge_report_previews_tenant_audit_unique is missing or invalid/);
+   const rows=(await pool.query('SELECT id,tenant_id,audit_event_id FROM arge_report_previews')).rows;
+   assert.deepEqual(rows.map(row=>[row.id,row.tenant_id,row.audit_event_id]),
+    [[original.reportId,'tenant1',original.auditEventId]]);
+   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+   const indexes=(await pool.query(`SELECT ix.indisunique FROM pg_index ix
+    JOIN pg_class idx ON idx.oid=ix.indexrelid
+    WHERE idx.relname='arge_report_previews_tenant_audit_unique'`)).rows;
+   assert.equal(indexes.length,1);
+   assert.equal(indexes[0].indisunique,false);
+  }finally{
+   await pool.query('DROP INDEX IF EXISTS arge_report_previews_tenant_audit_unique');
+   await pool.query(schema);
+  }
+ });
 }
