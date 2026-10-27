@@ -188,6 +188,33 @@ if(!connectionString){
   await pool.query(schema);
  });
 
+ test('native PostgreSQL rejects a fixed legacy preview timestamp default and preserves evidence',async()=>{
+  // NOT NULL alone cannot enforce the daily quota when inserts omit created_at.
+  await pool.query(`ALTER TABLE arge_report_previews
+   ALTER COLUMN created_at SET DEFAULT '2000-01-01 00:00:00+00'::timestamptz`);
+  try{
+   const existing=await createStoredRevenuePreview(context('tenant1','legacy-fixed-default'));
+   assert.equal(existing.ok,true);
+   const row=(await pool.query('SELECT created_at,audit_event_id FROM arge_report_previews WHERE id=$1',
+    [existing.reportId])).rows[0];
+   assert.equal(row.created_at.toISOString(),'2000-01-01T00:00:00.000Z');
+   assert.equal(row.audit_event_id,existing.auditEventId);
+   const daily=(await pool.query(`SELECT COUNT(*)::int AS n FROM arge_report_previews
+    WHERE tenant_id=$1 AND created_at >=
+     (date_trunc('day',NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC')`,['tenant1'])).rows[0].n;
+   assert.equal(daily,0);
+   await assert.rejects(pool.query(schema),/created_at must be timestamptz DEFAULT now\(\)/);
+   const saved=(await pool.query('SELECT id,audit_event_id FROM arge_report_previews')).rows;
+   assert.deepEqual(saved.map(r=>[r.id,r.audit_event_id]),
+    [[existing.reportId,existing.auditEventId]]);
+   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{
+   // Repair only the isolated fixture. No customer schema is modified.
+   await pool.query('ALTER TABLE arge_report_previews ALTER COLUMN created_at SET DEFAULT NOW()');
+  }
+  await pool.query(schema);
+ });
+
  test('native PostgreSQL grants scope all four launch service plans without execution or audit writes',async()=>{
   const now=Date.parse('2026-10-27T10:00:00.000Z');
   for(const service of LAUNCH_SERVICES.filter(item=>item.id!=='agent-audit-control')){
