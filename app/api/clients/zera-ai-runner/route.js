@@ -7,6 +7,7 @@ import {getDatabaseUrl} from '../../../../lib/db';
 import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
 import {zeraAttemptsSelectQuery} from '../../../../lib/zera-attempts-query.mjs';
 import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
+import {comparisonAttemptFailure} from '../../../../lib/comparison-attempt-failure.mjs';
 
 const TASKS=ZERA_TASKS.filter(task=>task.channel==='ai-answer');
 const noStore={'Cache-Control':'private, no-store'};
@@ -75,22 +76,28 @@ export async function POST(req){
      results.push({taskId:task.id,status:'already-attempted'});
      break;
     }
+   let failureStage='provider';
    try{
     const comparison=await compareCustomerProviders({client,query:task.query,providers:['gemini'],keys:{gemini:process.env.GEMINI_API_KEY}});
     const response=comparison.results.find(r=>r.provider==='gemini');
     if(!response||!['source-supported-answer','answer-received-unverified'].includes(response.status)){
      const reason=safeFailureReason(response?.reason||response?.status||'no-answer');
+     failureStage='attempt-status';
      await pool.query("UPDATE zera_ai_task_attempts SET status='provider-failed',failure_reason=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,reason]);
      results.push({taskId:task.id,status:'provider-failed',reason});
      // Stop at first failure; never burn remaining quota on a failing provider.
      break;
     }
+    failureStage='comparison-storage';
     const saved=await storeCustomerComparison({clientId:client.id,comparison});
+    failureStage='attempt-status';
     await pool.query("UPDATE zera_ai_task_attempts SET status='stored',comparison_id=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,saved.id]);
     results.push({taskId:task.id,status:'stored',verified:response.verified===true,comparisonId:saved.id});
-   }catch{
-    await pool.query("UPDATE zera_ai_task_attempts SET status='error',failure_reason='internal-error' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]).catch(()=>{});
-    results.push({taskId:task.id,status:'error'});
+   }catch(error){
+    const failure=comparisonAttemptFailure(error,failureStage);
+    console.warn('COMPARISON_ATTEMPT_FAILED',JSON.stringify(failure));
+    await pool.query("UPDATE zera_ai_task_attempts SET status='error',failure_reason=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,failure.stage+':'+failure.reason]).catch(()=>{});
+    results.push({taskId:task.id,status:'error',reason:failure.reason,failureStage:failure.stage});
     break;
    }
   }
