@@ -198,9 +198,11 @@ if(!connectionString){
     not_before AS "notBefore",consent_verified AS "consentVerified",
     consent_revoked AS "consentRevoked" FROM arge_entitlements
     WHERE tenant_id=$1 AND service_id=$2`,[grantTenantId,service.id])).rows[0];
-   const entitlement={...row,source:'server',clientId:grantTenantId,serviceId:service.id,
+   // SQL NULL is not an entitlement timestamp; omit the optional field.
+   const {notBefore,...persisted}=row;
+   const entitlement={...persisted,source:'server',clientId:grantTenantId,serviceId:service.id,
     expiresAt:row.expiresAt.toISOString(),
-    ...(row.notBefore?{notBefore:row.notBefore.toISOString()}:{})};
+    ...(notBefore==null?{}:{notBefore:notBefore.toISOString()})};
    return prepareAuthorizedLaunchPlan({
     actor:{id:tenantId,authenticated:true},
     membership:{actorId:tenantId,tenantId,role:'owner',verified:true},
