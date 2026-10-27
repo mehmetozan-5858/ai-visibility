@@ -151,3 +151,23 @@ for(const operation of ['DELETE','UPDATE']){
   }finally{await db.close();}
  });
 }
+
+// An additional cascading FK can still delete/update evidence even when the
+// original valid NO ACTION FK remains. Reject the entire legacy configuration.
+for(const operation of ['DELETE','UPDATE']){
+ test(`operator migration rejects a second ON ${operation} CASCADE audit FK alongside the valid FK`,async()=>{
+  const db=new PGlite();
+  try{
+   await db.exec(legacySchema);
+   await insertAudit(db);
+   await insertReport(db,'report1','request1');
+   await db.exec(`ALTER TABLE arge_report_previews ADD CONSTRAINT arge_extra_cascading_audit_fk
+    FOREIGN KEY(tenant_id,audit_event_id) REFERENCES arge_audit_events(tenant_id,id)
+    ON ${operation} CASCADE DEFERRABLE INITIALLY DEFERRED`);
+   await assert.rejects(db.exec(schema),/tenant audit foreign key is missing or invalid/);
+   await db.exec('ROLLBACK');
+   assert.deepEqual((await db.query('SELECT id FROM arge_report_previews')).rows.map(r=>r.id),['report1']);
+   assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{await db.close();}
+ });
+}
