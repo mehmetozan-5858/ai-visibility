@@ -69,6 +69,9 @@ test('signed Paddle HTTP events enforce exact payment scope, renewal, lifecycle 
   assert.equal((await query('SELECT status FROM payments WHERE id=$1',[payment])).rows[0].status,'pending');
   assert.equal((await record(event('failed','transaction.payment_failed'))).paymentStatus,'failed');
   assert.equal(await clientStatus(),'payment-review');
+  const discounted=event('discount','transaction.completed');discounted.data.discount_id='dsc_fixture';
+  assert.equal((await record(discounted)).reason,'discount-review-required');
+  assert.equal(await clientStatus(),'payment-review');
   const paid=event('paid','transaction.completed');
   assert.equal((await record(paid)).paymentChanged,true);
   assert.equal(await clientStatus(),'active');
