@@ -157,4 +157,23 @@ BEGIN
 END
 $audit_not_null_guard$;
 -- END ARGE REQUIRED AUDIT COLUMNS GUARD
+-- BEGIN ARGE PREVIEW TIMESTAMP GUARD
+-- Legacy tables may have nullable created_at columns. NULL timestamps evade
+-- the UTC daily preview quota and weaken the report's audit chronology.
+DO $preview_timestamp_guard$
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1 FROM pg_attribute col
+  JOIN pg_class tbl ON tbl.oid=col.attrelid
+  JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+  WHERE ns.nspname=current_schema()
+   AND tbl.relname='arge_report_previews'
+   AND col.attname='created_at'
+   AND col.attnum>0 AND NOT col.attisdropped AND col.attnotnull
+ ) THEN
+  RAISE EXCEPTION 'arge_report_previews created_at must be NOT NULL';
+ END IF;
+END
+$preview_timestamp_guard$;
+-- END ARGE PREVIEW TIMESTAMP GUARD
 COMMIT;
