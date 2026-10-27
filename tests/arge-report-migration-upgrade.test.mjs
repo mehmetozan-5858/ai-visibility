@@ -8,7 +8,9 @@ import {PGlite} from '@electric-sql/pglite';
 const schema = await readFile(new URL('../migrations/20261026_arge_report_previews.sql',import.meta.url),'utf8');
 const indexDDL = /CREATE UNIQUE INDEX IF NOT EXISTS arge_report_previews_tenant_audit_unique\s+ON arge_report_previews\(tenant_id,audit_event_id\);/;
 assert.match(schema,indexDDL);
-const legacySchema = schema.replace(indexDDL,'');
+const indexGuard = /-- BEGIN ARGE AUDIT INDEX GUARD[\s\S]*?-- END ARGE AUDIT INDEX GUARD\s*/;
+assert.match(schema,indexGuard);
+const legacySchema = schema.replace(indexDDL,'').replace(indexGuard,'');
 assert.notEqual(legacySchema,schema);
 
 async function insertAudit(db){
@@ -59,5 +61,35 @@ test('operator migration fails closed on pre-existing duplicate audit references
   const rows=(await db.query('SELECT id FROM arge_report_previews ORDER BY id')).rows;
   assert.deepEqual(rows.map(r=>r.id),['report1','report2']);
   assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+ }finally{await db.close();}
+});
+
+test('operator migration rejects a same-named non-unique index without changing legacy rows',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(legacySchema);
+  await insertAudit(db);
+  await insertReport(db,'report1','request1');
+  await db.exec('CREATE INDEX arge_report_previews_tenant_audit_unique ON arge_report_previews(tenant_id,audit_event_id)');
+  await assert.rejects(db.exec(schema),/arge_report_previews_tenant_audit_unique is missing or invalid/);
+  await db.exec('ROLLBACK');
+  const metadata=(await db.query(`SELECT i.indisunique AS unique_index FROM pg_index i
+   JOIN pg_class c ON c.oid=i.indexrelid WHERE c.relname='arge_report_previews_tenant_audit_unique'`)).rows;
+  assert.equal(metadata.length,1);
+  assert.equal(metadata[0].unique_index,false);
+  assert.deepEqual((await db.query('SELECT id FROM arge_report_previews')).rows.map(r=>r.id),['report1']);
+ }finally{await db.close();}
+});
+
+test('operator migration rejects a same-named unique index over the wrong columns',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(legacySchema);
+  await insertAudit(db);
+  await insertReport(db,'report1','request1');
+  await db.exec('CREATE UNIQUE INDEX arge_report_previews_tenant_audit_unique ON arge_report_previews(tenant_id,request_id)');
+  await assert.rejects(db.exec(schema),/arge_report_previews_tenant_audit_unique is missing or invalid/);
+  await db.exec('ROLLBACK');
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,1);
  }finally{await db.close();}
 });
