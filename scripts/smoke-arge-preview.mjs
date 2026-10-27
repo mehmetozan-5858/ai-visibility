@@ -40,6 +40,20 @@ async function scenario(enabled){
   launch=await fetch(origin+'/api/client-launch-services',{
    headers:{cookie:'ai_admin='+adminToken}});
   assert.equal(launch.status,401);assertions++;
+  // An expired but correctly signed client session must fail closed.
+  const expiredValue=`client.tenant1.${Math.floor(Date.now()/1000)-60}`;
+  const expiredToken=expiredValue+'.'+createHmac('sha256',secret).update(expiredValue).digest('base64url');
+  launch=await fetch(origin+'/api/client-launch-services',{
+   headers:{cookie:'ai_client='+expiredToken}});
+  assert.equal(launch.status,401);
+  assert.match(launch.headers.get('cache-control')||'',/no-store/);assertions++;
+  // No DATABASE_URL is configured in this local test: a valid signature
+  // alone must never grant catalog access without a server-side account.
+  launch=await fetch(origin+'/api/client-launch-services',{
+   headers:{cookie:'ai_client='+token}});
+  assert.equal(launch.status,404);
+  assert.match(launch.headers.get('cache-control')||'',/no-store/);
+  assert.equal(Object.hasOwn(await launch.json(),'services'),false);assertions++;
   launch=await fetch(origin+'/api/client-launch-services',{
    method:'POST',headers:{origin,'content-type':'application/json',cookie:'ai_client='+token},body:'{}'});
   assert.equal(launch.status,405);assertions++;
