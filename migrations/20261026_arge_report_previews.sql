@@ -29,4 +29,8 @@ CREATE TABLE IF NOT EXISTS arge_report_previews (
  UNIQUE(tenant_id,request_id),
  FOREIGN KEY(tenant_id,audit_event_id) REFERENCES arge_audit_events(tenant_id,id) DEFERRABLE INITIALLY DEFERRED
 );
+-- A persisted audit event may justify exactly one report for a tenant.
+-- This idempotent index also protects tables created by an earlier migration run.
+CREATE UNIQUE INDEX IF NOT EXISTS arge_report_previews_tenant_audit_unique
+ ON arge_report_previews(tenant_id,audit_event_id);
 COMMIT;

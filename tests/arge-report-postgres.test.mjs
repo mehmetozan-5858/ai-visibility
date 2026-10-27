@@ -152,3 +152,18 @@ test('database rejects cross-tenant audit references even when a report insert b
  assert.equal(rows[0].audit_event_id,legitimate.auditEventId);
  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
 });
+
+test('database rejects a second report that reuses an existing tenant audit event',async()=>{
+ const original=await createStoredRevenuePreview({pool,...context});
+ assert.equal(original.ok,true);
+ // An audit event is evidence for one report, not a reusable success token.
+ await assert.rejects(db.query(`
+  INSERT INTO arge_report_previews(id,tenant_id,request_id,kind,report,audit_event_id)
+  VALUES('forged-same-tenant','tenant1','different-request','revenue-integrity','{}'::jsonb,$1)
+ `,[original.auditEventId]));
+ const reports=(await db.query('SELECT id,audit_event_id FROM arge_report_previews')).rows;
+ assert.equal(reports.length,1);
+ assert.equal(reports[0].id,original.reportId);
+ assert.equal(reports[0].audit_event_id,original.auditEventId);
+ assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+});
