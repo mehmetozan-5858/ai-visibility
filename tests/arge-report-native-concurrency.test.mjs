@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import pg from 'pg';
 import {createStoredRevenuePreview} from '../lib/arge-report-repository.mjs';
+import {prepareAuthorizedLaunchPlan} from '../lib/ai-visibility-launch-authorized-plan.mjs';
+import {LAUNCH_SERVICES} from '../lib/ai-visibility-launch-services.mjs';
 
 // Explicit opt-in: this suite must NEVER connect to a real customer database.
 // It runs against an ephemeral, local PostgreSQL service in GitHub Actions.
@@ -131,4 +133,54 @@ if(!connectionString){
    await pool.query(schema);
   }
  });
+ test('native PostgreSQL grants scope all four launch service plans without execution or audit writes',async()=>{
+  const now=Date.parse('2026-10-27T10:00:00.000Z');
+  for(const service of LAUNCH_SERVICES.filter(item=>item.id!=='agent-audit-control')){
+   await pool.query(`INSERT INTO arge_entitlements
+    (tenant_id,service_id,status,expires_at,consent_verified)
+    VALUES ($1,$2,'active','2099-01-01',$3)`,
+    ['tenant1',service.id,service.sensitive]);
+  }
+  async function plan(service,tenant='tenant1'){
+   // Read the grant from the isolated PostgreSQL service, never from a request.
+   const row=(await pool.query(`SELECT status,revoked,expires_at AS "expiresAt",
+    not_before AS "notBefore",consent_verified AS "consentVerified",
+    consent_revoked AS "consentRevoked" FROM arge_entitlements
+    WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id])).rows[0];
+   const entitlement={...row,source:'server',clientId:'tenant1',serviceId:service.id,
+    expiresAt:row.expiresAt.toISOString(),
+    notBefore:row.notBefore?.toISOString()};
+   return prepareAuthorizedLaunchPlan({
+    actor:{id:tenant,authenticated:true},
+    membership:{actorId:tenant,tenantId:tenant,role:'owner',verified:true},
+    sessionClientId:tenant,accountClientId:tenant,
+    serviceId:service.id,capability:service.capabilities[0],entitlement,
+    featureEnabled:true,globallyEnabled:true,now,
+   });
+  }
+  assert.equal(LAUNCH_SERVICES.length,4);
+  for(const service of LAUNCH_SERVICES){
+   const authorized=await plan(service);
+   assert.equal(authorized.ok,true,service.id);
+   assert.equal(authorized.executes,false);
+   assert.equal(authorized.auditPersisted,false);
+   assert.equal(authorized.auditEvent.state,'prepared-not-persisted');
+   assert.equal(authorized.auditEvent.tenantId,'tenant1');
+   assert.equal(authorized.auditEvent.serviceId,service.id);
+   const otherTenant=await plan(service,'tenant2');
+   assert.equal(otherTenant.ok,false,service.id);
+   assert.equal(otherTenant.reason,'service-entitlement-required');
+   assert.equal('auditEvent' in otherTenant,false);
+   if(service.sensitive){
+    await pool.query(`UPDATE arge_entitlements SET consent_revoked=true
+     WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id]);
+    const denied=await plan(service);
+    assert.equal(denied.reason,'verified-consent-required',service.id);
+    assert.equal('auditEvent' in denied,false);
+   }
+  }
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,0);
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
+ });
+
 }
