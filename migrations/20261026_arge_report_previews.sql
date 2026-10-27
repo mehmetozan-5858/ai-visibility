@@ -100,4 +100,25 @@ BEGIN
 END
 $audit_fk_guard$;
 -- END ARGE TENANT AUDIT FK GUARD
+-- BEGIN ARGE REQUIRED AUDIT COLUMNS GUARD
+-- An existing table may have nullable tenant/audit references even though
+-- CREATE TABLE IF NOT EXISTS specifies NOT NULL. NULL bypasses composite FK
+-- enforcement, allowing unscoped or unaudited report evidence.
+DO $audit_not_null_guard$
+BEGIN
+ IF (
+  SELECT COUNT(*)
+  FROM pg_attribute col
+  JOIN pg_class tbl ON tbl.oid=col.attrelid
+  JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+  WHERE ns.nspname=current_schema()
+   AND tbl.relname='arge_report_previews'
+   AND col.attname IN ('tenant_id','audit_event_id')
+   AND col.attnum>0 AND NOT col.attisdropped AND col.attnotnull
+ ) <> 2 THEN
+  RAISE EXCEPTION 'arge_report_previews required audit columns must be NOT NULL';
+ END IF;
+END
+$audit_not_null_guard$;
+-- END ARGE REQUIRED AUDIT COLUMNS GUARD
 COMMIT;

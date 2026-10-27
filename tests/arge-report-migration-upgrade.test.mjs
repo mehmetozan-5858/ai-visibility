@@ -171,3 +171,26 @@ for(const operation of ['DELETE','UPDATE']){
   }finally{await db.close();}
  });
 }
+
+
+// A legacy report table with nullable tenant or audit columns can bypass the
+// composite FK because PostgreSQL's default MATCH SIMPLE permits NULL keys.
+for(const column of ['tenant_id','audit_event_id']){
+ test(`operator migration rejects nullable ${column} on a populated report table`,async()=>{
+  const db=new PGlite();
+  try{
+   await db.exec(legacySchema);
+   await insertAudit(db);
+   await insertReport(db,'report1','request1');
+   await db.exec(`ALTER TABLE arge_report_previews ALTER COLUMN ${column} DROP NOT NULL`);
+   await assert.rejects(db.exec(schema),/required audit columns must be NOT NULL/);
+   await db.exec('ROLLBACK');
+   const metadata=(await db.query(`SELECT attnotnull FROM pg_attribute
+    WHERE attrelid='arge_report_previews'::regclass AND attname=$1`,[column])).rows;
+   assert.equal(metadata.length,1);
+   assert.equal(metadata[0].attnotnull,false);
+   assert.deepEqual((await db.query('SELECT id FROM arge_report_previews')).rows.map(r=>r.id),['report1']);
+   assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{await db.close();}
+ });
+}
