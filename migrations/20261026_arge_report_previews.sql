@@ -78,6 +78,14 @@ BEGIN
    AND fk.condeferrable AND fk.condeferred
    -- NO ACTION preserves audit evidence; a legacy CASCADE FK must not pass.
    AND fk.confdeltype='a' AND fk.confupdtype='a'
+   -- A second legacy FK can cascade even when the intended NO ACTION FK exists.
+   AND NOT EXISTS (
+    SELECT 1 FROM pg_constraint competing_fk
+    WHERE competing_fk.conrelid=report_table.oid
+     AND competing_fk.confrelid=audit_table.oid
+     AND competing_fk.contype='f'
+     AND (competing_fk.confdeltype<>'a' OR competing_fk.confupdtype<>'a')
+   )
    AND fk.conkey=ARRAY[
     (SELECT attnum FROM pg_attribute WHERE attrelid=report_table.oid AND attname='tenant_id' AND NOT attisdropped),
     (SELECT attnum FROM pg_attribute WHERE attrelid=report_table.oid AND attname='audit_event_id' AND NOT attisdropped)
