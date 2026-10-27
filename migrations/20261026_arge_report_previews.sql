@@ -58,4 +58,36 @@ BEGIN
 END
 $audit_guard$;
 -- END ARGE AUDIT INDEX GUARD
+-- BEGIN ARGE TENANT AUDIT FK GUARD
+-- CREATE TABLE IF NOT EXISTS does not repair an existing table with a missing
+-- or weakened foreign key. Require the exact tenant-scoped, validated FK.
+DO $audit_fk_guard$
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1
+  FROM pg_constraint fk
+  JOIN pg_class report_table ON report_table.oid=fk.conrelid
+  JOIN pg_namespace report_ns ON report_ns.oid=report_table.relnamespace
+  JOIN pg_class audit_table ON audit_table.oid=fk.confrelid
+  JOIN pg_namespace audit_ns ON audit_ns.oid=audit_table.relnamespace
+  WHERE report_ns.nspname=current_schema()
+   AND audit_ns.nspname=current_schema()
+   AND report_table.relname='arge_report_previews'
+   AND audit_table.relname='arge_audit_events'
+   AND fk.contype='f' AND fk.convalidated
+   AND fk.condeferrable AND fk.condeferred
+   AND fk.conkey=ARRAY[
+    (SELECT attnum FROM pg_attribute WHERE attrelid=report_table.oid AND attname='tenant_id' AND NOT attisdropped),
+    (SELECT attnum FROM pg_attribute WHERE attrelid=report_table.oid AND attname='audit_event_id' AND NOT attisdropped)
+   ]
+   AND fk.confkey=ARRAY[
+    (SELECT attnum FROM pg_attribute WHERE attrelid=audit_table.oid AND attname='tenant_id' AND NOT attisdropped),
+    (SELECT attnum FROM pg_attribute WHERE attrelid=audit_table.oid AND attname='id' AND NOT attisdropped)
+   ]
+ ) THEN
+  RAISE EXCEPTION 'arge_report_previews tenant audit foreign key is missing or invalid';
+ END IF;
+END
+$audit_fk_guard$;
+-- END ARGE TENANT AUDIT FK GUARD
 COMMIT;
