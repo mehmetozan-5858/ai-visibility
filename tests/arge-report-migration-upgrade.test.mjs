@@ -131,3 +131,23 @@ test('operator migration rejects a weakened audit-only FK even if existing data 
   assert.deepEqual((await db.query('SELECT id FROM arge_report_previews')).rows.map(r=>r.id),['report1']);
  }finally{await db.close();}
 });
+
+
+for(const operation of ['DELETE','UPDATE']){
+ test(`operator migration rejects an existing tenant audit FK with ON ${operation} CASCADE`,async()=>{
+  const db=new PGlite();
+  try{
+   await db.exec(legacySchema);
+   await insertAudit(db);
+   await insertReport(db,'report1','request1');
+   await removeTenantAuditForeignKey(db);
+   await db.exec(`ALTER TABLE arge_report_previews ADD CONSTRAINT arge_cascading_audit_fk
+    FOREIGN KEY(tenant_id,audit_event_id) REFERENCES arge_audit_events(tenant_id,id)
+    ON ${operation} CASCADE DEFERRABLE INITIALLY DEFERRED`);
+   await assert.rejects(db.exec(schema),/tenant audit foreign key is missing or invalid/);
+   await db.exec('ROLLBACK');
+   assert.deepEqual((await db.query('SELECT id FROM arge_report_previews')).rows.map(r=>r.id),['report1']);
+   assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{await db.close();}
+ });
+}
