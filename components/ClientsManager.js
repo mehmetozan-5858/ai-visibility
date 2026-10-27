@@ -46,7 +46,7 @@ export default function ClientsManager(){
 
  return <section className="panel clients-manager">
    <div className="section-title"><div><h2>Müşteri listesi</h2><small>{clients.length} kayıt</small></div><button onClick={()=>{setOpen(!open);setMsg("")}}>{open?"Kapat":"＋ Yeni müşteri"}</button></div>
-   {!loading&&!clients.some(c=>c.name==="ZERA Clothing")&&<div style={{margin:"12px 0"}}><button type="button" disabled={busy} onClick={addZera}>{busy?"Kaydediliyor…":"ZERA pilotunu ana listeye ekle"}</button><small style={{display:"block",marginTop:6}}>Yalnızca ZERA kaydı; tarama, ödeme veya eski müşteriler değişmez.</small></div>}
+   {!loading&&!clients.some(c=>c.name==="ZERA Clothing")&&<div style={{margin:"12px 0"}}><button type="button" disabled={busy} onClick={addZera}>{busy?"Kaydediliyor…":"ZERA müşterisini pilot olarak listeye ekle"}</button><small style={{display:"block",marginTop:6}}>Yalnızca müşteri kaydı oluşturulur; yönetici veya ürün yetkisi verilmez.</small></div>}
    {open&&<form onSubmit={submit} className="client-form">
      <label>Marka / işletme adı<input name="name" placeholder="Örn. Acme" required/></label>
      <label>Web sitesi<input name="domain" inputMode="url" placeholder="ornek.com" required/></label>

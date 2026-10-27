@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
+import {comparisonRunFeedback,comparisonHistoryFeedback} from '../../../lib/comparison-run-feedback.mjs';
 export default function ZeraCustomerDetail(){
  const [state,setState]=useState({loading:true,client:null,error:""});
  const [measurements,setMeasurements]=useState({loading:true,error:"",comparisons:[],verifiedCount:0});
@@ -21,17 +22,17 @@ export default function ZeraCustomerDetail(){
   const [a,b]=await Promise.all([fetch("/api/clients/zera-scan-readiness",{credentials:"same-origin",cache:"no-store"}),fetch("/api/clients/zera-ai-runner",{credentials:"same-origin",cache:"no-store"})]);
   if(!a.ok||!b.ok)throw Error("Hazırlık durumu okunamadı");
   const readiness=await a.json(),history=await b.json();
-  if(alive)setRun({ready:readiness.ready===true,loading:false,busy:false,used:(history.attempts||[]).length>0,message:(history.attempts||[]).length>0?"AI görev durumu: "+history.tasks.map(t=>t.id+" "+t.status).join(", "):readiness.ready?"İki Gemini sorgusu tek onayla sırayla çalıştırılabilir.":"Tarama güvenlik kilidi kapalı; API çağrısı yapılmadı."});
+  if(alive)setRun({ready:readiness.ready===true,loading:false,busy:false,used:(history.attempts||[]).length>0,message:comparisonHistoryFeedback(history)||(readiness.ready?"İki Gemini sorgusu tek onayla sırayla çalıştırılabilir.":"Tarama güvenlik kilidi kapalı; API çağrısı yapılmadı.")});
  }catch{if(alive)setRun({ready:false,loading:false,busy:false,used:false,message:"Hazırlık durumu şu anda kontrol edilemiyor."})}})();return()=>{alive=false}},[]);
  async function startOneScan(){if(!run.ready||run.used||run.busy)return;
   setRun(v=>({...v,busy:true,message:"Gemini görevleri sırayla çalışıyor…"}));
   try{const response=await fetch("/api/clients/zera-ai-runner",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json"},body:JSON.stringify({confirmTwoFreeGeminiTasks:true})});const data=await response.json();
-   setRun(v=>({...v,busy:false,used:true,ready:false,message:response.ok?(data.results||[]).some(r=>r.status==="stored")?"Kaydedilen AI yanıtları var. Sonuçları görmek için sayfayı yenile.":"Sağlayıcı yanıtı kaydedilemedi: "+(data.summary||"neden belirtilmedi")+"; otomatik tekrar denenmeyecek.":"Tarama sonucu: "+(data.error||data.status||"Hata")+"; otomatik tekrar denenmeyecek."}));
+   setRun(v=>({...v,busy:false,used:true,ready:false,message:comparisonRunFeedback(data,response.ok)}));
   }catch{setRun(v=>({...v,busy:false,used:true,ready:false,message:"Bağlantı kesildi; kayıt kontrol edilmeden yeniden denemeyin."}))}
  }
  return <main style={{maxWidth:820,margin:"36px auto",padding:20,lineHeight:1.6}}>
   <a href="/musteriler">← Müşteriler</a>
-  <h1>ZERA Clothing</h1><p>Production müşteri profili · Wetzlar, Germany</p>
+  <h1>ZERA Clothing</h1><p>Pilot müşteri · Wetzlar, Almanya</p>
   {state.loading?<p>Doğrulanmış müşteri kaydı yükleniyor…</p>:state.error?<p role="alert">{state.error}</p>:<>
     <section className="panel" style={{padding:18,marginBottom:16}}>
      <h2>Müşteri profili</h2>
