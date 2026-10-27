@@ -1,10 +1,11 @@
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
 import {compareCustomerProviders} from '../../../../lib/customer-provider-comparison.mjs';
-import {storeCustomerComparison} from '../../../../lib/customer-comparison-storage.mjs';
+import {storeCustomerComparison,prepareCustomerComparisonStorage} from '../../../../lib/customer-comparison-storage.mjs';
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
 import {assessZeraProviderSpendGate} from '../../../../lib/zera-provider-spend-gate.mjs';
+import {comparisonAttemptFailure} from '../../../../lib/comparison-attempt-failure.mjs';
 
 // Operator-triggered, one-attempt pilot. DISABLED unless explicitly enabled.
 // No cron, no OpenAI/Perplexity billing, no automatic retries.
@@ -26,6 +27,12 @@ export async function POST(req){
   if(!client||client.name!=='ZERA Clothing'||client.plan!=='Pilot')return Response.json({error:'ZERA Pilot missing'},{status:404});
   const url=getDatabaseUrl();if(!url)return Response.json({error:'Database unavailable'},{status:503});
   const pool=databasePool(url);
+  try{await prepareCustomerComparisonStorage({pool,clientId:client.id})}
+  catch(error){
+   const failure=comparisonAttemptFailure(error,'comparison-storage');
+   console.warn('COMPARISON_STORAGE_PREFLIGHT_FAILED',JSON.stringify(failure));
+   return Response.json({error:'Comparison storage unavailable; no provider call started',reason:failure.reason,providerCallsStarted:0},{status:503,headers:{'Cache-Control':'private, no-store'}});
+  }
   await pool.query('CREATE TABLE IF NOT EXISTS zera_production_scan_attempts (id TEXT PRIMARY KEY,client_id UUID NOT NULL,created_at TIMESTAMPTZ DEFAULT NOW(),status TEXT NOT NULL)');
   const claim=await pool.query("INSERT INTO zera_production_scan_attempts(id,client_id,status) VALUES('first-free-gemini', $1, 'started') ON CONFLICT DO NOTHING RETURNING id",[client.id]);
   if(!claim.rows.length)return Response.json({error:'One attempt already used or running; no retry allowed'},{status:409});

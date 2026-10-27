@@ -1,7 +1,7 @@
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
 import {compareCustomerProviders} from '../../../../lib/customer-provider-comparison.mjs';
-import {storeCustomerComparison} from '../../../../lib/customer-comparison-storage.mjs';
+import {prepareCustomerComparisonStorage,storeClaimedCustomerComparison} from '../../../../lib/customer-comparison-storage.mjs';
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
 import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
@@ -60,6 +60,12 @@ export async function POST(req){
  let client,pool;
  try{({client,pool}=await context())}catch{return Response.json({error:'ZERA or database unavailable'},{status:503})}
  try{
+  try{await prepareCustomerComparisonStorage({pool,clientId:client.id})}
+  catch(error){
+   const failure=comparisonAttemptFailure(error,'comparison-storage');
+   console.warn('COMPARISON_STORAGE_PREFLIGHT_FAILED',JSON.stringify(failure));
+   return Response.json({error:'Comparison storage unavailable; no provider call started',reason:failure.reason,providerCallsStarted:0},{status:503,headers:noStore});
+  }
   await pool.query(`CREATE TABLE IF NOT EXISTS zera_ai_task_attempts(
    client_id UUID NOT NULL,task_id TEXT NOT NULL,status TEXT NOT NULL,
    comparison_id UUID,created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -89,9 +95,7 @@ export async function POST(req){
      break;
     }
     failureStage='comparison-storage';
-    const saved=await storeCustomerComparison({clientId:client.id,comparison});
-    failureStage='attempt-status';
-    await pool.query("UPDATE zera_ai_task_attempts SET status='stored',comparison_id=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,saved.id]);
+    const saved=await storeClaimedCustomerComparison({pool,clientId:client.id,taskId:task.id,comparison});
     results.push({taskId:task.id,status:'stored',verified:response.verified===true,comparisonId:saved.id});
    }catch(error){
     const failure=comparisonAttemptFailure(error,failureStage);
