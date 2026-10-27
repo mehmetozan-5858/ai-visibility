@@ -36,7 +36,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS arge_report_previews_tenant_audit_unique
 -- BEGIN ARGE AUDIT INDEX GUARD
 -- IF NOT EXISTS alone does not verify an existing same-named index is unique
 -- or covers the intended columns. Fail the whole operator transaction closed.
-DO $
+DO $audit_guard$
 BEGIN
  IF NOT EXISTS (
   SELECT 1
@@ -56,6 +56,6 @@ BEGIN
   RAISE EXCEPTION 'arge_report_previews_tenant_audit_unique is missing or invalid';
  END IF;
 END
-$;
+$audit_guard$;
 -- END ARGE AUDIT INDEX GUARD
 COMMIT;
