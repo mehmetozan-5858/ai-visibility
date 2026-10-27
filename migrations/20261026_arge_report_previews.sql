@@ -176,4 +176,27 @@ BEGIN
 END
 $preview_timestamp_guard$;
 -- END ARGE PREVIEW TIMESTAMP GUARD
+-- BEGIN ARGE PREVIEW TIMESTAMP DEFAULT GUARD
+-- A legacy NOT NULL created_at can still have a missing or fixed default.
+-- Inserts omit this column; a stale default evades the UTC daily quota.
+-- Require the exact UTC-capable timestamp type and the expected clock default.
+DO $preview_timestamp_default_guard$
+BEGIN
+ IF NOT EXISTS (
+  SELECT 1 FROM pg_attribute col
+  JOIN pg_class tbl ON tbl.oid=col.attrelid
+  JOIN pg_namespace ns ON ns.oid=tbl.relnamespace
+  JOIN pg_attrdef def ON def.adrelid=tbl.oid AND def.adnum=col.attnum
+  WHERE ns.nspname=current_schema()
+   AND tbl.relname='arge_report_previews'
+   AND col.attname='created_at'
+   AND col.attnum>0 AND NOT col.attisdropped
+   AND col.atttypid='timestamptz'::regtype
+   AND pg_get_expr(def.adbin,def.adrelid)='now()'
+ ) THEN
+  RAISE EXCEPTION 'arge_report_previews created_at must be timestamptz DEFAULT now()';
+ END IF;
+END
+$preview_timestamp_default_guard$;
+-- END ARGE PREVIEW TIMESTAMP DEFAULT GUARD
 COMMIT;
