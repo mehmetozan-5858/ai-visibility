@@ -240,4 +240,51 @@ if(!connectionString){
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
  });
 
+ test('native PostgreSQL membership downgrade and disablement revoke launch planning',async()=>{
+  const service=LAUNCH_SERVICES.find(item=>item.id==='agent-commerce-intelligence');
+  assert.ok(service);
+  const now=Date.parse('2026-10-27T10:00:00.000Z');
+  await pool.query(`INSERT INTO arge_entitlements
+   (tenant_id,service_id,status,expires_at)
+   VALUES ('tenant1',$1,'active','2099-01-01')`,[service.id]);
+
+  // Both membership and entitlement must be loaded from the isolated database.
+  // A previously issued owner role or a client-supplied role is never trusted.
+  async function plan(accountClientId='tenant1'){
+   const membership=(await pool.query(`SELECT actor_id AS "actorId",
+    tenant_id AS "tenantId",role,enabled AS verified
+    FROM arge_memberships WHERE tenant_id='tenant1' AND actor_id='tenant1'`)).rows[0];
+   const row=(await pool.query(`SELECT status,revoked,expires_at AS "expiresAt",
+    not_before AS "notBefore",consent_verified AS "consentVerified",
+    consent_revoked AS "consentRevoked" FROM arge_entitlements
+    WHERE tenant_id='tenant1' AND service_id=$1`,[service.id])).rows[0];
+   const {notBefore,...persisted}=row;
+   const entitlement={...persisted,source:'server',clientId:'tenant1',
+    serviceId:service.id,expiresAt:row.expiresAt.toISOString(),
+    ...(notBefore==null?{}:{notBefore:notBefore.toISOString()})};
+   return prepareAuthorizedLaunchPlan({
+    actor:{id:'tenant1',authenticated:true},membership,
+    sessionClientId:'tenant1',accountClientId,
+    serviceId:service.id,capability:service.capabilities[0],
+    entitlement,featureEnabled:true,globallyEnabled:true,now,
+   });
+  }
+
+  assert.equal((await plan()).ok,true);
+  await pool.query(`UPDATE arge_memberships SET role='manager'
+   WHERE tenant_id='tenant1' AND actor_id='tenant1'`);
+  assert.equal((await plan()).reason,'owner-required');
+  await pool.query(`UPDATE arge_memberships SET role='viewer'
+   WHERE tenant_id='tenant1' AND actor_id='tenant1'`);
+  assert.equal((await plan()).reason,'insufficient-permission');
+  await pool.query(`UPDATE arge_memberships SET role='owner',enabled=false
+   WHERE tenant_id='tenant1' AND actor_id='tenant1'`);
+  assert.equal((await plan()).reason,'unverified-membership');
+  await pool.query(`UPDATE arge_memberships SET enabled=true
+   WHERE tenant_id='tenant1' AND actor_id='tenant1'`);
+  assert.equal((await plan('tenant2')).reason,'cross-tenant-denied');
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,0);
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
+ });
+
 }
