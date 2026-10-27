@@ -76,6 +76,8 @@ BEGIN
    AND audit_table.relname='arge_audit_events'
    AND fk.contype='f' AND fk.convalidated
    AND fk.condeferrable AND fk.condeferred
+   -- NO ACTION preserves audit evidence; a legacy CASCADE FK must not pass.
+   AND fk.confdeltype='a' AND fk.confupdtype='a'
    AND fk.conkey=ARRAY[
     (SELECT attnum FROM pg_attribute WHERE attrelid=report_table.oid AND attname='tenant_id' AND NOT attisdropped),
     (SELECT attnum FROM pg_attribute WHERE attrelid=report_table.oid AND attname='audit_event_id' AND NOT attisdropped)
