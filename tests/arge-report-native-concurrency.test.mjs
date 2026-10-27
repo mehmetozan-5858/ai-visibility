@@ -133,6 +133,37 @@ if(!connectionString){
    await pool.query(schema);
   }
  });
+ test('native PostgreSQL rejects legacy tables without tenant request uniqueness',async()=>{
+  const existing=await createStoredRevenuePreview(context('tenant1','legacy-request'));
+  assert.equal(existing.ok,true);
+  await pool.query('ALTER TABLE arge_report_previews DROP CONSTRAINT arge_report_previews_tenant_id_request_id_key');
+  try{
+   await assert.rejects(pool.query(schema),/tenant request uniqueness is missing or invalid/);
+   const reports=(await pool.query('SELECT id,tenant_id,request_id,audit_event_id FROM arge_report_previews')).rows;
+   assert.deepEqual(reports.map(row=>[row.id,row.tenant_id,row.request_id,row.audit_event_id]),
+    [[existing.reportId,'tenant1','legacy-request',existing.auditEventId]]);
+   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{
+   await pool.query('ALTER TABLE arge_report_previews ADD CONSTRAINT arge_report_previews_tenant_id_request_id_key UNIQUE (tenant_id,request_id)');
+  }
+  await pool.query(schema);
+ });
+
+ test('native PostgreSQL rejects nullable legacy request IDs even with a unique index',async()=>{
+  const existing=await createStoredRevenuePreview(context('tenant1','legacy-nullable'));
+  assert.equal(existing.ok,true);
+  await pool.query('ALTER TABLE arge_report_previews ALTER COLUMN request_id DROP NOT NULL');
+  try{
+   await assert.rejects(pool.query(schema),/request_id must be NOT NULL/);
+   const reports=(await pool.query('SELECT id,request_id FROM arge_report_previews')).rows;
+   assert.deepEqual(reports.map(row=>[row.id,row.request_id]),[[existing.reportId,'legacy-nullable']]);
+   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,1);
+  }finally{
+   await pool.query('ALTER TABLE arge_report_previews ALTER COLUMN request_id SET NOT NULL');
+  }
+  await pool.query(schema);
+ });
+
  test('native PostgreSQL grants scope all four launch service plans without execution or audit writes',async()=>{
   const now=Date.parse('2026-10-27T10:00:00.000Z');
   for(const service of LAUNCH_SERVICES.filter(item=>item.id!=='agent-audit-control')){
