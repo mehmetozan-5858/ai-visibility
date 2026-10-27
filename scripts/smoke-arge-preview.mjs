@@ -29,6 +29,20 @@ async function scenario(enabled){
   assert(ready,'local production server did not start');
   const call=(path,body={},cookie=token,extra={})=>fetch(origin+path,{method:'POST',
    headers:{origin,'content-type':'application/json',...(cookie?{cookie:'ai_client='+cookie}:{}),...extra},body:JSON.stringify(body)});
+  // Four-service launch catalog is a read-only customer surface. Reject
+  // anonymous/forged sessions and unsupported writes on a LOCAL server only.
+  let launch=await fetch(origin+'/api/client-launch-services');
+  assert.equal(launch.status,401);
+  assert.match(launch.headers.get('cache-control')||'',/no-store/);assertions++;
+  launch=await fetch(origin+'/api/client-launch-services',{
+   headers:{cookie:'ai_client='+token+'tampered'}});
+  assert.equal(launch.status,401);assertions++;
+  launch=await fetch(origin+'/api/client-launch-services',{
+   headers:{cookie:'ai_admin='+adminToken}});
+  assert.equal(launch.status,401);assertions++;
+  launch=await fetch(origin+'/api/client-launch-services',{
+   method:'POST',headers:{origin,'content-type':'application/json',cookie:'ai_client='+token},body:'{}'});
+  assert.equal(launch.status,405);assertions++;
   let r=await call('/api/client-audit-preview',{},null);assert.equal(r.status,401);assertions++;
   r=await call('/api/client-audit-preview',{},token+'tampered');assert.equal(r.status,401);assertions++;
   r=await call('/api/clients');assert.equal(r.status,401);assertions++;
