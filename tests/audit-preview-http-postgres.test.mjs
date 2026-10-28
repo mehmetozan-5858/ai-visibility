@@ -60,3 +60,30 @@ test('shared handler with synthetic server-verified actors: signed HTTP, Postgre
   if(previous===undefined)delete process.env.AUTH_SECRET;else process.env.AUTH_SECRET=previous;
  }
 });
+
+
+test('signed tenant-only customer token cannot authorize report persistence without a verified actor',async()=>{
+ const previous=process.env.AUTH_SECRET;
+ process.env.AUTH_SECRET=randomBytes(32).toString('hex');
+ try{
+  const token=await createClientToken('tenant1');
+  const handler=createAuditPreviewHandler({
+   getSession:req=>verifyClientToken((req.headers.get('cookie')||'').replace(/^ai_client=/,'')),
+   getSettings:()=>({ARGE_REPORT_PREVIEW_ENABLED:'true',ARGE_AUDIT_SERVICE_ENABLED:'true'}),
+   getClientAccount:async id=>({client:{id}}),
+   customerAccess:async()=>({allowed:true,kind:'pilot'}),
+   getDatabaseUrl:()=> 'isolated-fixture',
+   databasePool:()=>({connect(){throw Error('tenant-only session must not connect');}}),
+  });
+  const origin='http://127.0.0.1:23456';
+  const response=await handler(new Request(origin+'/api/client-audit-preview',{
+   method:'POST',headers:{origin,'content-type':'application/json',cookie:'ai_client='+token},
+   body:JSON.stringify({requestId:'tenant-only-denial'})
+  }));
+  assert.equal(response.status,403);
+  assert.deepEqual(await response.json(),{error:'invalid-session-or-request'});
+ }finally{
+  if(previous===undefined)delete process.env.AUTH_SECRET;
+  else process.env.AUTH_SECRET=previous;
+ }
+});
