@@ -4,6 +4,16 @@ export default function ZeraCustomerDetail(){
  const [state,setState]=useState({loading:true,client:null,error:""});
  const [measurements,setMeasurements]=useState({loading:true,error:"",comparisons:[],verifiedCount:0});
  const [run,setRun]=useState({ready:false,loading:true,busy:false,used:false,message:""});
+ const [payment,setPayment]=useState({busy:false,url:'',error:''});
+ async function preparePayment(){
+  if(payment.busy)return;
+  setPayment({busy:true,url:'',error:''});
+  try{
+   const response=await fetch('/api/clients/zera-payment-link',{method:'POST',credentials:'same-origin'});
+   const data=await response.json();if(!response.ok)throw Error(data.error||'Bağlantı hazırlanamadı.');
+   setPayment({busy:false,url:data.paymentUrl,error:''});
+  }catch(e){setPayment({busy:false,url:'',error:e.message});}
+ }
  useEffect(()=>{let alive=true;(async()=>{try{
   const response=await fetch("/api/clients",{cache:"no-store",credentials:"same-origin"});
   if(!response.ok)throw Error("Yönetici oturumu veya müşteri listesi erişimi gerekiyor.");
@@ -38,6 +48,13 @@ export default function ZeraCustomerDetail(){
      <p><b>Durum:</b> {state.client.status==="active"?"Aktif":state.client.status} · <b>Paket:</b> {state.client.plan}</p>
      <p><b>Sektör:</b> {state.client.profile?.sector||"Belirlenmedi"} · <b>Konum:</b> {state.client.profile?.city||"Wetzlar"}, {state.client.profile?.country||"Germany"}</p>
      <p><b>Web sitesi:</b> {state.client.domain||"Henüz doğrulanmadı"}</p>
+    </section>
+    <section className="panel" style={{padding:18,marginBottom:16}}>
+     <h2>Ödeme bağlantısı</h2>
+     <p>ZERA için İlk Ölçüm paketi bağlantısını hazırla. Ödeme ekranında tutarı kontrol et; ödeme tamamlandığında gerçek tahsilat yapılır.</p>
+     <button type="button" disabled={payment.busy} onClick={preparePayment}>{payment.busy?'Hazırlanıyor…':'Ödeme bağlantısı hazırla'}</button>
+     {payment.error&&<p role="alert">{payment.error}</p>}
+     {payment.url&&<p><a href={payment.url}>Ödeme ekranını aç</a> · Bağlantı bir saat geçerlidir.</p>}
     </section>
     <section className="panel" style={{padding:18,marginBottom:16}}>
      <h2>Gerçek AI ölçümü</h2>
