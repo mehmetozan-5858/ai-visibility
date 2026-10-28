@@ -10,20 +10,25 @@ import {PGlite} from '@electric-sql/pglite';
 import {createAuditPreviewHandler} from '../lib/audit-preview-handler.mjs';
 import {createClientToken,verifyClientToken} from '../lib/admin-auth.js';
 
-test('shared production handler: signed HTTP request, PostgreSQL audit, restart, tenant and revocation boundaries',async()=>{
+test('shared handler with synthetic server-verified actors: signed HTTP, PostgreSQL audit, restart and revocation',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'audit-http-pg-'));
  const previous=process.env.AUTH_SECRET;process.env.AUTH_SECRET=randomBytes(32).toString('hex');
  let db=new PGlite(dir),server;
  try{
   await db.exec(await readFile(new URL('../migrations/20261026_arge_report_previews.sql',import.meta.url),'utf8'));
-  await db.exec(`INSERT INTO arge_memberships VALUES ('tenant1','tenant1','owner',true),('tenant2','tenant2','owner',true);
+  await db.exec(`INSERT INTO arge_memberships VALUES ('tenant1','actor_tenant1','owner',true),('tenant2','actor_tenant2','owner',true);
    INSERT INTO arge_entitlements(tenant_id,service_id,status,expires_at) VALUES ('tenant1','agent-audit-control','active','2099-01-01');
    INSERT INTO arge_revenue_ledger VALUES ('tenant1','expected','e1','sub1','s1','2026-10','EUR','100'),
     ('tenant1','invoiced','i1','sub1','s2','2026-10','EUR','90'),
     ('tenant2','expected','e2','sub2','s3','2026-10','EUR','999999');`);
   const pool={connect:async()=>({query:(q,p)=>db.query(q,p),release(){}})};
   const handler=createAuditPreviewHandler({
-   getSession:req=>verifyClientToken((req.headers.get('cookie')||'').replace(/^ai_client=/,'')),
+   // This isolated fixture resolves an actor on the trusted server side AFTER
+   // signature verification. The real customer token does not carry actorId yet.
+   getSession:async req=>{
+    const signed=await verifyClientToken((req.headers.get('cookie')||'').replace(/^ai_client=/,''));
+    return signed?{...signed,actorId:'actor_'+signed.clientId,verified:true}:null;
+   },
    getSettings:()=>({ARGE_REPORT_PREVIEW_ENABLED:'true',ARGE_AUDIT_SERVICE_ENABLED:'true'}),
    getClientAccount:async id=>({client:{id}}),customerAccess:async()=>({allowed:true,kind:'pilot'}),
    getDatabaseUrl:()=> 'isolated-fixture',databasePool:()=>pool,
