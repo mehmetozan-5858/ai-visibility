@@ -5,6 +5,7 @@ import pg from 'pg';
 import {createStoredRevenuePreview} from '../lib/arge-report-repository.mjs';
 import {prepareAuthorizedLaunchPlan} from '../lib/ai-visibility-launch-authorized-plan.mjs';
 import {LAUNCH_SERVICES} from '../lib/ai-visibility-launch-services.mjs';
+import {prepareStoredLaunchPlan} from '../lib/ai-visibility-launch-plan-repository.mjs';
 
 // Explicit opt-in: this suite must NEVER connect to a real customer database.
 // It runs against an ephemeral, local PostgreSQL service in GitHub Actions.
@@ -471,6 +472,43 @@ if(!connectionString){
   await pool.query(`UPDATE arge_memberships SET enabled=true
    WHERE tenant_id='tenant1' AND actor_id='tenant1'`);
   assert.equal((await plan('tenant2')).reason,'cross-tenant-denied');
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,0);
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
+ });
+
+ test('read-only PostgreSQL plan bridge covers 13 capabilities without writes or execution',async()=>{
+  const now=Date.parse('2026-10-27T10:00:00.000Z');
+  for(const service of LAUNCH_SERVICES.filter(item=>item.id!=='agent-audit-control')){
+   await pool.query(`INSERT INTO arge_entitlements
+    (tenant_id,service_id,status,expires_at,consent_verified)
+    VALUES ($1,$2,'active','2099-01-01',$3)`,['tenant1',service.id,service.sensitive]);
+  }
+  const session={clientId:'tenant1',actorId:'tenant1',verified:true};
+  const plan=(service,capability)=>prepareStoredLaunchPlan({
+   pool,verifiedSession:session,accountClientId:'tenant1',
+   serviceId:service.id,capability,featureEnabled:true,globallyEnabled:true,now,
+  });
+  let checked=0;
+  for(const service of LAUNCH_SERVICES){
+   for(const capability of service.capabilities){
+    const result=await plan(service,capability);
+    assert.equal(result.ok,true,service.id+'/'+capability);
+    assert.equal(result.executes,false);
+    assert.equal(result.auditPersisted,false);
+    assert.equal(result.auditEvent.state,'prepared-not-persisted');
+    checked++;
+   }
+  }
+  assert.equal(checked,13);
+  const commerce=LAUNCH_SERVICES.find(s=>s.id==='agent-commerce-intelligence');
+  await pool.query("UPDATE arge_entitlements SET revoked=true WHERE tenant_id='tenant1' AND service_id=$1",[commerce.id]);
+  const revoked=await plan(commerce,commerce.capabilities[0]);
+  assert.equal(revoked.reason,'service-entitlement-required');
+  assert.equal('auditEvent' in revoked,false);
+  await pool.query("DELETE FROM arge_memberships WHERE tenant_id='tenant1' AND actor_id='tenant1'");
+  const deleted=await plan(LAUNCH_SERVICES[0],LAUNCH_SERVICES[0].capabilities[0]);
+  assert.equal(deleted.reason,'unverified-membership');
+  assert.equal('auditEvent' in deleted,false);
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,0);
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
  });
