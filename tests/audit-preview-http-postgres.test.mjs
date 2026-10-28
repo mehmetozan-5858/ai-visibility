@@ -77,7 +77,7 @@ test('signed tenant-only customer token cannot authorize report persistence with
   });
   const origin='http://127.0.0.1:23456';
   const response=await handler(new Request(origin+'/api/client-audit-preview',{
-   method:'POST',headers:{origin,'content-type':'application/json',cookie:'ai_client='+token},
+   method:'POST',headers:{origin,host:new URL(origin).host,'content-type':'application/json',cookie:'ai_client='+token},
    body:JSON.stringify({requestId:'tenant-only-denial'})
   }));
   assert.equal(response.status,403);
