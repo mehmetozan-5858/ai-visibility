@@ -62,3 +62,24 @@ test("missing returned model identity fails closed",async()=>{
  const r=await runFreeBridgeTask({modelId:id,prompt:"Review",apiKey:"test",enabled:true,fetcher});
  assert.equal(r.reason,"unexpected-model");
 });
+
+test("malformed or coercible catalog prices never count as verified free",()=>{
+ for(const bad of ["","  ",false,null,[],{},"0x0","0b0","-0","NaN"]){
+  const candidate={...model,pricing:{prompt:bad,completion:"0"}};
+  assert.equal(selectFreeModel([candidate],id),null,`unexpected free price: ${JSON.stringify(bad)}`);
+ }
+ assert.deepEqual(selectFreeModel([{...model,pricing:{prompt:"0.000",completion:0}}],id),{id});
+});
+test("malformed completion costs fail closed without real provider calls",async()=>{
+ for(const cost of [""," ",false,null,[],"0x0"]){
+  const calls=[];
+  const fetcher=async url=>{
+   calls.push(url);
+   return url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
+    {ok:true,json:async()=>({model:id,choices:[{message:{content:"mock only"}}],usage:{cost}})};
+  };
+  const result=await runFreeBridgeTask({modelId:id,prompt:"offline fixture",apiKey:"synthetic",enabled:true,fetcher});
+  assert.equal(result.reason,"nonzero-cost-reported",`cost: ${JSON.stringify(cost)}`);
+  assert.equal(calls.length,2);
+ }
+});
