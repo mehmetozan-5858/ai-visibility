@@ -18,7 +18,9 @@ if(!connectionString){
  if(!['127.0.0.1','localhost'].includes(url.hostname) ||
     decodeURIComponent(url.pathname)!=='/arge_ci' ||
     decodeURIComponent(url.username)!=='arge_ci' ||
-    url.password || url.search || url.hash || url.protocol!=='postgres:'){
+    // Only the fixed synthetic CI fixture is permitted; reject real credentials.
+    url.password!=='ci-only-ephemeral-postgres-fixture' ||
+    url.search || url.hash || url.protocol!=='postgres:'){
   throw Error('Refusing non-local or non-isolated PostgreSQL test database');
  }
  const {Pool}=pg;
@@ -46,6 +48,17 @@ if(!connectionString){
     ('tenant2','expected','e2','sub2','source3','2026-10','EUR','250');`);
  });
  after(async()=>{await pool.end();});
+
+ test('native PostgreSQL rejects an incorrect password over TCP',async()=>{
+  const invalid=new URL(connectionString);
+  invalid.password='incorrect-ci-only-fixture';
+  const probe=new pg.Client({connectionString:invalid.toString(),connectionTimeoutMillis:2000});
+  try{
+   await assert.rejects(probe.connect(),error=>error?.code==='28P01');
+  }finally{
+   await probe.end().catch(()=>{});
+  }
+ });
 
  test('eight independent connections racing on one request persist exactly one report and audit',async()=>{
   const results=await Promise.all(Array.from({length:8},()=>createStoredRevenuePreview(context('tenant1','race1'))));
