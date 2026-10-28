@@ -330,6 +330,31 @@ if(!connectionString){
    }finally{
     await pool.query("INSERT INTO arge_memberships VALUES ('tenant1','tenant1','owner',true)");
    }
+   // Exercise every advertised capability against actual persisted entitlement
+   // state changes. A stale client-side plan must not survive a server revocation.
+   const deniedGrantStates=[
+    {label:'inactive',change:"status='inactive'",reason:'service-entitlement-required'},
+    {label:'revoked',change:'revoked=true',reason:'service-entitlement-required'},
+    {label:'expired',change:"expires_at='2026-10-26'",reason:'entitlement-expired-or-unverifiable'},
+    {label:'not-yet-valid',change:"not_before='2026-10-28'",reason:'entitlement-not-yet-valid'},
+   ];
+   for(const state of deniedGrantStates){
+    // The update expression is fixed test code, never request-controlled input.
+    await pool.query(`UPDATE arge_entitlements SET ${state.change}
+     WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id]);
+    try{
+     for(const capability of service.capabilities){
+      const denied=await plan(service,'tenant1',capability);
+      assert.equal(denied.ok,false,`${service.id}/${capability} ${state.label}`);
+      assert.equal(denied.reason,state.reason,`${service.id}/${capability} ${state.label}`);
+      assert.equal('auditEvent' in denied,false);
+     }
+    }finally{
+     await pool.query(`UPDATE arge_entitlements SET status='active',revoked=false,
+      expires_at='2099-01-01',not_before=NULL
+      WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id]);
+    }
+   }
    if(service.sensitive){
     await pool.query(`UPDATE arge_entitlements SET consent_revoked=true
      WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id]);
