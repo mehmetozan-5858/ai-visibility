@@ -134,3 +134,24 @@ test("connection acquisition, commit and release failures fail closed without au
     }
   }
 });
+
+test("unauthorized stored memberships never read service entitlements",async()=>{
+  const ownerService=LAUNCH_SERVICES.find(s=>s.access==="tenant-owner");
+  const consentService=LAUNCH_SERVICES.find(s=>s.access==="explicit-consent");
+  for(const [db,service,reason] of [
+    [fixture({enabled:false}),ownerService,"unverified-membership"],
+    [fixture({role:"viewer"}),ownerService,"insufficient-permission"],
+    [fixture({role:"manager"}),ownerService,"owner-required"],
+    [fixture({role:"viewer"}),consentService,"insufficient-permission"],
+    [fixture({role:"invalid-role"}),consentService,"unverified-membership"],
+  ]){
+    const result=await request(db,service.id,service.capabilities[0]);
+    assert.deepEqual(result,{ok:false,reason});
+    assert.equal(db.queries.some(q=>q.sql.includes("FROM arge_entitlements")),false);
+    assert.equal(db.queries.length,3);
+    assert.match(db.queries[0].sql,/READ ONLY/);
+    assert.match(db.queries[1].sql,/FROM arge_memberships/);
+    assert.equal(db.queries[2].sql,"COMMIT");
+    assert.equal(db.released,true);
+  }
+});
