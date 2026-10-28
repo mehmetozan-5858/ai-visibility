@@ -18,7 +18,9 @@ if(!connectionString){
  if(!['127.0.0.1','localhost'].includes(url.hostname) ||
     decodeURIComponent(url.pathname)!=='/arge_ci' ||
     decodeURIComponent(url.username)!=='arge_ci' ||
-    url.password || url.search || url.hash || url.protocol!=='postgres:'){
+    // Only the fixed synthetic CI fixture is permitted; reject real credentials.
+    url.password!=='ci-only-ephemeral-postgres-fixture' ||
+    url.search || url.hash || url.protocol!=='postgres:'){
   throw Error('Refusing non-local or non-isolated PostgreSQL test database');
  }
  const {Pool}=pg;
