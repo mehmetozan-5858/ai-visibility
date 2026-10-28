@@ -68,6 +68,20 @@ test("unverified session, mismatched tenant and disabled flags never touch datab
   assert.equal(db.queries.length,0);
 });
 
+test("tenant-only and malformed actor sessions fail closed before SQL",async()=>{
+  const db=fixture();
+  const service=LAUNCH_SERVICES[0];
+  for(const actorId of [undefined,null,"","bad.actor"]){
+    const session={clientId:"tenant1",verified:true};
+    if(actorId!==undefined)session.actorId=actorId;
+    const result=await request(db,service.id,service.capabilities[0],{
+      verifiedSession:session,
+    });
+    assert.deepEqual(result,{ok:false,reason:"unauthenticated"});
+  }
+  assert.equal(db.queries.length,0);
+});
+
 test("revoked grants, disabled membership and missing consent fail without an audit envelope",async()=>{
   const service=LAUNCH_SERVICES[0],sensitive=LAUNCH_SERVICES.find(s=>s.sensitive);
   for(const [db,target] of [[fixture({revoked:true}),service],
