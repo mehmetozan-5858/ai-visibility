@@ -236,7 +236,7 @@ if(!connectionString){
     VALUES ($1,$2,'active','2099-01-01',$3)`,
     ['tenant1',service.id,service.sensitive]);
   }
-  async function plan(service,tenant='tenant1'){
+  async function plan(service,tenant='tenant1',capability=service.capabilities[0]){
    // Read the grant from the isolated PostgreSQL service, never from a request.
    const row=(await pool.query(`SELECT status,revoked,expires_at AS "expiresAt",
     not_before AS "notBefore",consent_verified AS "consentVerified",
@@ -249,31 +249,40 @@ if(!connectionString){
     actor:{id:tenant,authenticated:true},
     membership:{actorId:tenant,tenantId:tenant,role:'owner',verified:true},
     sessionClientId:tenant,accountClientId:tenant,
-    serviceId:service.id,capability:service.capabilities[0],entitlement,
+    serviceId:service.id,capability,entitlement,
     featureEnabled:true,globallyEnabled:true,now,
    });
   }
   assert.equal(LAUNCH_SERVICES.length,4);
+  let capabilitiesChecked=0;
   for(const service of LAUNCH_SERVICES){
-   const authorized=await plan(service);
-   assert.equal(authorized.ok,true,service.id);
-   assert.equal(authorized.executes,false);
-   assert.equal(authorized.auditPersisted,false);
-   assert.equal(authorized.auditEvent.state,'prepared-not-persisted');
-   assert.equal(authorized.auditEvent.tenantId,'tenant1');
-   assert.equal(authorized.auditEvent.serviceId,service.id);
-   const otherTenant=await plan(service,'tenant2');
-   assert.equal(otherTenant.ok,false,service.id);
-   assert.equal(otherTenant.reason,'service-entitlement-required');
-   assert.equal('auditEvent' in otherTenant,false);
+   for(const capability of service.capabilities){
+    const authorized=await plan(service,'tenant1',capability);
+    assert.equal(authorized.ok,true,`${service.id}/${capability}`);
+    assert.equal(authorized.executes,false);
+    assert.equal(authorized.auditPersisted,false);
+    assert.equal(authorized.auditEvent.state,'prepared-not-persisted');
+    assert.equal(authorized.auditEvent.tenantId,'tenant1');
+    assert.equal(authorized.auditEvent.serviceId,service.id);
+    assert.equal(authorized.plan.capability,capability);
+    const otherTenant=await plan(service,'tenant2',capability);
+    assert.equal(otherTenant.ok,false,`${service.id}/${capability}`);
+    assert.equal(otherTenant.reason,'service-entitlement-required');
+    assert.equal('auditEvent' in otherTenant,false);
+    capabilitiesChecked++;
+   }
    if(service.sensitive){
     await pool.query(`UPDATE arge_entitlements SET consent_revoked=true
      WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id]);
-    const denied=await plan(service);
-    assert.equal(denied.reason,'verified-consent-required',service.id);
-    assert.equal('auditEvent' in denied,false);
+    for(const capability of service.capabilities){
+     const denied=await plan(service,'tenant1',capability);
+     assert.equal(denied.reason,'verified-consent-required',`${service.id}/${capability}`);
+     assert.equal('auditEvent' in denied,false);
+    }
    }
   }
+  // Detect accidental catalog growth that is not covered by native acceptance.
+  assert.equal(capabilitiesChecked,13);
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,0);
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
  });
