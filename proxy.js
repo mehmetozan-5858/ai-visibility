@@ -16,7 +16,7 @@ export async function proxy(req){
   const paddleSandboxPath=pathname==="/paddle-sandbox"||pathname==="/api/webhooks/paddle-sandbox"||pathname==="/api/paddle-sandbox/checkout-intents"||pathname==="/api/paddle-sandbox/account"||pathname==="/api/paddle-sandbox/test-session";
   // Sandbox previews expose only checkout and signature-verified billing events.
   // Even a valid admin or scheduler credential cannot enter production routes here.
-  if(sandboxPreview&&!paddleSandboxPath)return new NextResponse("Not found",{status:404});
+  if(sandboxPreview&&!paddleSandboxPath&&pathname!=="/paddle-checkout")return new NextResponse("Not found",{status:404});
   if(authorizedAgentCycle(req))return NextResponse.next();
   const publicPages=["/robots.txt","/sitemap.xml","/AIVisibilityWorks-IndexNow-20261016-A7K9M2Q4.txt","/metodoloji","/yapay-zeka-gorunurlugu","/","/hizmetler","/hakkimizda","/iletisim","/gizlilik","/kvkk","/iptal-iade","/mesafeli-hizmet-sozlesmesi","/musteri-giris","/musteri-sifre-sifirla","/demo","/yeni-musteri","/on-degerlendirme"];
   const publicPath=(pathname==="/api/broker-contact"&&req.method==="POST")||pathname==="/api/free-assessment"||pathname==="/api/paddle/webhook"||pathname==="/api/webhooks/resend"||pathname==="/login"||pathname==="/sifremi-unuttum"||publicPages.includes(pathname)||pathname==="/api/leads"||pathname.startsWith("/api/auth/")||pathname.startsWith("/api/client-auth/")||pathname.startsWith("/odeme")||pathname.startsWith("/api/payment")||pathname.startsWith("/api/paytr/")||pathname.startsWith("/api/cron/")||pathname==="/api/creator-hunt";
@@ -24,7 +24,7 @@ export async function proxy(req){
     if(sandboxPreview)return NextResponse.next();
     return new NextResponse("Not found",{status:404});
   }
-  if(publicPath)return NextResponse.next();
+  if(publicPath||pathname==="/paddle-checkout")return NextResponse.next();
 
   if(!authConfigured()){
     if(pathname.startsWith("/api/"))return Response.json({error:"Kimlik doğrulama yapılandırması eksik."},{status:503,headers:{"cache-control":"no-store"}});
