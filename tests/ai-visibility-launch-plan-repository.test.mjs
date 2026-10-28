@@ -5,12 +5,16 @@ import {LAUNCH_SERVICES} from "../lib/ai-visibility-launch-services.mjs";
 
 const now=Date.parse("2026-10-27T10:00:00.000Z");
 const verifiedSession={clientId:"tenant1",actorId:"tenant1",verified:true};
-function fixture({role="owner",enabled=true,revoked=false,consentVerified=true,fail=false}={}){
+function fixture({role="owner",enabled=true,revoked=false,consentVerified=true,
+  fail=false,failConnect=false,failCommit=false,failRelease=false}={}){
   const queries=[];
   let released=false;
-  const pool={async connect(){return {
+  const pool={async connect(){
+    if(failConnect)throw Error("isolated connection failure");
+    return {
     async query(sql,params){
       queries.push({sql,params});
+      if(failCommit && sql==="COMMIT")throw Error("isolated commit failure");
       if(sql.includes("FROM arge_memberships"))
         return {rows:[{role,enabled}]};
       if(sql.includes("FROM arge_entitlements")){
@@ -21,7 +25,7 @@ function fixture({role="owner",enabled=true,revoked=false,consentVerified=true,f
       }
       return {rows:[]};
     },
-    release(){released=true;},
+    release(){released=true;if(failRelease)throw Error("isolated release failure");},
   };}};
   return {pool,queries,get released(){return released;}};
 }
@@ -112,4 +116,21 @@ test("query failure rolls back and fails closed without leaking database errors"
   assert.deepEqual(result,{ok:false,reason:"database-unavailable"});
   assert.equal(db.queries.at(-1).sql,"ROLLBACK");
   assert.equal(db.released,true);
+});
+
+test("connection acquisition, commit and release failures fail closed without audit output",async()=>{
+  const service=LAUNCH_SERVICES[0];
+  for(const failure of [{failConnect:true},{failCommit:true},{failRelease:true}]){
+    const db=fixture(failure);
+    const result=await request(db,service.id,service.capabilities[0]);
+    assert.deepEqual(result,{ok:false,reason:"database-unavailable"});
+    assert.equal("auditEvent" in result,false);
+    if(failure.failConnect){
+      assert.equal(db.queries.length,0);
+      assert.equal(db.released,false);
+    }else{
+      assert.equal(db.released,true);
+      if(failure.failCommit)assert.equal(db.queries.at(-1).sql,"ROLLBACK");
+    }
+  }
 });
