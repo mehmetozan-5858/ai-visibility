@@ -7,7 +7,7 @@ import {join} from 'node:path';
 import {PGlite} from '@electric-sql/pglite';
 import {createStoredRevenuePreview} from '../lib/arge-report-repository.mjs';
 let db,pool,dataDir;
-const context={session:{clientId:'tenant1'},accountClientId:'tenant1',requestId:'request1',featureEnabled:true,globallyEnabled:true};
+const context={session:{clientId:'tenant1',actorId:'tenant1',verified:true},accountClientId:'tenant1',requestId:'request1',featureEnabled:true,globallyEnabled:true};
 before(async()=>{
  dataDir=await mkdtemp(join(tmpdir(),'arge-postgres-'));
  db=new PGlite(dataDir);pool={connect:async()=>({query:(q,p)=>db.query(q,p),release(){}})};
@@ -82,7 +82,7 @@ test('daily storage budget caps new reports while authorized replays remain avai
 
 test('identical request IDs remain isolated across two authorized tenants and their audit records',async()=>{
  await db.query("INSERT INTO arge_entitlements(tenant_id,service_id,status,expires_at) VALUES('tenant2','agent-audit-control','active','2099-01-01')");
- const tenant2={...context,session:{clientId:'tenant2'},accountClientId:'tenant2'};
+ const tenant2={...context,session:{clientId:'tenant2',actorId:'tenant2',verified:true},accountClientId:'tenant2'};
  const one=await createStoredRevenuePreview({pool,...context});
  const two=await createStoredRevenuePreview({pool,...tenant2});
  assert.equal(one.ok,true);assert.equal(two.ok,true);

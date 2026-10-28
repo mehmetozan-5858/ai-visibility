@@ -4,7 +4,7 @@ import {createStoredRevenuePreview} from '../lib/arge-report-repository.mjs';
 
 // Synthetic pooled clients only: no database, credentials or external calls.
 const request={
- session:{clientId:'tenant1'},accountClientId:'tenant1',
+ session:{clientId:'tenant1',actorId:'tenant1',verified:true},accountClientId:'tenant1',
  requestId:'rollback-fixture',featureEnabled:true,globallyEnabled:true,
 };
 function fixture({failBegin=false,failRollbackCount=0}={}){

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createStoredRevenuePreview} from '../lib/arge-report-repository.mjs';
 
 // Synthetic SQL client; no live database, secrets, provider calls or customer data.
-const base={session:{clientId:'tenant1'},accountClientId:'tenant1',
+const base={session:{clientId:'tenant1',actorId:'tenant1',verified:true},accountClientId:'tenant1',
  requestId:'membership-gate-fixture',featureEnabled:true,globallyEnabled:true};
 function fixture(member){
  const queries=[],releases=[];
