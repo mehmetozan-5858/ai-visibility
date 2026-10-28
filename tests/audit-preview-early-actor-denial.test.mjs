@@ -5,7 +5,7 @@ import {createAuditPreviewHandler} from '../lib/audit-preview-handler.mjs';
 // All sessions and requests are synthetic; no credentials, real database or network.
 const origin='http://127.0.0.1:23456';
 const request=()=>new Request(origin+'/api/client-audit-preview',{
- method:'POST',headers:{origin,'content-type':'application/json'},
+ method:'POST',headers:{origin,host:new URL(origin).host,'content-type':'application/json'},
  body:JSON.stringify({requestId:'early-actor-fixture'})
 });
 
