@@ -49,6 +49,17 @@ if(!connectionString){
  });
  after(async()=>{await pool.end();});
 
+ test('native PostgreSQL rejects an incorrect password over TCP',async()=>{
+  const invalid=new URL(connectionString);
+  invalid.password='incorrect-ci-only-fixture';
+  const probe=new pg.Client({connectionString:invalid.toString(),connectionTimeoutMillis:2000});
+  try{
+   await assert.rejects(probe.connect(),error=>error?.code==='28P01');
+  }finally{
+   await probe.end().catch(()=>{});
+  }
+ });
+
  test('eight independent connections racing on one request persist exactly one report and audit',async()=>{
   const results=await Promise.all(Array.from({length:8},()=>createStoredRevenuePreview(context('tenant1','race1'))));
   assert.ok(results.every(r=>r.ok===true));
