@@ -68,6 +68,18 @@ test("unverified session, mismatched tenant and disabled flags never touch datab
   assert.equal(db.queries.length,0);
 });
 
+test("unknown services and unsupported capabilities fail before PostgreSQL access",async()=>{
+  const db=fixture();
+  const service=LAUNCH_SERVICES[0];
+  const unknown=await request(db,"not-a-service",service.capabilities[0]);
+  assert.deepEqual(unknown,{ok:false,reason:"unknown-service"});
+  for(const capability of [undefined,null,"","agent:execute","not-in-catalog"]){
+    const result=await request(db,service.id,capability);
+    assert.deepEqual(result,{ok:false,reason:"unsupported-capability"});
+  }
+  assert.equal(db.queries.length,0);
+});
+
 test("tenant-only and malformed actor sessions fail closed before SQL",async()=>{
   const db=fixture();
   const service=LAUNCH_SERVICES[0];
