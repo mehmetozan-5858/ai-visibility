@@ -28,7 +28,7 @@ if(!connectionString){
  const pool=new Pool({connectionString,max:12,connectionTimeoutMillis:5000});
  const schema=await readFile(new URL('../migrations/20261026_arge_report_previews.sql',import.meta.url),'utf8');
  const context=(tenantId,requestId)=>({
-  pool,session:{clientId:tenantId},accountClientId:tenantId,requestId,
+  pool,session:{clientId:tenantId,actorId:tenantId,verified:true},accountClientId:tenantId,requestId,
   featureEnabled:true,globallyEnabled:true
  });
  before(async()=>{
