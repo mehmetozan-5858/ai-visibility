@@ -292,6 +292,28 @@ if(!connectionString){
    }finally{
     await pool.query("UPDATE arge_memberships SET enabled=true WHERE tenant_id='tenant1'");
    }
+   // A database role downgrade must not retain an owner's plan permission.
+   await pool.query("UPDATE arge_memberships SET role='manager' WHERE tenant_id='tenant1'");
+   try{
+    for(const capability of service.capabilities){
+     const denied=await plan(service,'tenant1',capability);
+     assert.equal(denied.reason,'owner-required',`${service.id}/${capability} downgraded`);
+     assert.equal('auditEvent' in denied,false);
+    }
+   }finally{
+    await pool.query("UPDATE arge_memberships SET role='owner' WHERE tenant_id='tenant1'");
+   }
+   // A deleted membership must fail closed, even with an active service grant.
+   await pool.query("DELETE FROM arge_memberships WHERE tenant_id='tenant1' AND actor_id='tenant1'");
+   try{
+    for(const capability of service.capabilities){
+     const denied=await plan(service,'tenant1',capability);
+     assert.equal(denied.reason,'unverified-membership',`${service.id}/${capability} deleted`);
+     assert.equal('auditEvent' in denied,false);
+    }
+   }finally{
+    await pool.query("INSERT INTO arge_memberships VALUES ('tenant1','tenant1','owner',true)");
+   }
    if(service.sensitive){
     await pool.query(`UPDATE arge_entitlements SET consent_revoked=true
      WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id]);
