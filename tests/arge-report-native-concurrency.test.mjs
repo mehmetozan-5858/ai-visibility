@@ -236,18 +236,22 @@ if(!connectionString){
     VALUES ($1,$2,'active','2099-01-01',$3)`,
     ['tenant1',service.id,service.sensitive]);
   }
-  async function plan(service,tenant='tenant1',capability=service.capabilities[0]){
+  async function plan(service,tenant='tenant1',capability=service.capabilities[0],grantTenant='tenant1'){
+   // Resolve membership and grants from the isolated database, not caller-supplied roles.
+   const membership=(await pool.query(`SELECT actor_id AS "actorId",
+    tenant_id AS "tenantId",role,enabled AS verified
+    FROM arge_memberships WHERE tenant_id=$1 AND actor_id=$1`,[tenant])).rows[0];
    // Read the grant from the isolated PostgreSQL service, never from a request.
    const row=(await pool.query(`SELECT status,revoked,expires_at AS "expiresAt",
     not_before AS "notBefore",consent_verified AS "consentVerified",
     consent_revoked AS "consentRevoked" FROM arge_entitlements
-    WHERE tenant_id=$1 AND service_id=$2`,['tenant1',service.id])).rows[0];
-   const entitlement={...row,source:'server',clientId:'tenant1',serviceId:service.id,
+    WHERE tenant_id=$1 AND service_id=$2`,[grantTenant,service.id])).rows[0];
+   const entitlement={...row,source:'server',clientId:grantTenant,serviceId:service.id,
     expiresAt:row.expiresAt.toISOString(),
     notBefore:row.notBefore?.toISOString()};
    return prepareAuthorizedLaunchPlan({
     actor:{id:tenant,authenticated:true},
-    membership:{actorId:tenant,tenantId:tenant,role:'owner',verified:true},
+    membership,
     sessionClientId:tenant,accountClientId:tenant,
     serviceId:service.id,capability,entitlement,
     featureEnabled:true,globallyEnabled:true,now,
@@ -269,7 +273,24 @@ if(!connectionString){
     assert.equal(otherTenant.ok,false,`${service.id}/${capability}`);
     assert.equal(otherTenant.reason,'service-entitlement-required');
     assert.equal('auditEvent' in otherTenant,false);
+    if(service.id==='agent-audit-control'){
+     // Tenant 2's own grant is valid, but tenant 1's grant cannot be borrowed.
+     const ownGrant=await plan(service,'tenant2',capability,'tenant2');
+     assert.equal(ownGrant.ok,true,`${service.id}/${capability} tenant2 own grant`);
+     assert.equal(ownGrant.auditEvent.tenantId,'tenant2');
+    }
     capabilitiesChecked++;
+   }
+   // A disabled membership must override an otherwise valid stored grant.
+   await pool.query("UPDATE arge_memberships SET enabled=false WHERE tenant_id='tenant1'");
+   try{
+    for(const capability of service.capabilities){
+     const denied=await plan(service,'tenant1',capability);
+     assert.equal(denied.reason,'unverified-membership',`${service.id}/${capability}`);
+     assert.equal('auditEvent' in denied,false);
+    }
+   }finally{
+    await pool.query("UPDATE arge_memberships SET enabled=true WHERE tenant_id='tenant1'");
    }
    if(service.sensitive){
     await pool.query(`UPDATE arge_entitlements SET consent_revoked=true
