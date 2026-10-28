@@ -292,12 +292,28 @@ if(!connectionString){
    }finally{
     await pool.query("UPDATE arge_memberships SET enabled=true WHERE tenant_id='tenant1'");
    }
-   // A database role downgrade must not retain an owner's plan permission.
+   // Database roles must follow the service-specific contract: owner-only
+   // services reject managers; consent-based previews permit non-executing plans.
    await pool.query("UPDATE arge_memberships SET role='manager' WHERE tenant_id='tenant1'");
    try{
     for(const capability of service.capabilities){
+     const result=await plan(service,'tenant1',capability);
+     if(service.access==='tenant-owner'){
+      assert.equal(result.reason,'owner-required',`${service.id}/${capability} manager`);
+      assert.equal('auditEvent' in result,false);
+     }else{
+      assert.equal(result.ok,true,`${service.id}/${capability} manager`);
+      assert.equal(result.executes,false);
+      assert.equal(result.auditPersisted,false);
+     }
+    }
+   }finally{
+    await pool.query("UPDATE arge_memberships SET role='viewer' WHERE tenant_id='tenant1'");
+   }
+   try{
+    for(const capability of service.capabilities){
      const denied=await plan(service,'tenant1',capability);
-     assert.equal(denied.reason,'owner-required',`${service.id}/${capability} downgraded`);
+     assert.equal(denied.reason,'insufficient-permission',`${service.id}/${capability} viewer`);
      assert.equal('auditEvent' in denied,false);
     }
    }finally{
