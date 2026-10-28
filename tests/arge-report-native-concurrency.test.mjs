@@ -513,4 +513,47 @@ if(!connectionString){
   assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
  });
 
+
+ test('native PostgreSQL resolves distinct actor identities per tenant before planning',async()=>{
+  const service=LAUNCH_SERVICES.find(item=>item.id==='agent-commerce-intelligence');
+  assert.ok(service);
+  const now=Date.parse('2026-10-27T10:00:00.000Z');
+  // An actor ID is not a tenant ID. The same actor ID can have different
+  // memberships in different tenants, and roles must come from PostgreSQL.
+  await pool.query(`INSERT INTO arge_memberships(tenant_id,actor_id,role,enabled) VALUES
+   ('tenant1','actor_a','owner',true),
+   ('tenant1','actor_b','viewer',true),
+   ('tenant2','actor_a','viewer',true)`);
+  await pool.query(`INSERT INTO arge_entitlements
+   (tenant_id,service_id,status,expires_at) VALUES
+   ('tenant1',$1,'active','2099-01-01'),
+   ('tenant2',$1,'active','2099-01-01')`,[service.id]);
+  const plan=(tenantId,actorId,accountClientId=tenantId)=>prepareStoredLaunchPlan({
+   pool,verifiedSession:{clientId:tenantId,actorId,verified:true},
+   accountClientId,serviceId:service.id,capability:service.capabilities[0],
+   featureEnabled:true,globallyEnabled:true,now,
+  });
+  const authorized=await plan('tenant1','actor_a');
+  assert.equal(authorized.ok,true);
+  assert.equal(authorized.executes,false);
+  assert.equal(authorized.auditPersisted,false);
+  assert.equal(authorized.auditEvent.actorId,'actor_a');
+  assert.equal(authorized.auditEvent.tenantId,'tenant1');
+  assert.equal((await plan('tenant1','actor_b')).reason,'insufficient-permission');
+  assert.equal((await plan('tenant2','actor_a')).reason,'insufficient-permission');
+  assert.equal((await plan('tenant1','actor_missing')).reason,'unverified-membership');
+  assert.equal((await plan('tenant1','actor_a','tenant2')).reason,'account-session-mismatch');
+
+  // A role downgrade or membership disablement takes effect without trusting
+  // an old client-supplied role. No plan may be treated as an execution grant.
+  await pool.query(`UPDATE arge_memberships SET role='viewer'
+   WHERE tenant_id='tenant1' AND actor_id='actor_a'`);
+  assert.equal((await plan('tenant1','actor_a')).reason,'insufficient-permission');
+  await pool.query(`UPDATE arge_memberships SET role='owner',enabled=false
+   WHERE tenant_id='tenant1' AND actor_id='actor_a'`);
+  assert.equal((await plan('tenant1','actor_a')).reason,'unverified-membership');
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_audit_events')).rows[0].n,0);
+  assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM arge_report_previews')).rows[0].n,0);
+ });
+
 }
