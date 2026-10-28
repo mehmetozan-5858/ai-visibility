@@ -22,7 +22,7 @@ for(const [name,session] of [
   const forbidden=label=>()=>{touched.push(label);throw Error('unexpected '+label);};
   const handler=createAuditPreviewHandler({
    getSession:async()=>session,
-   getSettings:forbidden('settings'),
+   getSettings:()=>({ARGE_REPORT_PREVIEW_ENABLED:'true',ARGE_AUDIT_SERVICE_ENABLED:'true'}),
    getClientAccount:forbidden('customer'),
    customerAccess:forbidden('access'),
    getDatabaseUrl:forbidden('database-url'),
