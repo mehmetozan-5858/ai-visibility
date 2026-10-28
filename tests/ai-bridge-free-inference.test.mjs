@@ -83,3 +83,23 @@ test("malformed completion costs fail closed without real provider calls",async(
   assert.equal(calls.length,2);
  }
 });
+
+test("non-token catalog charges block free-model selection",()=>{
+ for(const field of ["request","image","audio","web_search","input_cache_read","input_cache_write"]){
+  const candidate={...model,pricing:{...model.pricing,[field]:"0.00001"}};
+  assert.equal(selectFreeModel([candidate],id),null,`unexpected free price field: ${field}`);
+ }
+ assert.equal(selectFreeModel([{...model,pricing:{...model.pricing,request:"0",image:0}}],id)?.id,id);
+ assert.equal(selectFreeModel([{...model,pricing:{...model.pricing,request:null}}],id),null);
+});
+test("a paid request fee prevents completion calls even with free tokens",async()=>{
+ const calls=[];
+ const fetcher=async url=>{
+  calls.push(url);
+  if(url.endsWith("/models"))return {ok:true,json:async()=>({data:[{...model,pricing:{...model.pricing,request:"0.02"}}]})};
+  throw Error("completion request must not be sent");
+ };
+ const result=await runFreeBridgeTask({modelId:id,prompt:"synthetic offline test",apiKey:"synthetic",enabled:true,fetcher});
+ assert.equal(result.reason,"model-not-verified-free");
+ assert.equal(calls.length,1);
+});
