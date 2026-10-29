@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
 import {isValidLaunchClientId,resolveClientLaunchReadAccess} from "../lib/ai-visibility-client-launch-access.mjs";
 const session={clientId:"customer_01"};
 const account={client:{id:"customer_01"}};
@@ -58,4 +59,13 @@ test("tenant identifier validator rejects malformed values before account reads"
   for(const good of ["a","customer_01","a".repeat(128)]){
     assert.equal(isValidLaunchClientId(good),true,good);
   }
+});
+
+// Static route-order contract; pure tests above verify the same predicate's behavior.
+test("catalog route checks signed tenant ID before repository lookup",()=>{
+  const route=readFileSync(new URL("../app/api/client-launch-services/route.js",import.meta.url),"utf8");
+  const token=route.indexOf("await verifyClientToken(");
+  const gate=route.indexOf("!isValidLaunchClientId(session.clientId)");
+  const accountRead=route.indexOf("await getClientAccount(session.clientId)");
+  assert.ok(token>=0 && gate>token && accountRead>gate,"verify token and reject invalid tenant before account read");
 });
