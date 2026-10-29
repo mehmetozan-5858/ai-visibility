@@ -6,24 +6,33 @@ const account={client:{id:"customer_01"}};
 const access={allowed:true,kind:"pilot"};
 const decide=(patch={})=>resolveClientLaunchReadAccess({session,account,access,...patch});
 
-test("signed customer with server-confirmed pilot access sees read-only preview",()=>{
-  const result=decide();assert.equal(result.allowed,true);assert.equal(result.action,"service:read");
+test("signed pilot customer sees only non-executing catalog preview",()=>{
+  const result=decide();
+  assert.equal(result.allowed,true);
+  assert.equal(result.reason,"catalog-preview-only");
+  assert.equal(result.previewOnly,true);
+  assert.equal(result.productionEnabled,false);
 });
-test("paid customer can see the preview",()=>{
-  assert.equal(decide({access:{allowed:true,kind:"paid"}}).allowed,true);
+test("paid customer can see the same non-executing preview",()=>{
+  assert.equal(decide({access:{allowed:true,kind:"paid"}}).previewOnly,true);
 });
-test("missing or tampered session cannot access preview",()=>{
-  assert.equal(decide({session:null}).reason,"unauthenticated");
-  assert.equal(decide({session:{clientId:""}}).reason,"unauthenticated");
+test("missing or malformed session is denied",()=>{
+  for(const bad of [null,{clientId:""},{clientId:5},{}]) {
+    assert.equal(decide({session:bad}).reason,"unauthenticated");
+  }
 });
-test("cross-customer session is rejected before policy assignment",()=>{
+test("cross-customer session is rejected before catalog access",()=>{
   assert.equal(decide({account:{client:{id:"another_customer"}}}).reason,"account-session-mismatch");
 });
 test("inactive, missing or unrecognized access does not grant preview",()=>{
-  assert.equal(decide({access:{allowed:false}}).reason,"customer-access-inactive");
-  assert.equal(decide({access:{allowed:true,kind:"unknown"}}).reason,"customer-access-inactive");
+  for(const bad of [undefined,{allowed:false},{allowed:true,kind:"unknown"}]) {
+    assert.equal(decide({access:bad}).reason,"customer-access-inactive");
+  }
 });
-test("same-session identity maps only to customer viewer rights",()=>{
-  const result=decide();assert.equal(result.tenantId,"customer_01");
-  assert.equal(result.actorId,"customer_01");
+test("tenant-scoped preview never fabricates an authenticated actor or membership",()=>{
+  const result=decide();
+  assert.equal(result.tenantId,"customer_01");
+  for(const key of ["actorId","actor","membership","role","authenticated","verified","action","featureEnabled"]){
+    assert.equal(Object.hasOwn(result,key),false,key+" must not be present");
+  }
 });
