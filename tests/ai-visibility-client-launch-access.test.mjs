@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {resolveClientLaunchReadAccess} from "../lib/ai-visibility-client-launch-access.mjs";
+import {isValidLaunchClientId,resolveClientLaunchReadAccess} from "../lib/ai-visibility-client-launch-access.mjs";
 const session={clientId:"customer_01"};
 const account={client:{id:"customer_01"}};
 const access={allowed:true,kind:"pilot"};
@@ -48,4 +48,14 @@ test("canonical 128-character tenant ID remains preview eligible",()=>{
   const result=decide({session:{clientId},account:{client:{id:clientId}}});
   assert.equal(result.previewOnly,true);
   assert.equal(result.productionEnabled,false);
+});
+
+// Guard the pre-database boundary separately from the post-read access policy.
+test("tenant identifier validator rejects malformed values before account reads",()=>{
+  for(const bad of [null,undefined,0,"","a.b","../other","tenant/1"," tenant ","üser","a".repeat(129)]){
+    assert.equal(isValidLaunchClientId(bad),false,String(bad));
+  }
+  for(const good of ["a","customer_01","a".repeat(128)]){
+    assert.equal(isValidLaunchClientId(good),true,good);
+  }
 });
