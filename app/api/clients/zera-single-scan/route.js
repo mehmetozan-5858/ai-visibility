@@ -1,3 +1,4 @@
+import {assessZeraOperatorRelease} from '../../../../lib/zera-operator-release-hold.mjs';
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
 import {compareCustomerProviders} from '../../../../lib/customer-provider-comparison.mjs';
@@ -10,6 +11,8 @@ import {getDatabaseUrl} from '../../../../lib/db';
 export async function POST(req){
  const denied=await requireAdmin(req);if(denied)return denied;
  const origin=enforceSameOrigin(req);if(origin)return origin;
+ const release=assessZeraOperatorRelease();
+ if(!release.allowed)return Response.json({error:release.reason},{status:409,headers:{'Cache-Control':'private, no-store'}});
  if(process.env.VERCEL_ENV!=='production'||process.env.ZERA_SINGLE_SCAN_ENABLED!=='true')
   return Response.json({error:'ZERA single scan disabled'},{status:403});
  if(process.env.ZERA_GEMINI_FREE_TIER_CONFIRMED!=='true'||process.env.ZERA_GEMINI_SEARCH_GROUNDING_ENABLED==='true')
