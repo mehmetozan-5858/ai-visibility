@@ -2,7 +2,7 @@ import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../lib/admin-auth";
 import {getClientAccount} from "../../../lib/repository";
 import {customerAccess} from "../../../lib/pilot-access";
-import {resolveClientLaunchReadAccess} from "../../../lib/ai-visibility-client-launch-access.mjs";
+import {isValidLaunchClientId,resolveClientLaunchReadAccess} from "../../../lib/ai-visibility-client-launch-access.mjs";
 import {listLaunchServices} from "../../../lib/ai-visibility-launch-services.mjs";
 
 const json=(body,status=200)=>Response.json(body,{
@@ -14,7 +14,7 @@ export async function GET(){
   try{
     const store=await cookies();
     const session=await verifyClientToken(store.get("ai_client")?.value||"");
-    if(!session)return json({error:"Oturum gerekli."},401);
+    if(!session || !isValidLaunchClientId(session.clientId))return json({error:"Oturum gerekli."},401);
     const account=await getClientAccount(session.clientId);
     if(!account)return json({error:"Müşteri bulunamadı."},404);
     const access=await customerAccess(account);
