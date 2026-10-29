@@ -36,3 +36,16 @@ test("tenant-scoped preview never fabricates an authenticated actor or membershi
     assert.equal(Object.hasOwn(result,key),false,key+" must not be present");
   }
 });
+
+test("matching malformed tenant IDs cannot grant catalog preview",()=>{
+  for(const clientId of ["../other","tenant\\nother"," tenant_1 ","tenant/1","üser","a".repeat(129)]){
+    const result=decide({session:{clientId},account:{client:{id:clientId}}});
+    assert.deepEqual(result,{allowed:false,reason:"unauthenticated"},JSON.stringify(clientId));
+  }
+});
+test("canonical 128-character tenant ID remains preview eligible",()=>{
+  const clientId="a".repeat(128);
+  const result=decide({session:{clientId},account:{client:{id:clientId}}});
+  assert.equal(result.previewOnly,true);
+  assert.equal(result.productionEnabled,false);
+});
