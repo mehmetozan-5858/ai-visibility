@@ -8,6 +8,9 @@ import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
 
 const TASKS=ZERA_TASKS.filter(task=>task.channel==='ai-answer');
 const noStore={'Cache-Control':'private, no-store'};
+// These labels are intentionally safe: never expose provider keys, raw responses or DB details.
+const safeProviderReason=(reason)=>String(reason||'no-answer').slice(0,120);
+
 function permitted(){
  return process.env.VERCEL_ENV==='production'&&
   process.env.ZERA_SINGLE_SCAN_ENABLED==='true'&&
@@ -61,19 +64,33 @@ export async function POST(req){
     const response=comparison.results.find(r=>r.provider==='gemini');
     if(!response||!['source-supported-answer','answer-received-unverified'].includes(response.status)){
      await pool.query("UPDATE zera_ai_task_attempts SET status='provider-failed' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]);
-     results.push({taskId:task.id,status:'provider-failed',reason:response?.reason||response?.status||'no-answer'});
+     results.push({taskId:task.id,status:'provider-failed',stage:'provider',reason:safeProviderReason(response?.reason||response?.status)});
      // Stop at first failure; never burn remaining quota on a failing provider.
      break;
     }
-    const saved=await storeCustomerComparison({clientId:client.id,comparison});
-    await pool.query("UPDATE zera_ai_task_attempts SET status='stored',comparison_id=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,saved.id]);
-    results.push({taskId:task.id,status:'stored',verified:response.verified===true,comparisonId:saved.id});
+    // A successful provider response must not be classified as a provider failure when storage fails.
+    let saved;
+    try{
+     saved=await storeCustomerComparison({clientId:client.id,comparison});
+    }catch{
+     await pool.query("UPDATE zera_ai_task_attempts SET status='storage-failed' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]).catch(()=>{});
+     results.push({taskId:task.id,status:'storage-failed',stage:'storage',reason:'Database write failed; do not repeat the provider call'});
+     break;
+    }
+    try{
+     await pool.query("UPDATE zera_ai_task_attempts SET status='stored',comparison_id=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,saved.id]);
+     results.push({taskId:task.id,status:'stored',verified:response.verified===true,comparisonId:saved.id});
+    }catch{
+     // Comparison may already be persisted. Expose its ID so an operator can reconcile safely.
+     results.push({taskId:task.id,status:'reconciliation-required',stage:'attempt-status',comparisonId:saved.id,reason:'Comparison saved; attempt-status update failed'});
+     break;
+    }
    }catch{
     await pool.query("UPDATE zera_ai_task_attempts SET status='error' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]).catch(()=>{});
-    results.push({taskId:task.id,status:'error'});
+    results.push({taskId:task.id,status:'error',stage:'unknown',reason:'Unexpected processing failure; check stored results'});
     break;
    }
   }
-  return Response.json({results,googleSearchTasks:'not-executed',visibilityScore:null,summary:results.find(r=>r.status==='provider-failed'||r.status==='error')?.reason||'Completed or already attempted'},{headers:noStore});
+  return Response.json({results,googleSearchTasks:'not-executed',visibilityScore:null,summary:results.find(r=>r.reason)?.reason||'Completed or already attempted'},{headers:noStore});
  }catch{return Response.json({error:'Queue execution stopped; check attempt status before any retry'},{status:503,headers:noStore})}
 }
