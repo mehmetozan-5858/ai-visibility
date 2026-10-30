@@ -50,3 +50,6 @@
  .mv-avatar{grid-column:3;grid-row:1;width:auto;height:auto;background:none;border-radius:0;}
  .mv-avatar button{min-height:44px;max-width:100%;white-space:normal;}
 }
+
+/* Agent art stays visible independently of CSS background loading. */
+.mv-agentpic{display:block;width:100%;object-fit:cover}
