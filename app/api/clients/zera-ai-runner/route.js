@@ -1,3 +1,4 @@
+import {summarizeZeraAttemptGate} from '../../../../lib/zera-attempt-gate.mjs';
 import {prepareCustomerComparisonStorage} from '../../../../lib/customer-comparison-schema.mjs';
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
@@ -43,7 +44,7 @@ export async function GET(req){
  try{
   const {client,pool}=await context();
   const attempts=await existing(pool,client.id);
-  return Response.json({enabled:permitted(),maxProviderCalls:2,attempts,tasks:TASKS.map(t=>({id:t.id,query:t.query,status:attempts.find(a=>a.taskId===t.id)?.status||'pending'})),googleSearchTasks:'not-executed-by-this-runner'},{headers:noStore});
+  return Response.json({enabled:permitted(),attemptGate:summarizeZeraAttemptGate(attempts,permitted()),maxProviderCalls:2,attempts,tasks:TASKS.map(t=>({id:t.id,query:t.query,status:attempts.find(a=>a.taskId===t.id)?.status||'pending'})),googleSearchTasks:'not-executed-by-this-runner'},{headers:noStore});
  }catch{return Response.json({error:'Queue status unavailable'},{status:503,headers:noStore})}
 }
 export async function POST(req){
