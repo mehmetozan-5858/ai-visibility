@@ -74,3 +74,10 @@ test('invalid payment amount cannot authorize transaction',()=>{
  assert.equal(expectedPaddleItemAmount(event,{setup_amount:120,monthly_amount:NaN}),null);
  assert.equal(expectedPaddleItemAmount(event,{setup_amount:120,monthly_amount:0.5}),null);
 });
+
+test('zero total must never authorize a successful payment event',()=>{
+ const initial={type:'transaction.completed',data:{origin:'api'}};
+ const renewal={type:'transaction.completed',data:{origin:'subscription_recurring'}};
+ assert.equal(expectedPaddleItemAmount(initial,{setup_amount:0,monthly_amount:0}),null);
+ assert.equal(expectedPaddleItemAmount(renewal,{setup_amount:120,monthly_amount:0}),null);
+});
