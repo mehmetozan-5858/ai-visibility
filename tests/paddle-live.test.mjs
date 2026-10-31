@@ -81,3 +81,9 @@ test('zero total must never authorize a successful payment event',()=>{
  assert.equal(expectedPaddleItemAmount(initial,{setup_amount:0,monthly_amount:0}),null);
  assert.equal(expectedPaddleItemAmount(renewal,{setup_amount:120,monthly_amount:0}),null);
 });
+
+test('a delayed completed webhook cannot overwrite a refunded payment',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../lib/paddle-live.js',import.meta.url),'utf8');
+ assert.match(source,/UPDATE payments SET status='paid'[\s\S]*?WHERE id=\$1 AND client_id=\$2 AND status NOT IN \('paid','refunded'\)/);
+});
