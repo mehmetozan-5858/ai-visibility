@@ -71,7 +71,7 @@ export async function POST(req){
   for(const task of TASKS){
    // A durable claim is made BEFORE each call; parallel clicks cannot duplicate requests.
    const claim=await pool.query("INSERT INTO zera_ai_task_attempts(client_id,task_id,status) VALUES($1,$2,'started') ON CONFLICT DO NOTHING RETURNING task_id",[client.id,task.id]);
-   if(!claim.rows.length){results.push({taskId:task.id,status:'already-attempted'});continue}
+   if(!claim.rows.length){results.push({taskId:task.id,status:'already-attempted'});break}
    try{
     const comparison=await compareCustomerProviders({client,query:task.query,providers:['gemini'],keys:{gemini:process.env.GEMINI_API_KEY}});
     const response=comparison.results.find(r=>r.provider==='gemini');
@@ -82,8 +82,7 @@ export async function POST(req){
      // Stop at first failure; never burn remaining quota on a failing provider.
      break;
     }
-    const saved=await storeCustomerComparison({clientId:client.id,comparison});
-    await pool.query("UPDATE zera_ai_task_attempts SET status='stored',comparison_id=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,saved.id]);
+    const saved=await storeCustomerComparison({clientId:client.id,comparison,attemptTaskId:task.id});
     results.push({taskId:task.id,status:'stored',verified:response.verified===true,comparisonId:saved.id});
    }catch{
     await pool.query("UPDATE zera_ai_task_attempts SET status='error',failure_reason='internal-error' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]).catch(()=>{});
