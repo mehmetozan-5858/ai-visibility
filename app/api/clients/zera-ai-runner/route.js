@@ -1,3 +1,4 @@
+import {prepareCustomerComparisonStorage} from '../../../../lib/customer-comparison-schema.mjs';
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
 import {compareCustomerProviders} from '../../../../lib/customer-provider-comparison.mjs';
@@ -8,6 +9,14 @@ import {ZERA_TASKS} from '../../../../lib/zera-evidence-orchestrator.mjs';
 
 const TASKS=ZERA_TASKS.filter(task=>task.channel==='ai-answer');
 const noStore={'Cache-Control':'private, no-store'};
+// Store bounded error categories, never provider payloads or credentials.
+function safeFailureReason(value){
+ const reason=String(value||'');
+ if(/^provider-http-(400|401|402|403|404|408|409|429|500|502|503|504)$/.test(reason))return reason;
+ if(['provider-temporarily-unavailable','provider-quota-or-rate-limit','provider-model-not-found','provider-permission-denied','empty-answer','no-answer','not-configured','failed'].includes(reason))return reason;
+ if(/timeout|timed out/i.test(reason))return 'provider-timeout';
+ return 'provider-error-unspecified';
+}
 function permitted(){
  return process.env.VERCEL_ENV==='production'&&
   process.env.ZERA_SINGLE_SCAN_ENABLED==='true'&&
@@ -24,7 +33,9 @@ async function context(){
 async function existing(pool,clientId){
  const table=await pool.query("SELECT to_regclass('public.zera_ai_task_attempts') AS name");
  if(!table.rows[0]?.name)return [];
- const result=await pool.query('SELECT task_id AS "taskId",status,comparison_id AS "comparisonId" FROM zera_ai_task_attempts WHERE client_id=$1',[clientId]);
+ const columns=await pool.query("SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='zera_ai_task_attempts' AND column_name='failure_reason'");
+ const failureField=columns.rows.length?',failure_reason AS "failureReason"':'';
+ const result=await pool.query('SELECT task_id AS "taskId",status,comparison_id AS "comparisonId"'+failureField+' FROM zera_ai_task_attempts WHERE client_id=$1',[clientId]);
  return result.rows;
 }
 export async function GET(req){
@@ -49,8 +60,13 @@ export async function POST(req){
    client_id UUID NOT NULL,task_id TEXT NOT NULL,status TEXT NOT NULL,
    comparison_id UUID,created_at TIMESTAMPTZ DEFAULT NOW(),
    PRIMARY KEY(client_id,task_id))`);
+  await pool.query('ALTER TABLE zera_ai_task_attempts ADD COLUMN IF NOT EXISTS failure_reason TEXT');
   const prior=await existing(pool,client.id);
   if(prior.length)return Response.json({error:'Previous attempt exists; automatic further calls blocked',attempts:prior},{status:409,headers:noStore});
+  // Fail before claiming a task or consuming provider quota if storage is unavailable.
+  try{await prepareCustomerComparisonStorage(pool,client.id)}catch{
+   return Response.json({error:'Comparison storage unavailable; no provider calls made',reason:'comparison-storage-unavailable'},{status:503,headers:noStore});
+  }
   const results=[];
   for(const task of TASKS){
    // A durable claim is made BEFORE each call; parallel clicks cannot duplicate requests.
@@ -60,8 +76,9 @@ export async function POST(req){
     const comparison=await compareCustomerProviders({client,query:task.query,providers:['gemini'],keys:{gemini:process.env.GEMINI_API_KEY}});
     const response=comparison.results.find(r=>r.provider==='gemini');
     if(!response||!['source-supported-answer','answer-received-unverified'].includes(response.status)){
-     await pool.query("UPDATE zera_ai_task_attempts SET status='provider-failed' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]);
-     results.push({taskId:task.id,status:'provider-failed',reason:response?.reason||response?.status||'no-answer'});
+     const reason=safeFailureReason(response?.reason||response?.status||'no-answer');
+     await pool.query("UPDATE zera_ai_task_attempts SET status='provider-failed',failure_reason=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,reason]);
+     results.push({taskId:task.id,status:'provider-failed',reason});
      // Stop at first failure; never burn remaining quota on a failing provider.
      break;
     }
@@ -69,7 +86,7 @@ export async function POST(req){
     await pool.query("UPDATE zera_ai_task_attempts SET status='stored',comparison_id=$3 WHERE client_id=$1 AND task_id=$2",[client.id,task.id,saved.id]);
     results.push({taskId:task.id,status:'stored',verified:response.verified===true,comparisonId:saved.id});
    }catch{
-    await pool.query("UPDATE zera_ai_task_attempts SET status='error' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]).catch(()=>{});
+    await pool.query("UPDATE zera_ai_task_attempts SET status='error',failure_reason='internal-error' WHERE client_id=$1 AND task_id=$2",[client.id,task.id]).catch(()=>{});
     results.push({taskId:task.id,status:'error'});
     break;
    }
