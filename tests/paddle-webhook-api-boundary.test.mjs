@@ -24,6 +24,13 @@ test('webhook API rejects unsigned and tampered bodies before any DB write',asyn
  assert.equal((await post(request(raw))).status,401);
  assert.equal((await post(request(raw+' ',signature))).status,401);
  assert.equal(getWrites(),0);
+ const oldTs=ts-601;
+ const stale='ts='+oldTs+';h1='+createHmac('sha256',secret).update(oldTs+':'+raw).digest('hex');
+ assert.equal((await post(request(raw,stale))).status,401);
+ const badJson='{not valid json';
+ const signedBad='ts='+ts+';h1='+createHmac('sha256',secret).update(ts+':'+badJson).digest('hex');
+ assert.equal((await post(request(badJson,signedBad))).status,400);
+ assert.equal(getWrites(),0);
  assert.equal((await post(request(raw,signature))).status,200);
  assert.equal(getWrites(),1);
 });
