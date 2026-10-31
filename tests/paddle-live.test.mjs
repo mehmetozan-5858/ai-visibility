@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {verifyPaddleLiveSignature,normalizePaddleLiveEvent,subscriptionAccessState,transactionPricedAmount,isPaddleRenewal,expectedPaddleItemAmount} from '../lib/paddle-live.js';
 
 function sign(raw,secret,ts){return createHmac('sha256',secret).update(`${ts}:${raw}`).digest('hex')}
@@ -86,4 +87,13 @@ test('a delayed completed webhook cannot overwrite a refunded payment',async()=>
  const {readFileSync}=await import('node:fs');
  const source=readFileSync(new URL('../lib/paddle-live.js',import.meta.url),'utf8');
  assert.match(source,/UPDATE payments SET status='paid'[\s\S]*?WHERE id=\$1 AND client_id=\$2 AND status NOT IN \('paid','refunded'\)/);
+});
+
+test('live paid and past_due notices are recognized but not settlement authorization',()=>{
+ for(const type of ['transaction.paid','transaction.past_due']){
+  const event={event_id:'evt_test123',event_type:type,occurred_at:'2026-11-01T00:00:00Z',data:{id:'txn_test123',status:type.split('.')[1]}};
+  assert.equal(normalizePaddleLiveEvent(event).type,type);
+ }
+ const source=readFileSync(new URL('../lib/paddle-live.js',import.meta.url),'utf8');
+ assert.ok(source.includes("item.type==='transaction.paid'||item.type==='transaction.past_due'"));
 });
