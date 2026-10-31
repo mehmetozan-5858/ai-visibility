@@ -11,3 +11,12 @@ test('missing provider gate remains closed',()=>{
 test('diagnostic never mutates attempt records',()=>{
  const original=Object.freeze([{status:'stored'}]);summarizeZeraAttemptGate(original,true);assert.equal(original[0].status,'stored');
 });
+
+test('unavailable attempt history must never enable a provider call',()=>{
+ for(const history of [undefined,null,{},'corrupt']){
+  const gate=summarizeZeraAttemptGate(history,true);
+  assert.equal(gate.canStartNewAttempt,false);
+  assert.equal(gate.needsOperatorReview,true);
+  assert.equal(gate.blockedReason,'attempt-history-unavailable');
+ }
+});
