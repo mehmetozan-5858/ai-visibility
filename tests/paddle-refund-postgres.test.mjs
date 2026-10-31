@@ -19,5 +19,9 @@ test('PostgreSQL refuses delayed completion of refunded payment',async()=>{
   await db.query("INSERT INTO payments(id,client_id,status,plan) VALUES ($1,$2,'pending','basic')",['pending-fixture','client-fixture']);
   const allowed=await db.query(query[0],['pending-fixture','client-fixture']);
   assert.equal(allowed.rows[0].status,'paid','valid pending first payment must still work');
+  const duplicate=await db.query(query[0],['pending-fixture','client-fixture']);
+  assert.equal(duplicate.rows.length,0,'repeat completed event must not update paid payment');
+  const wrongClient=await db.query(query[0],['pending-fixture','wrong-client']);
+  assert.equal(wrongClient.rows.length,0,'different client must not change payment');
  }finally{await db.close()}
 });
