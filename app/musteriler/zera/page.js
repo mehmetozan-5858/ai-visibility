@@ -4,7 +4,16 @@ export default function ZeraCustomerDetail(){
  const [state,setState]=useState({loading:true,client:null,error:""});
  const [measurements,setMeasurements]=useState({loading:true,error:"",comparisons:[],verifiedCount:0});
  const [run,setRun]=useState({ready:false,loading:true,busy:false,used:false,message:""});
+ const [preflight,setPreflight]=useState({busy:false,message:''});
  const [payment,setPayment]=useState({busy:false,url:'',error:''});
+ async function checkPreflight(prepare=false){
+  if(preflight.busy)return;
+  setPreflight({busy:true,message:prepare?'Kayıt altyapısı hazırlanıyor…':'Model erişimi kontrol ediliyor…'});
+  try{const r=await fetch('/api/clients/zera-preflight',{method:prepare?'POST':'GET',credentials:'same-origin',cache:'no-store',...(prepare?{headers:{'content-type':'application/json'},body:JSON.stringify({confirmPrepareStorage:true})}:{})});
+   const data=await r.json();if(!r.ok)throw Error(data.reason||data.error||'Kontrol tamamlanamadı');
+   setPreflight({busy:false,message:prepare?'Kayıt altyapısı hazırlandı. Önceki deneme geçmişi korundu; AI sorgusu yapılmadı.':data.modelAccessible?'Model metadata erişimi doğrulandı. İçerik üretilmedi; kota ve ücretsiz hesap durumu bu kontrolle doğrulanmaz.':'Model erişimi doğrulanamadı.'});
+  }catch(e){setPreflight({busy:false,message:e.message})}
+ }
  async function preparePayment(){
   if(payment.busy)return;
   setPayment({busy:true,url:'',error:''});
@@ -55,6 +64,13 @@ export default function ZeraCustomerDetail(){
      <button type="button" disabled={payment.busy} onClick={preparePayment}>{payment.busy?'Hazırlanıyor…':'Ödeme bağlantısı hazırla'}</button>
      {payment.error&&<p role="alert">{payment.error}</p>}
      {payment.url&&<p><a href={payment.url}>Ödeme ekranını aç</a> · Bağlantı bir saat geçerlidir.</p>}
+    </section>
+    <section className="panel" style={{padding:18,marginBottom:16}}>
+     <h2>Analiz öncesi kontrol</h2>
+     <button disabled={preflight.busy} onClick={()=>checkPreflight(false)}>Model erişimini kontrol et</button>
+     <button disabled={preflight.busy} onClick={()=>checkPreflight(true)}>Kayıt altyapısını hazırla</button>
+     <p role="status">{preflight.message}</p>
+     <p>Bu adımlar analiz başlatmaz, eski denemeyi sıfırlamaz ve otomatik tekrarı açmaz.</p>
     </section>
     <section className="panel" style={{padding:18,marginBottom:16}}>
      <h2>Gerçek AI ölçümü</h2>
