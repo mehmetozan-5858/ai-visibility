@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHmac} from 'node:crypto';
-import {verifyPaddleLiveSignature,normalizePaddleLiveEvent,subscriptionAccessState,transactionPricedAmount,isPaddleRenewal} from '../lib/paddle-live.js';
+import {readFileSync} from 'node:fs';
+import {verifyPaddleLiveSignature,normalizePaddleLiveEvent,subscriptionAccessState,transactionPricedAmount,isPaddleRenewal,expectedPaddleItemAmount} from '../lib/paddle-live.js';
 
 function sign(raw,secret,ts){return createHmac('sha256',secret).update(`${ts}:${raw}`).digest('hex')}
 
@@ -58,4 +59,41 @@ test('subscription lifecycle restores access only on explicit active states',()=
   assert.equal(subscriptionAccessState({type:'subscription.updated',status:'active'}),'active');
   assert.equal(subscriptionAccessState({type:'subscription.created',status:'active'}),null);
   assert.equal(subscriptionAccessState({type:'transaction.completed',status:'completed'}),null);
+});
+
+test('first payment requires setup plus monthly, recurring renewal only monthly',()=>{
+ const payment={setup_amount:120,monthly_amount:49};
+ const original={type:'transaction.completed',data:{origin:'api'}};
+ const renewal={type:'transaction.completed',data:{origin:'subscription_recurring'}};
+ assert.equal(expectedPaddleItemAmount(original,payment),16900);
+ assert.equal(expectedPaddleItemAmount(renewal,payment),4900);
+ assert.notEqual(expectedPaddleItemAmount(renewal,payment),16900);
+});
+test('invalid payment amount cannot authorize transaction',()=>{
+ const event={type:'transaction.completed',data:{origin:'subscription_recurring'}};
+ assert.equal(expectedPaddleItemAmount(event,{setup_amount:-1,monthly_amount:49}),null);
+ assert.equal(expectedPaddleItemAmount(event,{setup_amount:120,monthly_amount:NaN}),null);
+ assert.equal(expectedPaddleItemAmount(event,{setup_amount:120,monthly_amount:0.5}),null);
+});
+
+test('zero total must never authorize a successful payment event',()=>{
+ const initial={type:'transaction.completed',data:{origin:'api'}};
+ const renewal={type:'transaction.completed',data:{origin:'subscription_recurring'}};
+ assert.equal(expectedPaddleItemAmount(initial,{setup_amount:0,monthly_amount:0}),null);
+ assert.equal(expectedPaddleItemAmount(renewal,{setup_amount:120,monthly_amount:0}),null);
+});
+
+test('a delayed completed webhook cannot overwrite a refunded payment',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../lib/paddle-live.js',import.meta.url),'utf8');
+ assert.match(source,/UPDATE payments SET status='paid'[\s\S]*?WHERE id=\$1 AND client_id=\$2 AND status NOT IN \('paid','refunded'\)/);
+});
+
+test('live paid and past_due notices are recognized but not settlement authorization',()=>{
+ for(const type of ['transaction.paid','transaction.past_due']){
+  const event={event_id:'evt_test123',event_type:type,occurred_at:'2026-11-01T00:00:00Z',data:{id:'txn_test123',status:type.split('.')[1]}};
+  assert.equal(normalizePaddleLiveEvent(event).type,type);
+ }
+ const source=readFileSync(new URL('../lib/paddle-live.js',import.meta.url),'utf8');
+ assert.ok(source.includes("item.type==='transaction.paid'||item.type==='transaction.past_due'"));
 });
