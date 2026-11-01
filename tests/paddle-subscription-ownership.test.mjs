@@ -13,7 +13,7 @@ const apply=new Function('UUID','subscriptionAccessState',source.slice(start,end
 );
 const client='550e8400-e29b-41d4-a716-446655440001';
 const payment='550e8400-e29b-41d4-a716-446655440000';
-function fixture(owned){const queries=[];return {queries,tx:{async query(sql,args){queries.push({sql,args});if(sql.includes('SELECT id FROM payments'))return {rows:owned?[{id:payment}]:[]};if(sql.includes('UPDATE clients'))return {rows:[{id:client}]};throw Error('unexpected SQL')}}};}
+function fixture(owned){const queries=[];return {queries,tx:{async query(sql,args){queries.push({sql,args});if(sql.includes('SELECT id FROM payments'))return {rows:owned?[{id:payment}]:[]};if(sql.includes('SELECT subscription_id FROM paddle_live_subscription_links'))return {rows:owned?[{subscription_id:'sub_fixture'}]:[]};if(sql.includes('UPDATE clients'))return {rows:[{id:client}]};throw Error('unexpected SQL')}}};}
 for(const type of ['subscription.canceled','subscription.activated']){
  test(type+' cannot change another customer without owned payment',async()=>{
   const f=fixture(false);const result=await apply(f.tx,{type,clientId:client,paymentId:payment});
@@ -30,4 +30,12 @@ for(const type of ['subscription.canceled','subscription.activated']){
 test('subscription without payment linkage cannot affect account',async()=>{
  const f=fixture(true);const result=await apply(f.tx,{type:'subscription.canceled',clientId:client,paymentId:''});
  assert.equal(result.accessChanged,false);assert.equal(f.queries.length,0);
+});
+
+test('owned local payment cannot change subscription that lacks verified provider binding',async()=>{
+ const queries=[];const tx={async query(sql,args){queries.push(sql);if(sql.includes('SELECT id FROM payments'))return {rows:[{id:payment}]};if(sql.includes('SELECT subscription_id FROM paddle_live_subscription_links'))return {rows:[]};throw Error('unexpected update');}};
+ const result=await apply(tx,{type:'subscription.canceled',clientId:client,paymentId:payment,entityId:'sub_unrelated'});
+ assert.equal(result.accessChanged,false);
+ assert.equal(result.reason,'subscription-link-unverified');
+ assert.equal(queries.some(x=>x.includes('UPDATE clients')),false);
 });
