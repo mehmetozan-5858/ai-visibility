@@ -20,3 +20,10 @@ test('renders Turkish variant',()=>{
  const v=renderIntroOutreach({...base,language:'tr'});
  assert.match(v.text,/ücretsiz bir ön kontrol/);
 });
+
+test('follow-up has distinct subject but no price',()=>{
+ const v=renderIntroOutreach({...base,followUp:true});
+ assert.match(v.subject,/Brief follow-up/);
+ assert.match(v.text,/earlier note/);
+ assert.doesNotMatch(v.text,/€|£|\$[0-9]|monthly plan/);
+});
