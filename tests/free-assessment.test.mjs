@@ -57,6 +57,7 @@ test('initial outreach contains no prices and has a curiosity CTA without a real
  const mail=buildBrandedOutreachEmail(x);
  assert.match(mail.subject,/AI recommendations/);
  assert.match(mail.html,/complimentary initial check/);
+ assert.match(mail.html,/<br\/>/);
  assert.doesNotMatch(mail.html,/€|£|USD|monthly plan|per month|business-monitoring/i);
  assert.equal(mail.priceExperimentVariant,'NO_PRICE');
  const r=await sendBrandedOutreach(x,{key:'test-key',finalize:async()=>{}});
