@@ -78,5 +78,21 @@ test('automatic route requires admin for manual runs and scheduler credential fo
  const api=new Function('requireAdmin','enforceSameOrigin','runAutomaticOutreach','automaticOutreachStatus','process',raw+'\nreturn {GET,POST};')(async()=>Response.json({error:'unauthorized'},{status:401}),()=>null,async()=>{calls++;return{ok:true}},async()=>({}),{env:{AUTO_HUNT_SECRET:'secret'}});
  assert.equal((await api.POST(new Request('https://example.org/api/outreach-cycle',{method:'POST',body:'{}'}))).status,401);
  assert.equal((await api.GET(new Request('https://example.org/api/outreach-cycle'))).status,401);assert.equal(calls,0);
- assert.equal((await api.GET(new Request('https://example.org/api/outreach-cycle',{headers:{authorization:'Bearer secret'}}))).status,200);assert.equal(calls,1);
+ assert.equal((await api.GET(new Request('https://example.org/api/outreach-cycle',{headers:{authorization:'Bearer secret'}}))).status,200);assert.equal(calls,0);
+});
+
+test('authorized outreach status reads never send and manual writes require explicit confirmSend',async()=>{
+ const raw=(await readFile(new URL('../app/api/outreach-cycle/route.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
+ const calls=[];
+ const api=new Function('requireAdmin','enforceSameOrigin','runAutomaticOutreach','automaticOutreachStatus','process',raw+'\nreturn {GET,POST};')(
+  async()=>null,()=>null,async x=>{calls.push(x);return{ok:true}},async()=>({policy:{enabled:true}}),{env:{CRON_SECRET:'secret'}});
+ const base='https://example.org/api/outreach-cycle';
+ assert.equal((await api.GET(new Request(base,{headers:{authorization:'Bearer secret'}}))).status,200);
+ assert.equal(calls.length,0);
+ for(const body of [{},{dryRun:false},{confirmSend:true},{dryRun:true,confirmSend:true}]){
+  assert.equal((await api.POST(new Request(base,{method:'POST',body:JSON.stringify(body)}))).status,200);
+ }
+ assert.deepEqual(calls.map(x=>x.dryRun),[true,true,true,true]);
+ assert.equal((await api.POST(new Request(base,{method:'POST',body:JSON.stringify({confirmSend:true,dryRun:false})}))).status,200);
+ assert.equal(calls.at(-1).dryRun,false);
 });
