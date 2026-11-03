@@ -20,3 +20,9 @@ test('automatic response receives human review and does not mark a sales reply',
  assert.match(source,/reason='automatic-response'/);
  assert.ok(source.indexOf("if(automated && match)")<source.indexOf("if(!reason){\n     if(match.type==='business')"));
 });
+
+test('follow-up-due recipients remain eligible for inbox matching and human review',async()=>{
+ const source=await readFile(new URL('../lib/inbound-mail.js',import.meta.url),'utf8');
+ assert.match(source,/communication_status IN \('sent','follow-up-due'\) LIMIT 2/);
+ assert.match(source,/\['sent','follow-up-due'\]\.includes\(crm\.communication_status\)/);
+});
