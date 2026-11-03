@@ -48,27 +48,30 @@ test('public endpoint authenticates before reads and exposes only free aggregate
 test('source failures do not fabricate a zero score',async()=>{
  for(const options of [{tables:false},{fail:true}]){const {GET}=apiFixture(options);const r=await GET(req(createFreeAssessmentToken(id,{secret,now})));assert.equal(r.status,503);assert.equal((await r.json()).assessment,undefined)}
 });
+import {renderIntroOutreach} from '../lib/outreach-intro-email.mjs';
 const emailSource=(await readFile(new URL('../lib/outreach-email.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
-const {buildBrandedOutreachEmail,sendBrandedOutreach}=new Function('safeFirstContact','outreachSubject','outreachExperimentVariant','freeAssessmentUrl','deliverOnce','process','servicePrice','formatMoney','recipientScopeIssue',emailSource+';return {buildBrandedOutreachEmail,sendBrandedOutreach};')(safeFirstContact,outreachSubject,outreachExperimentVariant,id=>freeAssessmentUrl(id,{secret,now,base:'https://example.com'}),async(key,payload,finalize)=>{await finalize('test-provider');return{key,payload}},{env:{RESEND_API_KEY:'test-only',EMAIL_FROM:'info@example.com'}},servicePrice,formatMoney,recipientScopeIssue);
-test('future emails include the scoped free screen and sector subject without live transmission',async()=>{
- const x={id,name:'Example <Business>',sector:'Manufacturing',country:'Germany',contactEmail:'info@example.com',firstContact:true};x.outreachDraft=permissionEnquiry(x);
- const result=await sendBrandedOutreach(x,{key:'test-key',finalize:async()=>{}});assert.equal(result.payload.subject,outreachSubject(x));assert.match(result.payload.html,/on-degerlendirme#token=/);assert.match(result.payload.html,/View your free assessment/);assert.doesNotMatch(result.payload.html,/<Business>/);assert.equal(result.experimentVariant,'A');
- await assert.rejects(()=>sendBrandedOutreach({...x,outreachDraft:'Invented score: 1/100'},{key:'test-key',finalize:async()=>{}}),/quality/);
- assert.match(buildBrandedOutreachEmail({...x,followContact:true}).subject,/follow-up/);
+const {buildBrandedOutreachEmail,sendBrandedOutreach}=new Function('safeFirstContact','outreachSubject','outreachExperimentVariant','freeAssessmentUrl','deliverOnce','process','servicePrice','formatMoney','recipientScopeIssue','renderIntroOutreach',emailSource+';return {buildBrandedOutreachEmail,sendBrandedOutreach};')(safeFirstContact,outreachSubject,outreachExperimentVariant,id=>freeAssessmentUrl(id,{secret,now,base:'https://example.com'}),async(key,payload,finalize)=>{await finalize('test-provider');return{key,payload}},{env:{RESEND_API_KEY:'test-only',EMAIL_FROM:'info@example.com'}},servicePrice,formatMoney,recipientScopeIssue,renderIntroOutreach);
+const approved={id,name:'Example Business',sector:'Manufacturing',country:'Germany',contactEmail:'info@example.com',firstContact:true,communicationStatus:'ready-for-review',contactStatus:'verified',lawfulBasisVerified:true};
+test('initial outreach contains no prices and has a curiosity CTA without a real send',async()=>{
+ const x={...approved,outreachDraft:permissionEnquiry(approved)};
+ const mail=buildBrandedOutreachEmail(x);
+ assert.match(mail.subject,/AI recommendations/);
+ assert.match(mail.html,/complimentary initial check/);
+ assert.match(mail.html,/<br\/>/);
+ assert.doesNotMatch(mail.html,/€|£|USD|monthly plan|per month|business-monitoring/i);
+ assert.equal(mail.priceExperimentVariant,'NO_PRICE');
+ const r=await sendBrandedOutreach(x,{key:'test-key',finalize:async()=>{}});
+ assert.match(r.payload.html,/complimentary initial check/);
+ assert.doesNotMatch(r.payload.html,/€|£|USD|monthly plan/i);
 });
-
-test('variant A keeps first-touch prices while variant B defers numeric prices until follow-up',()=>{
- const controlId='12345678-1234-1234-1234-123456789012',conversionId='e1075e85-d15a-422a-9ac9-6d8f3daa6eef';
- assert.equal(outreachExperimentVariant(controlId),'A');assert.equal(outreachExperimentVariant(conversionId),'B');
- const base={name:'Example',sector:'Manufacturing',country:'Germany',firstContact:true,outreachDraft:'Reviewed message'};
- const price=formatMoney(servicePrice({service:'business-diagnosis',country:'Germany'}).amount,'EUR','en-GB');
- assert.ok(buildBrandedOutreachEmail({...base,id:controlId}).html.includes(price));
- assert.ok(!buildBrandedOutreachEmail({...base,id:conversionId}).html.includes(price));
- assert.ok(buildBrandedOutreachEmail({...base,id:conversionId,followContact:true}).html.includes(price));
-});
-
-test('priced variant and follow-up use canonical regional prices and currencies',()=>{
- for(const [country,currency] of [['Türkiye','TRY'],['Germany','EUR'],['United Kingdom','GBP'],['United States','USD'],['Saudi Arabia','USD']]){
-  for(const followContact of [false,true]){const x={id, name:'Example',sector:'Manufacturing',country,firstContact:true,followContact,outreachDraft:'Reviewed message'};const mail=buildBrandedOutreachEmail(x);for(const service of ['business-diagnosis','business-monitoring']){const p=servicePrice({service,country});assert.equal(p.currency,currency);assert.ok(mail.html.includes(formatMoney(p.amount,p.currency,country==='Türkiye'?'tr-TR':'en-GB')))}assert.match(mail.html,country==='Türkiye'?/tek sefer/:/one time/);assert.match(mail.html,country==='Türkiye'?/\/ ay/:/\/ month/)}
+test('first contact fails closed when legal basis or approvals are missing',()=>{
+ for(const key of ['communicationStatus','contactStatus','lawfulBasisVerified']){
+   const x={...approved,[key]:key==='lawfulBasisVerified'?false:'unverified'};
+   assert.throws(()=>buildBrandedOutreachEmail(x),/OUTREACH_NOT_APPROVED/);
  }
+});
+test('Turkish first-touch copy never displays regional numeric prices',()=>{
+ const mail=buildBrandedOutreachEmail({...approved,country:'Türkiye'});
+ assert.match(mail.html,/ücretsiz bir ön kontrol/);
+ assert.doesNotMatch(mail.html,/₺|TL|\/ ay|tek sefer/);
 });

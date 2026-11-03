@@ -1,3 +1,4 @@
+import {isAutomaticReply} from '../lib/inbound-auto-reply.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -13,7 +14,7 @@ const pool={connect:async()=>pool,release(){},async query(sql,a=[]){
  if(sql.includes('SET status=$2,sender=$3'))captured.push(a);
  return {rows:[]};
 }};
-const api=new Function('databasePool','getDatabaseUrl','initializeSchema','mailbox','inboundText','trustedInbound','getCommunicationProspect','saveProspectReplyAnalysis','analyzeSalesReply','analyzeAndSaveCreatorReply','budgetFetch',source+';return {saveInboundDraft,processInbound}')( ()=>pool,()=> 'db',async()=>{}, x=>x,x=>x.text,x=>x.trusted,async()=>({id:'business'}),async()=>{},async()=>{throw Error('unexpected-paid-ai-call')},async()=>{throw Error('unexpected-paid-ai-call')},async url=>({ok:true,json:async()=>({from:'owner@example.com',subject:'Question',text:url.includes('/two?')?'second':'first',trusted:!url.includes('/bad?')})}));
+const api=new Function('databasePool','getDatabaseUrl','initializeSchema','mailbox','inboundText','trustedInbound','getCommunicationProspect','saveProspectReplyAnalysis','analyzeSalesReply','analyzeAndSaveCreatorReply','budgetFetch','isAutomaticReply',source+';return {saveInboundDraft,processInbound}')( ()=>pool,()=> 'db',async()=>{}, x=>x,x=>x.text,x=>x.trusted,async()=>({id:'business'}),async()=>{},async()=>{throw Error('unexpected-paid-ai-call')},async()=>{throw Error('unexpected-paid-ai-call')},async url=>({ok:true,json:async()=>({from:'owner@example.com',subject:'Question',text:url.includes('/two?')?'second':'first',trusted:!url.includes('/bad?')})}),isAutomaticReply);
 test('edits are isolated by event and reject stale versions or unverified messages',async()=>{
  rows=new Map([['one',{status:'analyzed',matchedId:'business',draftVersion:1,replyDraft:'first'}],['two',{status:'analyzed',matchedId:'business',draftVersion:1,replyDraft:'second'}],['bad',{status:'review-required',matchedId:'business',draftVersion:1}]]);
  assert.equal((await api.saveInboundDraft('one','edited',1)).draftVersion,2);
