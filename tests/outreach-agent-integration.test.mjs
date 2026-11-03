@@ -20,6 +20,6 @@ test('a new versioned migration runs for existing production databases',()=>{
  const fn=prospects.slice(prospects.indexOf('export async function getCommunicationProspect('));
  assert.match(fn,/initializeSchema\(p,'prospects-lawful-basis-v1'/);
  const migration=fn.indexOf("'prospects-lawful-basis-v1'");
- const select=fn.indexOf('FROM prospects WHERE id=\\$1');
+ const select=fn.indexOf('FROM prospects WHERE id=$1');
  assert.ok(migration>=0 && select>migration);
 });
