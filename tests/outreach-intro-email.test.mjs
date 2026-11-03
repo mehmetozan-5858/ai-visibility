@@ -25,5 +25,7 @@ test('follow-up has distinct subject but no price',()=>{
  const v=renderIntroOutreach({...base,followUp:true});
  assert.match(v.subject,/Brief follow-up/);
  assert.match(v.text,/earlier note/);
+ assert.ok(v.text.includes('earlier note. If this is not relevant, we will not contact you again.\\n\\nWhen someone'));
+ assert.doesNotMatch(v.text,/\\\\n/);
  assert.doesNotMatch(v.text,/€|£|\$[0-9]|monthly plan/);
 });
