@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarizeZeraAttemptGate} from '../lib/zera-attempt-gate.mjs';
+import {summarizeZeraAttemptGate,availableZeraAttemptHistory} from '../lib/zera-attempt-gate.mjs';
 
 test('closed provider gate blocks a new attempt without history', () => {
   const state = summarizeZeraAttemptGate([], false);
@@ -39,4 +39,21 @@ test('only a genuinely empty available history with explicit gate permits review
   const state = summarizeZeraAttemptGate([], true);
   assert.equal(state.canStartNewAttempt, true);
   assert.equal(state.automaticallyRetried, false);
+});
+
+test('missing or malformed attempt table evidence never becomes an empty retry-ready history',()=>{
+ for(const [present,rows] of [[false,[]],[false,[{status:'provider-failed'}]],[null,[]],[true,null],[true,{}]]){
+  const history=availableZeraAttemptHistory(present,rows);
+  assert.equal(history,null);
+  assert.equal(summarizeZeraAttemptGate(history,true).canStartNewAttempt,false);
+  assert.equal(summarizeZeraAttemptGate(history,true).blockedReason,'attempt-history-unavailable');
+ }
+});
+
+test('verified existing table distinguishes empty first-attempt history from preserved prior attempt',()=>{
+ const empty=availableZeraAttemptHistory(true,[]);
+ const used=availableZeraAttemptHistory(true,[{status:'provider-failed'}]);
+ assert.deepEqual(empty,[]);
+ assert.equal(summarizeZeraAttemptGate(empty,true).canStartNewAttempt,true);
+ assert.equal(summarizeZeraAttemptGate(used,true).canStartNewAttempt,false);
 });
