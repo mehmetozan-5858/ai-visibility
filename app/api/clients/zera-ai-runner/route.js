@@ -33,7 +33,7 @@ async function context(){
 }
 async function existing(pool,clientId){
  const table=await pool.query("SELECT to_regclass('public.zera_ai_task_attempts') AS name");
- if(!table.rows[0]?.name)return [];
+ if(!table.rows[0]?.name)return null;
  const columns=await pool.query("SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='zera_ai_task_attempts' AND column_name='failure_reason'");
  const failureField=columns.rows.length?',failure_reason AS "failureReason"':'';
  const result=await pool.query('SELECT task_id AS "taskId",status,comparison_id AS "comparisonId"'+failureField+' FROM zera_ai_task_attempts WHERE client_id=$1',[clientId]);
@@ -44,7 +44,8 @@ export async function GET(req){
  try{
   const {client,pool}=await context();
   const attempts=await existing(pool,client.id);
-  return Response.json({enabled:permitted(),attemptGate:summarizeZeraAttemptGate(attempts,permitted()),maxProviderCalls:2,attempts,tasks:TASKS.map(t=>({id:t.id,query:t.query,status:attempts.find(a=>a.taskId===t.id)?.status||'pending'})),googleSearchTasks:'not-executed-by-this-runner'},{headers:noStore});
+  const safeAttempts=Array.isArray(attempts)?attempts:[];
+  return Response.json({enabled:permitted(),attemptGate:summarizeZeraAttemptGate(attempts,permitted()),attemptHistoryAvailable:Array.isArray(attempts),maxProviderCalls:2,attempts:safeAttempts,tasks:TASKS.map(t=>({id:t.id,query:t.query,status:safeAttempts.find(a=>a.taskId===t.id)?.status||'pending'})),googleSearchTasks:'not-executed-by-this-runner'},{headers:noStore});
  }catch{return Response.json({error:'Queue status unavailable'},{status:503,headers:noStore})}
 }
 export async function POST(req){
@@ -63,6 +64,7 @@ export async function POST(req){
    PRIMARY KEY(client_id,task_id))`);
   await pool.query('ALTER TABLE zera_ai_task_attempts ADD COLUMN IF NOT EXISTS failure_reason TEXT');
   const prior=await existing(pool,client.id);
+  if(!Array.isArray(prior))return Response.json({error:'Attempt history unavailable; no provider calls made'},{status:503,headers:noStore});
   if(prior.length)return Response.json({error:'Previous attempt exists; automatic further calls blocked',attempts:prior},{status:409,headers:noStore});
   // Fail before claiming a task or consuming provider quota if storage is unavailable.
   try{await prepareCustomerComparisonStorage(pool,client.id)}catch{
