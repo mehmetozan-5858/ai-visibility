@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {summarizeZeraAttemptGate,availableZeraAttemptHistory} from '../lib/zera-attempt-gate.mjs';
+import {summarizeZeraAttemptGate,availableZeraAttemptHistory,summarizeZeraAuditEvidence} from '../lib/zera-attempt-gate.mjs';
 
 test('closed provider gate blocks a new attempt without history', () => {
   const state = summarizeZeraAttemptGate([], false);
@@ -56,4 +56,15 @@ test('verified existing table distinguishes empty first-attempt history from pre
  assert.deepEqual(empty,[]);
  assert.equal(summarizeZeraAttemptGate(empty,true).canStartNewAttempt,true);
  assert.equal(summarizeZeraAttemptGate(used,true).canStartNewAttempt,false);
+});
+
+test('production legacy failure produces redacted unclassified audit evidence without granting retry',()=>{
+ const attempts=[Object.freeze({taskId:'brand-ai-de',status:'provider-failed',failureReason:null,comparisonId:null,createdAt:'2026-10-25',secret:'PRIVATE_PAYLOAD'})];
+ assert.deepEqual(summarizeZeraAuditEvidence(attempts),{historyAvailable:true,attemptCount:1,unclassifiedFailures:1,comparisonLinks:0});
+ assert.equal(summarizeZeraAttemptGate(attempts,true).canStartNewAttempt,false);
+ assert.equal(JSON.stringify(summarizeZeraAuditEvidence(attempts)).includes('PRIVATE_PAYLOAD'),false);
+});
+
+test('unknown history remains unverified rather than zero attempts',()=>{
+ assert.deepEqual(summarizeZeraAuditEvidence(null),{historyAvailable:false,attemptCount:null,unclassifiedFailures:0,comparisonLinks:0});
 });
