@@ -23,6 +23,15 @@ test('approved domains are exact, HTTPS only and fail closed on malformed config
  for(const target of ['preview','development',undefined])assert.equal(readiness({...approved,VERCEL_ENV:target}).ready,false);
 });
 
+test('www checkout alias is eligible only when its exact apex is approved',()=>{
+ const apex={...approved,PADDLE_LIVE_APPROVED_DOMAINS:'["example.invalid"]'};
+ assert.equal(readiness(apex,'https://example.invalid').ready,true);
+ assert.equal(readiness(apex,'https://www.example.invalid').ready,true);
+ for(const origin of ['https://shop.example.invalid','https://www.sub.example.invalid','https://evil-example.invalid','http://www.example.invalid','https://www.example.invalid:8443'])
+  assert.equal(readiness(apex,origin).ready,false,origin);
+ assert.equal(readiness({...apex,PADDLE_LIVE_SELLER_APPROVED:'false'},'https://www.example.invalid').ready,false);
+});
+
 function checkoutRoute(env){
  const source=fs.readFileSync(new URL('../app/api/payment/paddle/route.js',import.meta.url),'utf8').replace(/^import .*;\s*$/mg,'').replace('export async function POST','async function POST');
  const calls={profile:0,payment:0,provider:0,consent:0};
