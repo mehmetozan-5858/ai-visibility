@@ -1,4 +1,4 @@
-import {summarizeZeraAttemptGate,availableZeraAttemptHistory} from '../../../../lib/zera-attempt-gate.mjs';
+import {summarizeZeraAttemptGate,availableZeraAttemptHistory,summarizeZeraAuditEvidence} from '../../../../lib/zera-attempt-gate.mjs';
 import {prepareCustomerComparisonStorage} from '../../../../lib/customer-comparison-schema.mjs';
 import {requireAdmin,enforceSameOrigin} from '../../../../lib/api-security';
 import {findClientByIdentity} from '../../../../lib/repository';
@@ -45,7 +45,7 @@ export async function GET(req){
   const {client,pool}=await context();
   const attempts=await existing(pool,client.id);
   const safeAttempts=Array.isArray(attempts)?attempts:[];
-  return Response.json({enabled:permitted(),attemptGate:summarizeZeraAttemptGate(attempts,permitted()),attemptHistoryAvailable:Array.isArray(attempts),maxProviderCalls:2,attempts:safeAttempts,tasks:TASKS.map(t=>({id:t.id,query:t.query,status:safeAttempts.find(a=>a.taskId===t.id)?.status||'pending'})),googleSearchTasks:'not-executed-by-this-runner'},{headers:noStore});
+  return Response.json({enabled:permitted(),attemptGate:summarizeZeraAttemptGate(attempts,permitted()),auditEvidence:summarizeZeraAuditEvidence(attempts),attemptHistoryAvailable:Array.isArray(attempts),maxProviderCalls:2,attempts:safeAttempts,tasks:TASKS.map(t=>({id:t.id,query:t.query,status:safeAttempts.find(a=>a.taskId===t.id)?.status||'pending'})),googleSearchTasks:'not-executed-by-this-runner'},{headers:noStore});
  }catch{return Response.json({error:'Queue status unavailable'},{status:503,headers:noStore})}
 }
 export async function POST(req){
