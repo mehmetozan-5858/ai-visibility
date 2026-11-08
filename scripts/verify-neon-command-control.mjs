@@ -23,6 +23,9 @@ try{
  await call({operation:'enqueue',task:{...task,id:'wrong-tenant',tenantId:'other'}},403);
  await call({operation:'enqueue',task:{...task,id:'invalid-token'}},401,'invalid.token.value');
  await call({operation:'review',taskId:task.id,gates:[{id:'production',status:'pending'}]},200);
+ const concurrentTask={...task,id:'concurrent-'+crypto.randomUUID()};
+ const attempts=await Promise.all([handler(request({operation:'enqueue',task:concurrentTask})),handler(request({operation:'enqueue',task:concurrentTask}))]);
+ assert.deepEqual(attempts.map(r=>r.status).sort(),[200,409]);
  const control=createPostgresCommandControl(reader);
  const snapshot=await control.snapshot(principal);
  assert.equal(snapshot.tasks.find(t=>t.id===task.id).state,'reviewed');
@@ -33,6 +36,6 @@ try{
  await assert.rejects(writer.query('DELETE FROM public.agent_command_ledger'),/permission denied/);
  agents.worker.enabled=false;
  await call({operation:'enqueue',task:{...task,id:'revoked'}},401);
- console.log(JSON.stringify({ok:true,storage:'postgresql',testEnvironment:process.env.AGENT_TEST_ENVIRONMENT||'unspecified',signedHttp:true,replayWithSeparateReader:true,duplicateRejected:true,tenantIsolation:true,invalidTokenRejected:true,revocation:true,readerWriteDenied:true,writerUpdateDeleteDenied:true,releaseAuthorized:false,ledgerEntries:snapshot.ledgerEntries}));
+ console.log(JSON.stringify({ok:true,storage:'postgresql',testEnvironment:process.env.AGENT_TEST_ENVIRONMENT||'unspecified',signedHttp:true,replayWithSeparateReader:true,duplicateRejected:true,concurrentDuplicateRejected:true,tenantIsolation:true,invalidTokenRejected:true,revocation:true,readerWriteDenied:true,writerUpdateDeleteDenied:true,releaseAuthorized:false,ledgerEntries:snapshot.ledgerEntries}));
 }catch(error){console.error(JSON.stringify({ok:false,code:error.code||null,message:String(error.message).replace(/postgres(?:ql)?:\/\/\S+/g,'[redacted]')}));process.exitCode=1;}
 finally{await writer.end();await reader.end();}
