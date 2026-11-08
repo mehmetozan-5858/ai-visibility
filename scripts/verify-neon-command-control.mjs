@@ -5,8 +5,14 @@ import {createAgentIdentityResolver} from '../lib/agent-command-identity.js';
 import {createAgentCommandHandler} from '../lib/agent-command-http.js';
 const url=process.env.AGENT_TEST_DATABASE_URL;
 if(!url)throw Error('test-database-url-required');
-const writer=new pg.Pool({connectionString:url,max:4});
-const readerUrl=new URL(url);readerUrl.username=process.env.AGENT_TEST_READER_ROLE||'agent_test_reader_20261109';readerUrl.password=process.env.AGENT_TEST_READER_PASSWORD;
+const target=new URL(url);
+if(process.env.AGENT_TEST_EXPECTED_HOST){
+ assert.equal(target.hostname,process.env.AGENT_TEST_EXPECTED_HOST,'unexpected-test-host');
+ assert.equal(decodeURIComponent(target.username),'agent_test_writer_20261109','unexpected-test-writer');
+ target.searchParams.set('sslmode','verify-full');
+}
+const writer=new pg.Pool({connectionString:target.href,max:4});
+const readerUrl=new URL(target.href);readerUrl.username=process.env.AGENT_TEST_READER_ROLE||'agent_test_reader_20261109';readerUrl.password=process.env.AGENT_TEST_READER_PASSWORD;
 if(!readerUrl.password)throw Error('test-reader-password-required');
 const reader=new pg.Pool({connectionString:readerUrl.href,max:2});
 try{

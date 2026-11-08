@@ -24,3 +24,10 @@ Created agent_test_reader_20261109 and agent_test_writer_20261109 on the isolate
 Both identities successfully connected via Neon MCP and SELECTed the empty ledger. Under the writer LOGIN, INSERT succeeded in a rolled-back subtransaction and UPDATE/DELETE were rejected. Under the reader LOGIN, INSERT was rejected. Final ledger remains empty.
 
 Added scripts/verify-neon-command-control.mjs for an explicit environment-supplied real-database test of signed commands, duplicate rejection, tenant isolation, revoked tokens, separate-reader replay and append-only grants. Direct execution from this workspace failed DNS resolution with EAI_AGAIN for the Neon endpoint; the handler correctly returned 503. Therefore this is NOT a passing application-to-Neon end-to-end result. Do not enable production based on this test.
+
+## Runner path prepared
+GitHub PostgreSQL 18 transport job 42525413645 passed at 786fbc2d5e6e733482a08075a49d42573a9083cc, including concurrent duplicate submissions (one 200, one 409), separate-reader replay, token revocation and denied history mutations. CI 42525413600 and web/mobile 42525413599 also passed at that head.
+
+Prepared an opt-in Neon-specific GitHub job pinned to the isolated endpoint host and expected writer LOGIN. Requires encrypted repository secrets NEON_ACCEPTANCE_WRITER_URL and NEON_ACCEPTANCE_READER_PASSWORD plus variable RUN_NEON_ISOLATED_ACCEPTANCE=true. Disabled/skipped is not Neon acceptance. Connection must verify TLS certificate. Run only from the same-repository integration branch; never put credentials into source or PR text. Test writes only three ledger records per execution and never issues release authority.
+
+Connected GitHub tools cannot write repository secrets. No existing Vercel named sandbox was available. No paid sandbox or plan change was started. A browser session authorized for repository settings can provision these scoped test secrets, then the failed/skipped Neon workflow can be re-run on the integration candidate. The dedicated passwords expire 10 November 2026 00:00 Türkiye; renew securely if execution occurs after expiry.
