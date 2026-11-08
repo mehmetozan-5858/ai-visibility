@@ -10,6 +10,7 @@ export default function Page(){
         <div><div style={{fontSize:11,letterSpacing:".18em",fontWeight:900,color:"#54dfd0",textTransform:"uppercase"}}>AI Visibility Admin</div><h1 style={{margin:"6px 0 0"}}>Lansman Kontrol Merkezi</h1></div>
         <Link href="/admin">← Yönetim paneline dön</Link>
       </header>
+      <p><Link href="/admin/arge">Ar-Ge ve ortak ajan denetimi</Link></p>
       <LaunchQAConsole/>
     </div>
   </main>;
