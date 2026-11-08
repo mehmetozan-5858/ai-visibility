@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import pg from 'pg';
+import {createPostgresCommandControl} from '../lib/agent-command-postgres.js';
+import {createAgentIdentityResolver} from '../lib/agent-command-identity.js';
+import {createAgentCommandHandler} from '../lib/agent-command-http.js';
+const url=process.env.AGENT_TEST_DATABASE_URL;
+if(!url)throw Error('test-database-url-required');
+const writer=new pg.Pool({connectionString:url,max:4});
+const readerUrl=new URL(url);readerUrl.username=process.env.AGENT_TEST_READER_ROLE||'agent_test_reader_20261109';readerUrl.password=process.env.AGENT_TEST_READER_PASSWORD;
+if(!readerUrl.password)throw Error('test-reader-password-required');
+const reader=new pg.Pool({connectionString:readerUrl.href,max:2});
+try{
+ const agents={worker:{enabled:true,tenantId:'internal',projects:['ai-visibility'],actions:['acceptance.review']}};
+ const resolver=createAgentIdentityResolver({keys:{test:'test-only-'.repeat(8)},getAgent:id=>agents[id]});
+ const token=resolver.issue({actorId:'worker',keyId:'test'});
+ const principal=resolver.resolve(token);
+ const task={id:'acceptance-'+crypto.randomUUID(),tenantId:'internal',project:'ai-visibility',action:'acceptance.review'};
+ const handler=createAgentCommandHandler({enabled:()=>true,resolvePrincipal:t=>resolver.resolve(t),getControl:()=>createPostgresCommandControl(writer)});
+ const request=(input,bearer=token)=>new Request('https://example.invalid/api/command-control',{method:'POST',headers:{authorization:'Bearer '+bearer,'content-type':'application/json'},body:JSON.stringify(input)});
+ const call=async(input,expected,bearer)=>{const r=await handler(request(input,bearer));assert.equal(r.status,expected,JSON.stringify(await r.json()));};
+ await call({operation:'enqueue',task},200);
+ await call({operation:'enqueue',task},409);
+ await call({operation:'enqueue',task:{...task,id:'wrong-tenant',tenantId:'other'}},403);
+ await call({operation:'enqueue',task:{...task,id:'invalid-token'}},401,'invalid.token.value');
+ await call({operation:'review',taskId:task.id,gates:[{id:'production',status:'pending'}]},200);
+ const control=createPostgresCommandControl(reader);
+ const snapshot=await control.snapshot(principal);
+ assert.equal(snapshot.tasks.find(t=>t.id===task.id).state,'reviewed');
+ assert.equal(snapshot.tasks.find(t=>t.id===task.id).result.releaseAuthorized,false);
+ assert.equal((await control.snapshot({...principal,tenantId:'other'})).tasks.length,0);
+ await assert.rejects(control.enqueue({...task,id:'reader-write'},principal),/permission denied/);
+ await assert.rejects(writer.query('UPDATE public.agent_command_ledger SET operation=operation'),/permission denied/);
+ await assert.rejects(writer.query('DELETE FROM public.agent_command_ledger'),/permission denied/);
+ agents.worker.enabled=false;
+ await call({operation:'enqueue',task:{...task,id:'revoked'}},401);
+ console.log(JSON.stringify({ok:true,storage:'postgresql',testEnvironment:process.env.AGENT_TEST_ENVIRONMENT||'unspecified',signedHttp:true,replayWithSeparateReader:true,duplicateRejected:true,tenantIsolation:true,invalidTokenRejected:true,revocation:true,readerWriteDenied:true,writerUpdateDeleteDenied:true,releaseAuthorized:false,ledgerEntries:snapshot.ledgerEntries}));
+}catch(error){console.error(JSON.stringify({ok:false,code:error.code||null,message:String(error.message).replace(/postgres(?:ql)?:\/\/\S+/g,'[redacted]')}));process.exitCode=1;}
+finally{await writer.end();await reader.end();}
