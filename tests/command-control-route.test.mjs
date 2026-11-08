@@ -38,3 +38,25 @@ test('local CLI reviews three project inputs and rejects forged tenancy without 
   });
  }finally{await rm(dir,{recursive:true,force:true});}
 });
+
+test('CLI opt-in store retains reviewed tasks across a fresh process',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'command-cli-durable-'));
+ try{
+  const path=join(dir,'input.json'),store=join(dir,'ledger.sqlite');
+  const input=[{task:{id:'cli-durable',tenantId:'internal',project:'ai-visibility',action:'acceptance.review'},
+   gates:[{id:'mobile',status:'unknown'}]}];
+  await writeFile(path,JSON.stringify(input));
+  const cli=new URL('../scripts/review-agent-tasks.mjs',import.meta.url);
+  const args=[cli.pathname,path,'--store',store];
+  const first=JSON.parse(execFileSync(process.execPath,args,{encoding:'utf8'}));
+  assert.equal(first.storage,'sqlite-local');assert.equal(first.audit.length,2);
+  assert.throws(()=>execFileSync(process.execPath,args,{encoding:'utf8',stdio:'pipe'}),e=>e.status===1);
+  const {openDurableCommandControl}=await import('../lib/agent-command-sqlite.js');
+  const q=openDurableCommandControl(store);
+  try{
+   const snapshot=q.snapshot({authenticated:true,actorId:'reader',tenantId:'internal',
+    projects:['ai-visibility'],actions:['acceptance.review']});
+   assert.equal(snapshot.tasks[0].state,'reviewed');assert.equal(snapshot.audit.length,2);
+  }finally{q.close();}
+ }finally{await rm(dir,{recursive:true,force:true});}
+});
