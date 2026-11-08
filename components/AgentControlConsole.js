@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-const labels={database:'Ortak kayıt bağlantısı',signingKeys:'Ajan imzalama anahtarları',registry:'Ajan yetki kaydı',adminActor:'Yönetici okuma kimliği'};
+const labels={database:'Görev yazma bağlantısı',readDatabase:'Ayrı salt okunur bağlantı',signingKeys:'Ajan imzalama anahtarları',registry:'Ajan yetki kaydı',adminActor:'Yönetici okuma kimliği'};
 export default function AgentControlConsole(){
  const [data,setData]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  async function load(){setBusy(true);setError('');try{

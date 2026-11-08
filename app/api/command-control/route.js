@@ -13,17 +13,19 @@ export async function GET(req){
  const denied=await requireAdmin(req);
  if(denied)return denied;
  const enabled=process.env.AGENT_COMMAND_CONTROL_ENABLED==='true';
+ const readUrl=process.env.AGENT_COMMAND_READ_DATABASE_URL||process.env.AGENT_COMMAND_DATABASE_URL;
  const control={...commandControlStatus(),storage:'not-probed',reviewApiEnabled:enabled,
   configurationProvided:{database:Boolean(process.env.AGENT_COMMAND_DATABASE_URL),
+   readDatabase:Boolean(process.env.AGENT_COMMAND_READ_DATABASE_URL),
    signingKeys:Boolean(process.env.AGENT_COMMAND_KEYS_JSON),registry:Boolean(process.env.AGENT_COMMAND_AGENTS_JSON),
    adminActor:Boolean(process.env.AGENT_COMMAND_ADMIN_ACTOR_ID)},queueStatus:'not-configured'};
  let snapshot=null;
- if(enabled&&control.configurationProvided.database&&control.configurationProvided.adminActor){
+ if(enabled&&readUrl&&control.configurationProvided.adminActor){
   try{
    const agents=JSON.parse(process.env.AGENT_COMMAND_AGENTS_JSON||'null');
    if(!agents||typeof agents!=='object'||Array.isArray(agents))throw Error();
    const principal=resolveRegisteredAgent(process.env.AGENT_COMMAND_ADMIN_ACTOR_ID,id=>Object.hasOwn(agents,id)?agents[id]:null);
-   snapshot=await createPostgresCommandControl(databasePool(process.env.AGENT_COMMAND_DATABASE_URL)).snapshot(principal);
+   snapshot=await createPostgresCommandControl(databasePool(readUrl)).snapshot(principal);
    control.queueStatus='available';control.storage='postgresql';
   }catch{control.queueStatus='unavailable';}
  }

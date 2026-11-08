@@ -66,7 +66,7 @@ test('admin queue status reads only the server-configured actor scope and hides 
  const executable=source.replace(/^import .*;\n/gm,'').replace(/export /g,'');
  const load=new Function('requireAdmin','commandControlStatus','resolveRegisteredAgent','createPostgresCommandControl','databasePool',executable+';return GET;');
  const {resolveRegisteredAgent}=await import('../lib/agent-command-identity.js');
- const keys=['AGENT_COMMAND_CONTROL_ENABLED','AGENT_COMMAND_DATABASE_URL','AGENT_COMMAND_ADMIN_ACTOR_ID','AGENT_COMMAND_AGENTS_JSON'];
+ const keys=['AGENT_COMMAND_CONTROL_ENABLED','AGENT_COMMAND_DATABASE_URL','AGENT_COMMAND_READ_DATABASE_URL','AGENT_COMMAND_ADMIN_ACTOR_ID','AGENT_COMMAND_AGENTS_JSON'];
  const previous=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
  try{
   process.env.AGENT_COMMAND_CONTROL_ENABLED='true';process.env.AGENT_COMMAND_DATABASE_URL='postgres://not-a-real-connection';
@@ -75,6 +75,11 @@ test('admin queue status reads only the server-configured actor scope and hides 
   const get=load(async()=>null,commandControlStatus,resolveRegisteredAgent,()=>({snapshot:async principal=>{scope=principal;return {tasks:[],audit:[]}}}),()=>({}));
   const ok=await (await get({})).json();assert.equal(ok.control.queueStatus,'available');
   assert.deepEqual(scope.projects,['global-broker-ai']);assert.equal(scope.tenantId,'internal');
+  delete process.env.AGENT_COMMAND_DATABASE_URL;process.env.AGENT_COMMAND_READ_DATABASE_URL='postgres://reader-fixture';
+  let selectedUrl;
+  const reader=load(async()=>null,commandControlStatus,resolveRegisteredAgent,()=>({snapshot:async()=>({tasks:[],audit:[]})}),url=>{selectedUrl=url;return {};});
+  const readOnly=await (await reader({})).json();assert.equal(readOnly.control.queueStatus,'available');
+  assert.equal(selectedUrl,'postgres://reader-fixture');assert.equal(readOnly.control.configurationProvided.database,false);
   const broken=load(async()=>null,commandControlStatus,resolveRegisteredAgent,()=>{throw Error('secret connection details')},()=>({}));
   const failed=await (await broken({})).json();assert.equal(failed.control.queueStatus,'unavailable');assert.equal(failed.snapshot,null);
   assert.ok(!JSON.stringify(failed).includes('secret connection details'));

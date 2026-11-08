@@ -64,3 +64,29 @@ test('signed HTTP commands persist in PostgreSQL across handler instances and ho
  assert.equal((await handler()(req({operation:'enqueue',task:{...task,id:'revoked'}}))).status,401);
  assert.equal((await q.snapshot(principal)).ledgerEntries,2);
 }));
+
+test('SELECT-only group can read snapshots but cannot append, update or read unrelated tables',()=>fixture(async({db,pool})=>{
+ const q=createPostgresCommandControl(pool);await q.enqueue(task,principal);
+ await db.exec(await readFile(new URL('../migrations/agent-command-access.sql',import.meta.url),'utf8'));
+ await db.exec('CREATE TABLE unrelated_private_record(id integer); SET ROLE agent_command_reader');
+ try{
+  const snapshot=await q.snapshot(principal);assert.equal(snapshot.tasks.length,1);
+  await assert.rejects(q.enqueue({...task,id:'reader-write'},principal),/permission denied/);
+  await assert.rejects(db.query("UPDATE public.agent_command_ledger SET operation='{}'"),/permission denied/);
+  await assert.rejects(db.query('SELECT * FROM unrelated_private_record'),/permission denied/);
+ }finally{await db.exec('RESET ROLE');}
+ assert.equal((await q.snapshot(principal)).ledgerEntries,1);
+}));
+
+test('append-only writer can enqueue/review but cannot mutate history, delete or read customer tables',()=>fixture(async({db,pool})=>{
+ await db.exec(await readFile(new URL('../migrations/agent-command-access.sql',import.meta.url),'utf8'));
+ await db.exec('CREATE TABLE unrelated_private_record(id integer); SET ROLE agent_command_writer');
+ const q=createPostgresCommandControl(pool);
+ try{
+  await q.enqueue(task,principal);await q.review(task.id,[{id:'mobile',status:'pending'}],principal);
+  assert.equal((await q.snapshot(principal)).ledgerEntries,2);
+  await assert.rejects(db.query("UPDATE public.agent_command_ledger SET operation='{}'"),/permission denied/);
+  await assert.rejects(db.query('DELETE FROM public.agent_command_ledger'),/permission denied/);
+  await assert.rejects(db.query('SELECT * FROM unrelated_private_record'),/permission denied/);
+ }finally{await db.exec('RESET ROLE');}
+}));
