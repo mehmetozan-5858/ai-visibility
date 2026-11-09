@@ -4,8 +4,8 @@ import {useState} from "react";
 import {LanguageSwitcher,useLanguage} from "./LanguageProvider";
 
 const copy={
- tr:{home:"← Ana sayfa",eyebrow:"Güvenli müşteri alanı",hero:"AI görünürlüğünüzü tek merkezden yönetin.",sub:"Raporlarınızı, görünürlük skorlarınızı, önerileri ve uygulama sürecinizi güvenli müşteri panelinizden takip edin.",features:[["✓","Güvenli giriş"],["72/100","Görünürlük skoru"],["↗","Aksiyon planı"]],panel:"Müşteri paneli"},
- en:{home:"← Home",eyebrow:"Secure customer area",hero:"Manage your AI visibility from one place.",sub:"Track your reports, visibility scores, recommendations and implementation progress from your secure customer portal.",features:[["✓","Secure sign-in"],["72/100","Visibility score"],["↗","Action plan"]],panel:"Customer portal"}
+ tr:{home:"← Ana sayfa",eyebrow:"Güvenli müşteri alanı",hero:"AI görünürlüğünüzü tek merkezden yönetin.",sub:"Raporlarınızı, görünürlük skorlarınızı, önerileri ve uygulama sürecinizi güvenli müşteri panelinizden takip edin.",features:[["✓","Güvenli giriş"],["72/100","Örnek skor · gerçek ölçüm değil"],["↗","Aksiyon planı"]],panel:"Müşteri paneli"},
+ en:{home:"← Home",eyebrow:"Secure customer area",hero:"Manage your AI visibility from one place.",sub:"Track your reports, visibility scores, recommendations and implementation progress from your secure customer portal.",features:[["✓","Secure sign-in"],["72/100","Demo score · not a real measurement"],["↗","Action plan"]],panel:"Customer portal"}
 };
 
 export default function CustomerLoginForm(){
