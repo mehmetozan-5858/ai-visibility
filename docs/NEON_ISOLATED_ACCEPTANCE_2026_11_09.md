@@ -34,3 +34,8 @@ Connected GitHub tools cannot write repository secrets. No existing Vercel named
 
 ## GitHub runner credentials provisioned
 On 9 November, both encrypted repository secrets were saved through the signed-in GitHub settings UI and their names verified in the repository secret list. RUN_NEON_ISOLATED_ACCEPTANCE=true was saved and verified. No credential value was printed or committed. Added a fail-closed credential-presence preflight to the isolated Neon job; actual runner result must be checked before claiming acceptance.
+
+## Real Neon runner success
+At d812bd28a18f46fd854382f2cdb0805a2cf537aa, workflow 42627224365/job 129193987614 completed success. Actual isolated Neon output confirmed signed commands, separate-reader replay, duplicate and concurrent-duplicate rejection, tenant isolation, invalid-token rejection, registry revocation and denied reader writes/writer UPDATE/DELETE. Three synthetic ledger entries persisted on the isolated branch. This closes the previous workspace DNS obstacle for the GitHub runner path. It does not imply a deployed production app.
+
+Added a further built-Next.js HTTP probe: start the built app with only isolated command DB URLs and synthetic signing/admin credentials, then exercise the real /api/command-control route, middleware, admin snapshot and /admin/arge response. This probe must pass separately before reporting actual built-app HTTP acceptance. No general customer DATABASE_URL is supplied.
