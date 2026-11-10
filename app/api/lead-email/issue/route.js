@@ -1,5 +1,5 @@
 import {checkRateLimit,enforceSameOrigin} from "../../../../lib/api-security";
-import {sendVerificationEmail} from "../../../../lib/email-verification";
+import {sendLeadVerificationEmail} from "../../../../lib/lead-email-delivery.mjs";
 import {issueLeadEmailChallenge,leadEmailVerificationEnabled} from "../../../../lib/lead-email-verification.mjs";
 
 export const runtime="nodejs";
@@ -10,7 +10,7 @@ export async function POST(req){
  if(!leadEmailVerificationEnabled())return Response.json({error:"Verification not yet available"},{status:503,headers});
  try{
   const body=await req.json();
-  await issueLeadEmailChallenge({leadId:body?.leadId,email:body?.email,send:sendVerificationEmail});
+  await issueLeadEmailChallenge({leadId:body?.leadId,email:body?.email,send:sendLeadVerificationEmail});
   return Response.json({ok:true,message:"If your application is eligible, check your email."},{headers});
  }catch(e){
   const error=String(e?.message||"");
