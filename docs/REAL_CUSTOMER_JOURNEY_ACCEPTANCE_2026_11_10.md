@@ -47,3 +47,11 @@ No production database migration, deployment, payment creation, email send or cu
 - Production does not have `lead_email_challenges`. Isolated branch `br-restless-thunder-b27p3xvv` received the review migration and its FK, max-attempts CHECK and index were inspected; **zero actual challenge records were created**.
 - To activate later requires a separately approved production migration, server-only random `LEAD_EMAIL_CHALLENGE_SECRET`, server and public enable flags, verified email sender configuration, live consent/abuse and E2E concurrency checks.
 - Caveat: The existing email sender has provider-dependent failure logging; review suppression of provider response bodies before enabling, and validate fail-closed behavior for send failures and concurrent code issuance. No new applicant email was actually sent in this work.
+
+
+## Applicant-to-assessment verified identity mapping (11 Nov 2026)
+- Added `lib/applicant-assessment-link-policy.mjs`: a **pure** fail-closed linking policy. Requires matched lead and prospect UUIDs, consumed/verified lead-specific email challenge, exact normalized website domain, and a separate trusted server-side verified ownership review tied to lead/prospect/domain/review UUID. Domain similarity and inbox possession alone never prove business ownership.
+- Added `migrations/applicant-assessment-links-review.sql`: one-to-one lead↔prospect identity relation with external reviewer identity and revocation marker. It grants no login, report entitlement, tokens, customer account or provider execution.
+- Isolated Neon rehearsal on `br-restless-thunder-b27p3xvv` succeeded: table exists, FK, unique keys, and review checks present; **zero actual link records**. Production does not have this table.
+- Remaining implementation: trusted reviewer workflow and auditable ownership evidence, transactional link creation, revocation propagation, customer-owned scoped preview grant with expiry, measured score validation, and applicant-facing access after authenticated verification. Never expose a prospect report based on a domain match alone.
+- These tests do not establish actual ownership of any existing lead. No customer was linked or contacted.
