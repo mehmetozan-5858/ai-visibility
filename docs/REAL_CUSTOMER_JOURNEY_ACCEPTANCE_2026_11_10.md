@@ -40,3 +40,10 @@ No production database migration, deployment, payment creation, email send or cu
 - Uses existing email sender only when explicitly enabled and requested by the applicant. No real email was sent in development.
 - Email verification proves inbox control **only**, NOT corporate domain ownership, entitlement, real assessment evidence or verified payment.
 - Outstanding: review persistence/restart, concurrent double-submit and cooldown behavior against a fresh isolated database; add applicant-controlled UI after verified lead submission; bind a verified lead to prospect through separately checked business domain/consent; production configuration and release approval.
+
+
+## Applicant UI and isolated database rehearsal
+- Added `components/LeadEmailVerification.js`; shown after successful `/api/leads` only if `NEXT_PUBLIC_LEAD_EMAIL_VERIFICATION_ENABLED=true`. Existing lead form remains usable when disabled. This is NOT proof of provider delivery.
+- Production does not have `lead_email_challenges`. Isolated branch `br-restless-thunder-b27p3xvv` received the review migration and its FK, max-attempts CHECK and index were inspected; **zero actual challenge records were created**.
+- To activate later requires a separately approved production migration, server-only random `LEAD_EMAIL_CHALLENGE_SECRET`, server and public enable flags, verified email sender configuration, live consent/abuse and E2E concurrency checks.
+- Caveat: The existing email sender has provider-dependent failure logging; review suppression of provider response bodies before enabling, and validate fail-closed behavior for send failures and concurrent code issuance. No new applicant email was actually sent in this work.
