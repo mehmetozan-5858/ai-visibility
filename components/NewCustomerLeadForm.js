@@ -1,5 +1,6 @@
 "use client";
 import {useEffect,useState} from "react";
+import LeadEmailVerification from "./LeadEmailVerification";
 import ecosystem from "../lib/ecosystem-contract.cjs";
 import {currencyForCountry,formatMoney,PADDLE_SERVICE_CODES} from "../lib/regional-pricing";
 import {trackAnalyticsEvent} from "../lib/analytics-client";
@@ -30,7 +31,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
   function openBroker(){
     try{window.location.assign(ecosystem.build(form,"broker"));}catch(error){setMsg(lang==="en"?"Enter your business name and a valid website before continuing.":error.message);setOk(false);}
   }
-  const [busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false);
+  const [busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[ok,setOk]=useState(false),[submittedLead,setSubmittedLead]=useState(null);
   const change=(k,v)=>setForm(x=>({...x,[k]:v}));
   async function submit(e){
     e.preventDefault();setBusy(true);setMsg("");setOk(false);
@@ -38,7 +39,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
       const r=await fetch("/api/leads",{method:"POST",headers:{"content-type":"application/json","accept-language":lang},body:JSON.stringify({...form,language:lang})});
       const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||c.fail);
       if(d.ok!==true||!d.lead?.id)throw new Error(c.fail);
-      setOk(true);setMsg(c.ok);
+      setOk(true);setSubmittedLead({id:d.lead.id,email:form.email.trim().toLowerCase()});setMsg(c.ok);
       trackAnalyticsEvent("generate_lead",{service:form.service||"unspecified",country:form.country||"unspecified",language:lang});
     }catch(e){setMsg(e.message)}finally{setBusy(false)}
   }
@@ -68,6 +69,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
       <button type="button" onClick={openBroker}>{lang==="en"?"Continue to Global Broker →":"Global Broker’a geç →"}</button>
     </section>
     {msg&&<p className="client-message" role={ok?"status":"alert"} aria-live="polite" style={{marginBottom:0}}>{msg}</p>}
+    {ok&&submittedLead&&<LeadEmailVerification leadId={submittedLead.id} email={submittedLead.email} language={lang}/> }
     <style jsx>{`@media (max-width:640px){.new-customer-location-grid{grid-template-columns:1fr!important;}}`}</style>
   </form>;
 }
