@@ -24,3 +24,11 @@ This is a pure server-side acceptance policy and offline tests, **not a working 
 No production database migration, deployment, payment creation, email send or customer mutation in this PR. ZERA is **test-only** and is not a member of the product stack or a regular paying customer.
 
 **Release status: HOLD**. Passing pure tests is not a real customer E2E pass.
+
+
+## Admin-only applicant ↔ existing prospect review (added)
+- New read-only endpoint: `GET /api/admin/customer-assessment-review`. Requires authenticated admin; it returns only lead IDs, candidate IDs and status, not names, email addresses or tokens.
+- `lib/customer-assessment-candidates.mjs` performs conservative normalized exact website-domain matching, rejects ambiguous duplicate matches and requires manual ownership verification.
+- No automatic lead→prospect binding, provider call, token issuance, account creation or enrollment. **A matching domain is never proof of identity.**
+- Read-only production aggregate as checked 10 Nov 2026: 3 current leads, 0 exact website-domain matches (approximate SQL preflight, not the runtime matcher or customer authentication).
+- Next implementation gate: verify applicant email ownership with a persisted, single-use, expiry-bound challenge; separately verify business/domain ownership where needed, then bind immutable lead/prospect identities with tenant isolation. Never use discovered prospect contact emails as customer consent.
