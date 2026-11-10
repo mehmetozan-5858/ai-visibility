@@ -32,3 +32,11 @@ No production database migration, deployment, payment creation, email send or cu
 - No automatic lead→prospect binding, provider call, token issuance, account creation or enrollment. **A matching domain is never proof of identity.**
 - Read-only production aggregate as checked 10 Nov 2026: 3 current leads, 0 exact website-domain matches (approximate SQL preflight, not the runtime matcher or customer authentication).
 - Next implementation gate: verify applicant email ownership with a persisted, single-use, expiry-bound challenge; separately verify business/domain ownership where needed, then bind immutable lead/prospect identities with tenant isolation. Never use discovered prospect contact emails as customer consent.
+
+## Lead email ownership proof candidate (draft, disabled)
+- Added `migrations/lead-email-challenges-review.sql` to define one challenge per lead; not applied anywhere.
+- Added `lib/lead-email-verification.mjs` and `POST /api/lead-email/issue`, `POST /api/lead-email/verify`. By default these return unavailable until an explicitly approved `LEAD_EMAIL_VERIFICATION_ENABLED=true` setting, a server-only `LEAD_EMAIL_CHALLENGE_SECRET` (at least 32 characters), reviewed migration, email provider and E2E tests exist.
+- Six-digit random code, 10-minute expiry, 60-second resend cooldown, six attempts, lead+email-bound HMAC digest, atomic single-use verification. No plaintext code committed or logged. Public issue response does not distinguish ineligible/already-verified/cooldown leads.
+- Uses existing email sender only when explicitly enabled and requested by the applicant. No real email was sent in development.
+- Email verification proves inbox control **only**, NOT corporate domain ownership, entitlement, real assessment evidence or verified payment.
+- Outstanding: review persistence/restart, concurrent double-submit and cooldown behavior against a fresh isolated database; add applicant-controlled UI after verified lead submission; bind a verified lead to prospect through separately checked business domain/consent; production configuration and release approval.
