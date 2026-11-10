@@ -37,3 +37,25 @@ test("route requires admin and never creates an account, grant, scan or token",a
  assert.doesNotMatch(source,/createFreeAssessmentToken|grantPilot|createClientCredential|addProspect|sendVerificationEmail/);
  assert.match(source,/tokenIssued:false,analysisStarted:false/);
 });
+
+
+test("verified inbox is necessary but never enough to grant domain ownership",()=>{
+ const original={id:"l1",status:"qualified",website:"example.com"};
+ const prospect={id:"p1",domain:"example.com"};
+ const pending=findAssessmentCandidates([original],[prospect])[0];
+ assert.equal(pending.emailVerified,false);
+ assert.equal(pending.readyForOwnershipReview,false);
+ const verified=findAssessmentCandidates([{...original,emailVerified:true}],[prospect])[0];
+ assert.equal(verified.emailVerified,true);
+ assert.equal(verified.readyForOwnershipReview,true);
+ assert.equal(verified.verifiedOwnership,false);
+ assert.equal(verified.accessGranted,false);
+ assert.equal(verified.assessmentReady,false);
+});
+test("admin review reads verified marker only from server-side challenge and fails closed if no table",async()=>{
+ const source=await readFile(new URL("../app/api/admin/customer-assessment-review/route.js",import.meta.url),"utf8");
+ assert.match(source,/to_regclass\('public\.lead_email_challenges'\)/);
+ assert.match(source,/c\.verified_at IS NOT NULL AND c\.consumed_at IS NOT NULL/);
+ assert.match(source,/c\.email=lower\(l\.email\)/);
+ assert.match(source,/false AS "emailVerified"/);
+});
