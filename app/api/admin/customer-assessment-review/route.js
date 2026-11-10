@@ -10,8 +10,18 @@ export async function GET(req){
  try{
   const db=getDatabaseUrl();if(!db)return Response.json({error:"Database unavailable"},{status:503,headers});
   const pool=databasePool(db);
+  const exists=await pool.query("SELECT to_regclass('public.lead_email_challenges') IS NOT NULL AS has_challenges");
+  const leadsSql=exists.rows[0]?.has_challenges
+   ? `SELECT l.id,l.status,l.website,
+      COALESCE(c.verified_at IS NOT NULL AND c.consumed_at IS NOT NULL
+       AND c.email=lower(l.email),false) AS "emailVerified"
+      FROM public.customer_leads l
+      LEFT JOIN public.lead_email_challenges c ON c.lead_id=l.id
+      ORDER BY l.created_at DESC LIMIT 200`
+   : `SELECT id,status,website,false AS "emailVerified"
+      FROM public.customer_leads ORDER BY created_at DESC LIMIT 200`;
   const [leads,prospects]=await Promise.all([
-   pool.query("SELECT id,status,website FROM public.customer_leads ORDER BY created_at DESC LIMIT 200"),
+   pool.query(leadsSql),
    pool.query("SELECT id,domain FROM public.prospects ORDER BY created_at DESC LIMIT 5000")
   ]);
   const review=findAssessmentCandidates(leads.rows,prospects.rows);
