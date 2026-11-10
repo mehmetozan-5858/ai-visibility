@@ -11,11 +11,11 @@ export async function POST(req){
  try{
   const body=await req.json();
   await issueLeadEmailChallenge({leadId:body?.leadId,email:body?.email,send:sendVerificationEmail});
-  return Response.json({ok:true,message:"Check your email for a verification code."},{headers});
+  return Response.json({ok:true,message:"If your application is eligible, check your email."},{headers});
  }catch(e){
   const error=String(e?.message||"");
   if(error==="invalid-request")return Response.json({error:"Invalid request"},{status:400,headers});
-  if(error==="lead-verification-cooldown")return Response.json({error:"Please retry later"},{status:429,headers});
+  if(["lead-verification-cooldown","lead-email-not-eligible","lead-already-verified"].includes(error))return Response.json({ok:true,message:"If your application is eligible, check your email."},{status:202,headers});
   // Never reveal if an applicant/lead exists, nor log secrets.
   return Response.json({error:"Verification is unavailable or could not be sent"},{status:503,headers});
  }
