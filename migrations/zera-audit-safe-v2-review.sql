@@ -9,7 +9,7 @@ DECLARE
   found_id uuid;
   matching_count bigint;
 BEGIN
-  SELECT count(*), min(id)
+  SELECT count(*), (array_agg(id))[1]
     INTO matching_count, found_id
     FROM public.clients
    WHERE name = 'ZERA Clothing';
