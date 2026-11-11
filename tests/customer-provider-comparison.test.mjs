@@ -16,3 +16,21 @@ test('rejects invalid or duplicate providers and oversized queries',async()=>{
  await assert.rejects(compareCustomerProviders({client,query:'test',providers:['gemini','gemini']}),/Invalid provider selection/);
  await assert.rejects(compareCustomerProviders({client,query:'x'.repeat(501)}),/Invalid query/);
 });
+test('grounding without a matching visible answer cannot become verified evidence',async()=>{
+ for(const [answer,observation,url,expected] of [
+  ['', 'A cited passage','https://example.test/source',false],
+  ['Unrelated answer','A cited passage','https://example.test/source',false],
+  ['A cited passage','A cited passage','https://user:password@example.test/source',false],
+  ['A cited passage','A cited passage','https://example.test/source',true]
+ ]){
+  const response={candidates:[{content:{parts:[{text:answer}]},groundingMetadata:{groundingChunks:[{web:{uri:url}}],groundingSupports:[{segment:{text:observation},groundingChunkIndices:[0]}]}}]};
+  const result=await compareCustomerProviders({client,query:'Boutiques nearby',providers:['gemini'],keys:{gemini:'synthetic'},fetchImpl:async()=>({ok:true,json:async()=>response})});
+  assert.equal(result.results[0].verified,expected);
+  assert.equal(result.verifiedCount,expected?1:0);
+  assert.equal(result.results[0].evidence!==null,expected);
+ }
+});
+test('provider exceptions never expose raw network or credential details',async()=>{
+ const result=await compareCustomerProviders({client,query:'test',providers:['gemini'],keys:{gemini:'synthetic'},fetchImpl:async()=>{throw Error('private-key-and-request-url')}});
+ assert.equal(result.results[0].reason,'provider-request-failed');
+});

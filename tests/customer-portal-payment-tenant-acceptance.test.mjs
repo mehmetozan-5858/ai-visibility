@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {comparisonReportRows,readCustomerComparisonReport} from '../lib/customer-comparison-report.mjs';
 import {readFile} from 'node:fs/promises';
 const mine='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
-const supported={provider:'gemini',status:'source-supported-answer',verified:true,answer:'A documented answer',evidence:{sourceUrl:'https://example.com/source',observation:'Claim supported by a source'}};
+const supported={provider:'gemini',status:'source-supported-answer',verified:true,answer:'A documented answer',evidence:{sourceUrl:'https://example.com/source',observation:'A documented answer'}};
 test('comparison report isolates tenant and never returns another customer answer',()=>{
  const rows=[
   {clientId:other,query:'Other client secret query',results:[supported],createdAt:'2026-11-11'},
