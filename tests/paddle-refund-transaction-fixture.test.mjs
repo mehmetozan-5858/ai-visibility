@@ -29,7 +29,7 @@ test('signed completed event cannot revive refunded payment or client access',as
  const response=await record({event_id:'evt_testabc',event_type:'transaction.completed',
    occurred_at:'2026-11-01T00:00:00Z',
    data:{id:'txn_testabc',status:'completed',origin:'api',currency_code:'EUR',
-     items:[{quantity:1,price:{unit_price:{amount:'4900'}}}],
+     details:{totals:{subtotal:'4900',discount:'0',tax:'0',total:'4900',credit:'0',credit_to_balance:'0',balance:'0',grand_total:'4900',currency_code:'EUR'}},items:[{quantity:1,price:{tax_mode:'internal',unit_price:{amount:'4900'}}}],
      custom_data:{payment_id:paymentId,client_id:clientId}}});
  assert.equal(response.recorded,true);
  assert.equal(response.paymentChanged,false);
