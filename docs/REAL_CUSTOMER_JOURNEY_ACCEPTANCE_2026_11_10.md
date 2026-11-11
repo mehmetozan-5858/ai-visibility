@@ -81,3 +81,12 @@ No production database migration, deployment, payment creation, email send or cu
 - Admin-only `POST /api/admin/applicant-assessment-revoke` with explicit string confirmation marks `applicant_assessment_links.revoked_at` without deleting history.
 - The applicant read route verifies `revoked_at IS NULL` on each request; revocation therefore denies even an otherwise unexpired signed bearer grant on its next use.
 - Revocation is disabled with the other domain-ownership controls unless separately enabled. No production revocation occurred.
+
+
+## Explicit, one-attempt applicant preview delivery (11 Nov 2026)
+- Added `migrations/applicant-assessment-deliveries-review.sql`: one ledger row per lead, stores only lead/prospect/review identifiers, email SHA-256 fingerprint, reservation time, and delivery attempt status. Does not store bearer tokens or email content.
+- Added `lib/applicant-assessment-delivery.mjs` and admin-only `POST /api/admin/applicant-assessment-deliver`. Route requires an authenticated administrator, origin check, rate limit, explicit `confirm="send-one-applicant-assessment-email"`, existing non-revoked applicant/prospect link, verified lead email, matching domain, and persisted DNS review. Server-only flags `APPLICANT_ASSESSMENT_DELIVERY_ENABLED=true`, `APPLICANT_ASSESSMENT_PREVIEW_ENABLED=true`, `APPLICANT_DOMAIN_PROOF_ENABLED=true` are all required; default is disabled.
+- Concurrent attempts are serialized per lead, and the unique lead ledger means no second automatic attempt even if provider delivery is uncertain. Sender never logs token, recipient or external response bodies; a short-lived token is embedded only in an HTTPS URL fragment.
+- Ledger status `provider-accepted` means only the provider API accepted the request. **This is not an inbox delivery, read, click, or customer result-access confirmation**. Provider failures record `failed`; storage failures block retry pending operator review. There is no provider callback or delivery-status confirmation in this draft.
+- Isolated Neon rehearsal `br-restless-thunder-b27p3xvv` succeeded; zero delivery rows. Production lacks the ledger. No real email was sent.
+- IMPORTANT: This is not full user self-service; operator intervention and explicit approval remain necessary. Completing the full workflow requires safe applicant initiation, delivery/receipt audit, a real consenting customer E2E test, and production release approval. Email delivery is currently disabled.
