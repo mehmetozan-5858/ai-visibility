@@ -24,6 +24,6 @@ export default function RealAuditPage(){
    <p>{summary.costs.limited?'Maliyet örneklemi sınırlı. ':''}Gerçek toplam harcama bu kayıtlardan doğrulanmaz.</p>
    <p>Kontrol zamanı: {summary.checkedAt}</p>
   </section>}
-  <p>Ad, e-posta, olay metni ve ham hata içeriği gösterilmez. Sorgu, salt okunur işlem içinde çalışır. Ayrı veritabanı okuyucu rolü bu aşamada kurulmuş değildir.</p>
+  <p>Ad, e-posta, olay metni ve ham hata içeriği gösterilmez. Sorgu, salt okunur işlem içinde yalnız özet görünümünü okuyabilen role geçerek çalışır. Bağlantı mevcut uygulama hesabını kullanır; ayrı bir giriş parolası oluşturulmaz.</p>
  </main>;
 }
