@@ -21,7 +21,7 @@ test('delayed completed payment cannot undo earlier cancellation for same subscr
  await record(evt('evt_createdcancel1','subscription.created',{id:sub,status:'active',transaction_id:txn},'2026-11-01T08:00:00Z'));
  await record(evt('evt_canceledfirst1','subscription.canceled',{id:sub,status:'canceled'},'2026-11-01T08:01:00Z'));
  assert.equal((await db.query('SELECT status FROM clients WHERE id=$1',[client])).rows[0].status,'pending');
- await record(evt('evt_completedlater1','transaction.completed',{id:txn,status:'completed',origin:'api',currency_code:'EUR',subscription_id:sub,items:[{quantity:1,price:{unit_price:{amount:'4900'}}}],custom_data:{payment_id:payment,client_id:client}},'2026-11-01T08:02:00Z'));
+ await record(evt('evt_completedlater1','transaction.completed',{id:txn,status:'completed',origin:'api',currency_code:'EUR',subscription_id:sub,details:{totals:{subtotal:'4900',discount:'0',tax:'0',total:'4900',credit:'0',credit_to_balance:'0',balance:'0',grand_total:'4900',currency_code:'EUR'}},items:[{quantity:1,price:{tax_mode:'internal',unit_price:{amount:'4900'}}}],custom_data:{payment_id:payment,client_id:client}},'2026-11-01T08:02:00Z'));
  assert.equal((await db.query('SELECT status FROM payments WHERE id=$1',[payment])).rows[0].status,'paid');
  assert.equal((await db.query('SELECT status FROM clients WHERE id=$1',[client])).rows[0].status,'payment-review');
  }finally{await db.close()}
