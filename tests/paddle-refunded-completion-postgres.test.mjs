@@ -25,7 +25,7 @@ test('full webhook refuses refunded completion before creating subscription link
    event_id:'evt_refunded123',event_type:'transaction.completed',
    occurred_at:'2026-11-01T08:02:00Z',
    data:{id:'txn_refunded123',status:'completed',origin:'api',currency_code:'EUR',
-    subscription_id:'sub_refunded123',items:[{quantity:1,price:{unit_price:{amount:'4900'}}}],
+    subscription_id:'sub_refunded123',details:{totals:{subtotal:'4900',discount:'0',tax:'0',total:'4900',credit:'0',credit_to_balance:'0',balance:'0',grand_total:'4900',currency_code:'EUR'}},items:[{quantity:1,price:{tax_mode:'internal',unit_price:{amount:'4900'}}}],
     custom_data:{payment_id:payment,client_id:client}}
   });
   assert.equal(result.paymentStatus,'refunded');
