@@ -7,6 +7,8 @@ export default function ApplicantAssessment(){
   const token=new URLSearchParams(window.location.hash.slice(1)).get("token");
   // Keep bearer token in the fragment, never query string, logs or link previews.
   if(!token){setMessage("Güvenli analiz bağlantısı gerekli. / A secure assessment link is required.");setBusy(false);return()=>controller.abort();}
+  // Remove the short-lived bearer fragment from the visible address and current history entry immediately.
+  window.history.replaceState(window.history.state,"",window.location.pathname+window.location.search);
   fetch("/api/applicant-assessment",{headers:{"x-applicant-assessment-token":token},cache:"no-store",signal:controller.signal})
    .then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||"Assessment unavailable");return data;})
    .then(data=>setValue(data)).catch(e=>{if(e.name!=="AbortError")setMessage(e.message);})
