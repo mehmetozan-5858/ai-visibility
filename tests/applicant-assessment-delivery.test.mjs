@@ -44,6 +44,7 @@ test("only admin with explicit confirmation can request single delivery; access 
  assert.match(src,/dnsVerifiedAt/);
  assert.match(src,/ON CONFLICT\(lead_id\) DO NOTHING/);
  assert.match(src,/automaticRetry:false/);
+ assert.match(src,/status:"provider-accepted",inboxDeliveryConfirmed:false/);
 });
 test("audit ledger forbids implicit retry and never stores token",async()=>{
  const sql=await readFile(new URL("../migrations/applicant-assessment-deliveries-review.sql",import.meta.url),"utf8");
