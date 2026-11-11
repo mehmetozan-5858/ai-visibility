@@ -71,5 +71,5 @@ export async function POST(req){
     WHERE id=$1 AND status='reserved'`,[deliveryId,outcome]);
  }catch{return json({error:"Delivery outcome could not be recorded; manual review required"},503)}
  if(outcome==="failed")return json({error:"Delivery unconfirmed; automatic retry disabled"},503);
- return json({ok:true,deliveryId,status:"provider-accepted",expiryMinutes:15,automaticRetry:false});
+ return json({ok:true,deliveryId,status:"provider-accepted",inboxDeliveryConfirmed:false,expiryMinutes:15,automaticRetry:false});
 }
