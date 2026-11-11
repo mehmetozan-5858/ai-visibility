@@ -16,3 +16,17 @@ test('sandbox isolation blocks command POST before agent authentication delegati
   assert.equal((await proxy(req('/api/command-control','POST'))).status,404);
  }finally{for(const k of ['PADDLE_SANDBOX_ENABLED','PADDLE_ENVIRONMENT','VERCEL_ENV']){if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k];}}
 });
+test('only exact synthetic pilot reads are public; adjacent data and writes retain authentication',async()=>{
+ for(const path of ['/api/rd/audit-pilot','/arge/denetim-pilotu']){
+  for(const method of ['GET','HEAD'])assert.equal(await (await proxy(req(path,method))).text(),'next');
+ }
+ for(const [path,method] of [['/api/rd/audit-pilot','POST'],['/api/rd/audit-pilot/events','GET'],['/api/rd/customer-records','GET'],['/api/client-portal','GET']])
+  assert.equal((await proxy(req(path,method))).status,401);
+});
+test('synthetic pilot cannot escape sandbox isolation',async()=>{
+ const old={...process.env};
+ try{
+  process.env.PADDLE_SANDBOX_ENABLED='true';process.env.PADDLE_ENVIRONMENT='sandbox';process.env.VERCEL_ENV='preview';
+  for(const path of ['/api/rd/audit-pilot','/arge/denetim-pilotu'])assert.equal((await proxy(req(path,'GET'))).status,404);
+ }finally{for(const k of ['PADDLE_SANDBOX_ENABLED','PADDLE_ENVIRONMENT','VERCEL_ENV']){if(old[k]===undefined)delete process.env[k];else process.env[k]=old[k];}}
+});
