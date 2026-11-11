@@ -151,12 +151,12 @@ test("refunded settlement and later completed notice cannot revive customer acce
  try{
   await db.query("INSERT INTO clients(id,name,domain,status) VALUES($1,'Synthetic A','example.invalid','active')",[client]);
   await db.query("INSERT INTO payments(id,client_id,reference_code,status,plan,setup_amount,monthly_amount,currency) VALUES($1,$2,'SYNTH-REFUND-HTTP','pending','Starter',120,49,'TRY')",[payment,client]);
-  await recordPaddleLiveEvent(event({id:"evt_before_refund",tx:"txn_refundfirst"}));
+  await recordPaddleLiveEvent(event({id:"evt_beforerefund",tx:"txn_refundfirst"}));
   assert.equal(await allowed(db,client),true);
   // Simulates independent refund reconciliation, not a provider refund webhook.
   await db.query("UPDATE payments SET status='refunded' WHERE id=$1",[payment]);
   assert.equal(await allowed(db,client),false);
-  const late=await recordPaddleLiveEvent(event({id:"evt_after_refund",tx:"txn_refundsecond"}));
+  const late=await recordPaddleLiveEvent(event({id:"evt_afterrefund",tx:"txn_refundsecond"}));
   assert.equal(late.linked,false);assert.equal(late.reason,"payment-refunded");
   assert.equal(await allowed(db,client),false);
   assert.equal((await db.query("SELECT COUNT(*)::int AS total FROM verified_customer_settlements")).rows[0].total,1);
