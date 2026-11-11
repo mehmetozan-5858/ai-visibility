@@ -34,3 +34,27 @@ test('webhook API rejects unsigned and tampered bodies before any DB write',asyn
  assert.equal((await post(request(raw,signature))).status,200);
  assert.equal(getWrites(),1);
 });
+
+// A signed input can still fail in the database. Neither payload nor driver details belong in logs.
+test('signed webhook storage failure returns retryable 503 without leaking private driver data',async()=>{
+ const logs=[];let writes=0;
+ const post=new Function('verifyPaddleLiveSignature','recordPaddleLiveEvent','process','console',
+  source+';return POST;')(verifyPaddleLiveSignature,async()=>{writes++;throw Error('postgres://private-password customer@example.test')},
+  {env:{PADDLE_LIVE_WEBHOOK_SECRET:secret}}, {info:(...x)=>logs.push(x),error:(...x)=>logs.push(x)});
+ const raw=JSON.stringify({event_id:'evt_fixture',event_type:'transaction.completed',data:{}}),ts=Math.floor(Date.now()/1000);
+ const signature='ts='+ts+';h1='+createHmac('sha256',secret).update(ts+':'+raw).digest('hex');
+ const response=await post(request(raw,signature));
+ assert.equal(response.status,503);assert.equal(writes,1);
+ assert.deepEqual(await response.json(),{error:'Paddle live event not recorded; retry required'});
+ assert.deepEqual(logs,[['Paddle live event failed; retry required']]);
+});
+test('unsupported signed event fields cannot be copied into success logs',async()=>{
+ const logs=[];
+ const post=new Function('verifyPaddleLiveSignature','recordPaddleLiveEvent','process','console',
+  source+';return POST;')(verifyPaddleLiveSignature,async()=>({ignored:true}),{env:{PADDLE_LIVE_WEBHOOK_SECRET:secret}},
+  {info:(...x)=>logs.push(x),error:(...x)=>logs.push(x)});
+ const raw=JSON.stringify({event_type:'private-untrusted-event-field'}),ts=Math.floor(Date.now()/1000);
+ const signature='ts='+ts+';h1='+createHmac('sha256',secret).update(ts+':'+raw).digest('hex');
+ assert.equal((await post(request(raw,signature))).status,200);
+ assert.deepEqual(logs,[['Paddle live event processed','ignored']]);
+});
