@@ -5,7 +5,7 @@ import {PDFDocument} from 'pdf-lib';
 import {comparisonReportRows,readCustomerComparisonReport} from '../lib/customer-comparison-report.mjs';
 import {buildReportResponse} from '../lib/report-pdf.js';
 const id='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
-const result={provider:'gemini',status:'source-supported-answer',verified:true,answer:'AI yanıtı',evidence:{sourceUrl:'https://example.org/source',observation:'Kaynak bölümü'}};
+const result={provider:'gemini',status:'source-supported-answer',verified:true,answer:'AI yanıtı',evidence:{sourceUrl:'https://example.org/source',observation:'AI yanıtı'}};
 const row={clientId:id,query:'Test sorgusu',results:[result],createdAt:'2026-10-31T12:00:00Z'};
 test('report only accepts the authenticated customer and supported response types',()=>{
  const normalized=comparisonReportRows([row,{...row,clientId:other},{...row,results:[{provider:'gemini',status:'failed',answer:'error'}]}],id);
@@ -30,6 +30,15 @@ test('database reader uses customer-bound SELECT without provisioning a missing 
   const rows=await readCustomerComparisonReport(pool,id);assert.equal(rows.length,1);assert.equal(rows[0].clientId,id);
   assert.ok(calls.every(sql=>sql.startsWith('SELECT')));
  }finally{await db.close()}
+});
+test('historical verified flags cannot support a passage absent from the displayed answer',()=>{
+ for(const answer of ['Different answer','x'.repeat(2000)+'AI yanıtı']){
+  const normalized=comparisonReportRows([{...row,results:[{...result,answer}]}],id);
+  assert.equal(normalized[0].results[0].supported,false);
+  assert.equal(normalized[0].results[0].evidence,null);
+  assert.equal(normalized[0].results[0].status,'answer-received-unverified');
+ }
+ assert.deepEqual(comparisonReportRows([{...row,results:[{...result,answer:''}]}],id),[]);
 });
 test('evidence-only pilot renders a valid PDF without requiring or inventing a scored scan',async()=>{
  const response=await buildReportResponse({clientId:id,clients:[{id,name:'ZERA TEST'}],allScans:[],comparisons:[row],pilot:true});
