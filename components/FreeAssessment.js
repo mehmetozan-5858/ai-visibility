@@ -7,6 +7,8 @@ export default function FreeAssessment(){
   const controller=new AbortController();
   const token=new URLSearchParams(window.location.hash.slice(1)).get('token');
   if(!token){setError('E-postanızdaki ücretsiz ön değerlendirme bağlantısını açın. / Open the free assessment link in your email.');setLoading(false);return ()=>controller.abort()}
+  // Avoid leaving the short-lived preview bearer in copied URLs and current browser history.
+  window.history.replaceState(window.history.state,'',window.location.pathname+window.location.search);
   fetch('/api/free-assessment',{headers:{'x-preview-token':token},cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Ön değerlendirme alınamadı.');setData(d)}).catch(e=>{if(e.name!=='AbortError')setError(e.message)}).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
  },[]);
