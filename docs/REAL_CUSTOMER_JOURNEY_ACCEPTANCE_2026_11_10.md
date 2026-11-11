@@ -75,3 +75,9 @@ No production database migration, deployment, payment creation, email send or cu
 - **Remaining for live use:** actual applicant domain holder must add DNS record, approved production database migrations, trusted operator/customer delivery, a real DNS challenge exchange, HTTP/browser authorization and replay verification, production secrets and explicit deployment approval. A DNS proof is evidence of domain control, not guaranteed legal business ownership.
 - Existing old `Web & Mobile Production Smoke` uses an unsupported Playwright/Ubuntu 26.04 combination; separate `Customer Journey Browser Acceptance (Ubuntu 24.04)` passed earlier. Exact-head retests are required.
 - **Release state: HOLD.** No merge/deploy/paid actions or unsolicited messages authorized by this change.
+
+
+## Revocation gate
+- Admin-only `POST /api/admin/applicant-assessment-revoke` with explicit string confirmation marks `applicant_assessment_links.revoked_at` without deleting history.
+- The applicant read route verifies `revoked_at IS NULL` on each request; revocation therefore denies even an otherwise unexpired signed bearer grant on its next use.
+- Revocation is disabled with the other domain-ownership controls unless separately enabled. No production revocation occurred.
