@@ -31,7 +31,8 @@ test('webhook records proof only after validated signed transaction completion',
  const proof=source.indexOf('INSERT INTO public.verified_customer_settlements');
  assert.ok(start>=0&&proof>start);
  assert.match(source,/CUSTOMER_SETTLEMENT_PROOF_ENABLED==='true'&&item.type==='transaction.completed'/);
- assert.match(source,/paymentResult.linked===true&&paymentResult.paymentStatus==='paid'/);
+ assert.match(source,/paymentResult.linked===true&&paymentResult.paymentChanged===true/);
+ assert.match(source,/paymentResult.paymentStatus==='paid'&&!isPaddleRenewal\(item\)/);
  assert.match(source,/throw Error\('settlement-proof-conflict'\)/);
 });
 test('portal access is strict-gated but unchanged by default',async()=>{
@@ -47,4 +48,16 @@ test('evidence schema is unique to exact tenant and payment, not an internal sta
  assert.match(source,/client_id UUID NOT NULL/);
  assert.match(source,/paddle_event_id TEXT NOT NULL UNIQUE/);
  assert.match(source,/transaction_id TEXT NOT NULL UNIQUE/);
+});
+
+test('settlement proof ignores paid statuses without an actual new payment transition',async()=>{
+ const source=await readFile(new URL('../lib/paddle-live.js',import.meta.url),'utf8');
+ const start=source.indexOf("if(process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED==='true'&&item.type==='transaction.completed'");
+ const insert=source.indexOf('INSERT INTO public.verified_customer_settlements',start);
+ assert.ok(start>=0&&insert>start);
+ const gate=source.slice(start,insert);
+ assert.match(gate,/paymentResult.paymentChanged===true/);
+ assert.match(gate,/paymentResult.linked===true/);
+ assert.match(gate,/paymentResult.paymentStatus==='paid'/);
+ assert.match(gate,/!isPaddleRenewal\(item\)/);
 });
