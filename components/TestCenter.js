@@ -31,7 +31,7 @@ export default function TestCenter(){
     setE2eBusy(true);setE2eMsg("");setCode("");
     try{
       const r=await fetch("/api/admin-test-flow",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"start"})});
-      const d=await r.json();if(!r.ok)throw new Error(d.error||"Müşteri testi başlatılamadı.");
+      const d=await r.json();if(d.code==="test-credential-exists"){setE2eStep("existing-login");setE2eMsg(d.error);return}if(!r.ok)throw new Error(d.error||"Müşteri testi başlatılamadı.");
       setEmailMasked(d.emailMasked||"");setE2eStep("code");setE2eMsg(`Doğrulama kodu ${d.emailMasked||"yönetici e-postasına"} gönderildi. E-postadaki 6 haneli kodu aşağıya girin.`);
     }catch(e){setE2eStep(lastStage5At?"done":"idle");setE2eMsg(e.message)}finally{setE2eBusy(false)}
   }
@@ -40,7 +40,7 @@ export default function TestCenter(){
     setE2eBusy(true);setE2eMsg("Hesap, giriş, panel ve PDF rapor uçtan uca kontrol ediliyor…");
     try{
       const finish=await fetch("/api/admin-test-flow",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"finish",code})});
-      const f=await finish.json();if(!finish.ok)throw new Error(f.error||"Kod doğrulanamadı.");
+      const f=await finish.json();if(f.code==="test-credential-exists"){setE2eStep("existing-login");setE2eMsg(f.error);return}if(!finish.ok)throw new Error(f.error||"Kod doğrulanamadı.");
       const login=await fetch("/api/client-auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email:f.email,password:f.password})});
       const loginData=await login.json();if(!login.ok||!loginData.ok)throw new Error(loginData.error||"Gerçek müşteri girişi başarısız.");
       const portal=await fetch("/api/client-portal",{cache:"no-store"});const portalData=await portal.json();if(!portal.ok)throw new Error(portalData.error||"Müşteri paneli API kontrolü başarısız.");
@@ -65,6 +65,7 @@ export default function TestCenter(){
       {lastStage5At&&<small style={{display:"block",marginBottom:12,opacity:.8}}>Son başarılı doğrulama: {formatLaunchQaTime(lastStage5At)}</small>}
       {e2eStep==="idle"&&<button onClick={startCustomerE2E} disabled={e2eBusy} style={{minHeight:48,fontSize:16,fontWeight:800}}>{e2eBusy?"Hazırlanıyor…":"5. aşama testini başlat"}</button>}
       {e2eStep==="code"&&<div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr)",gap:12,maxWidth:520,width:"100%"}}><label style={{display:"grid",gap:7,fontWeight:800}}>E-postaya gelen 6 haneli kod<input value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" style={{fontSize:26,letterSpacing:8,minHeight:54}}/></label><button onClick={finishCustomerE2E} disabled={e2eBusy||code.length!==6} style={{minHeight:50,fontSize:16,fontWeight:800}}>{e2eBusy?"Uçtan uca kontrol ediliyor…":"Kodu doğrula ve 5. aşamayı bitir"}</button>{emailMasked&&<small>Kod gönderilen adres: {emailMasked}</small>}<button type="button" onClick={startCustomerE2E} disabled={e2eBusy}>Yeni doğrulama kodu gönder</button><small>Yeni kod istendiğinde önceki kod geçersiz olur. En son e-postadaki kodu 10 dakika içinde girin.</small></div>}
+      {e2eStep==="existing-login"&&<a href="/musteri-giris">Mevcut şifreyle müşteri girişini aç</a>}
       {e2eStep==="done"&&<button onClick={startCustomerE2E} disabled={e2eBusy}>Testi tekrar çalıştır</button>}
       {e2eMsg&&<p className="client-message" style={{fontSize:15,lineHeight:1.6}}>{e2eMsg}</p>}
     </section>
