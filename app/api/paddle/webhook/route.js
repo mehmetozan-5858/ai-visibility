@@ -12,10 +12,10 @@ export async function POST(req){
   try{event=JSON.parse(raw)}catch{return Response.json({error:'Invalid JSON'},{status:400})}
   try{
     const result=await recordPaddleLiveEvent(event);
-    console.info('Paddle live event processed',result?.eventType||event?.event_type||'unknown',result?.duplicate?'duplicate':result?.recorded?'recorded':'ignored');
+    console.info('Paddle live event processed',result?.duplicate?'duplicate':result?.recorded?'recorded':'ignored');
     return Response.json(result);
-  }catch(error){
-    console.error('Paddle live event failed',String(error?.message||error).slice(0,180));
+  }catch{
+    console.error('Paddle live event failed; retry required');
     return Response.json({error:'Paddle live event not recorded; retry required'},{status:503});
   }
 }
