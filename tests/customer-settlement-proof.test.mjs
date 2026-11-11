@@ -30,7 +30,7 @@ test('webhook records proof only after validated signed transaction completion',
  const start=source.indexOf('const paymentResult=item.type.startsWith');
  const proof=source.indexOf('INSERT INTO public.verified_customer_settlements');
  assert.ok(start>=0&&proof>start);
- assert.match(source,/strictCustomerSettlementEnabled\(\)&&item.type==='transaction.completed'/);
+ assert.match(source,/CUSTOMER_SETTLEMENT_PROOF_ENABLED==='true'&&item.type==='transaction.completed'/);
  assert.match(source,/paymentResult.linked===true&&paymentResult.paymentStatus==='paid'/);
  assert.match(source,/throw Error\('settlement-proof-conflict'\)/);
 });
