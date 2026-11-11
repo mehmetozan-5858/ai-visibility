@@ -46,4 +46,9 @@ test("preview rechecks the active exact link and exposes only aggregate evidence
  assert.match(component,/a\.samples>=6/);
  assert.match(component,/a\.providers>=2/);
  assert.match(component,/a\.queries>=2/);
+ assert.match(component,/Math\.max\(0,6-a\.samples\)/);
+ assert.match(component,/Math\.max\(0,2-a\.providers\)/);
+ assert.match(component,/Math\.max\(0,2-a\.queries\)/);
+ assert.match(component,/a\?\.measuredAt/);
+ assert.match(component,/Bu sayfayı açmak yeni AI isteği başlatmaz/);
 });
