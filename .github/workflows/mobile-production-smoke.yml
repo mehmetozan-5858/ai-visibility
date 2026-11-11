@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   web-mobile-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       ADMIN_PASSWORD: ci-only-local-password-fixture
