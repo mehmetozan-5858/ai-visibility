@@ -33,7 +33,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm install --no-save --no-package-lock @playwright/test@1.55.1
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
+      # Browser execution remains mandatory; this only avoids Ubuntu apt downloads during setup.
       - run: npm run build
       - name: Start local isolated web server
         run: |
