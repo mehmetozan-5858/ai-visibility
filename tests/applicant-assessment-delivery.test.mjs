@@ -48,6 +48,6 @@ test("only admin with explicit confirmation can request single delivery; access 
 test("audit ledger forbids implicit retry and never stores token",async()=>{
  const sql=await readFile(new URL("../migrations/applicant-assessment-deliveries-review.sql",import.meta.url),"utf8");
  assert.match(sql,/lead_id UUID NOT NULL UNIQUE/);
- assert.match(sql,/status IN \('reserved','sent','failed'\)/);
+ assert.match(sql,/status IN \('reserved','provider-accepted','failed'\)/);
  assert.doesNotMatch(sql,/token TEXT|token_hash|bearer_token|link_url/);
 });
