@@ -19,5 +19,6 @@ export default function AuditPilotPage(){
   <h2>Sonraki aşama</h2>
   <p>Bu pilot doğrulandıktan sonra dar yetkili, salt okunur gerçek olay incelemesi değerlendirilecek. Gerçek veri bağlantısı ve kalıcı kayıt bu aşamada etkin değildir.</p>
   <p><Link href="/api/rd/audit-pilot">Pilotun güncel kontrol sonucunu aç</Link></p>
+  <p><Link href="/arge/gercek-olaylar">Yönetici: gerçek olayların salt okunur incelemesi</Link></p>
  </main>;
 }
