@@ -82,6 +82,13 @@ test("signed synthetic Paddle completion grants only own tenant, replay does not
   assert.equal(await allowed(db,client),false);
   const state=(await db.query("SELECT status FROM clients WHERE id=$1",[client])).rows[0].status;
   assert.equal(state,"payment-review");
+  // A genuine-looking but delayed recurring charge does not reverse a prior cancellation.
+  const lateRenewal=event({id:"evt_laterenewal",tx:"txn_laterenewal",amount:"4900"});
+  lateRenewal.data.origin="subscription_recurring";
+  const renewal=await recordPaddleLiveEvent(lateRenewal);
+  assert.equal(renewal.renewalRecorded,true);
+  assert.equal((await db.query("SELECT status FROM clients WHERE id=$1",[client])).rows[0].status,"payment-review");
+  assert.equal(await allowed(db,client),false);
  }finally{
   await db.close();
   if(previous===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
