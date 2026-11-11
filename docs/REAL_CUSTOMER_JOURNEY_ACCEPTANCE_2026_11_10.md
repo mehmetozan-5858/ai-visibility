@@ -55,3 +55,12 @@ No production database migration, deployment, payment creation, email send or cu
 - Isolated Neon rehearsal on `br-restless-thunder-b27p3xvv` succeeded: table exists, FK, unique keys, and review checks present; **zero actual link records**. Production does not have this table.
 - Remaining implementation: trusted reviewer workflow and auditable ownership evidence, transactional link creation, revocation propagation, customer-owned scoped preview grant with expiry, measured score validation, and applicant-facing access after authenticated verification. Never expose a prospect report based on a domain match alone.
 - These tests do not establish actual ownership of any existing lead. No customer was linked or contacted.
+
+
+## Verified applicant preview integration — 11 Nov 2026
+- `lib/applicant-assessment-grant.mjs` issues a purpose-scoped, lead/prospect-bound HMAC bearer token with a hard 15-minute limit. Disabled unless `APPLICANT_ASSESSMENT_PREVIEW_ENABLED=true`, with a strong server-side `APPLICANT_ASSESSMENT_SECRET`. Neither variable has been set in production.
+- `POST /api/admin/applicant-assessment-grant`: admin-authenticated, same-origin, rate-limited read of stored active lead/prospect mapping and consumed email proof; returns a token for **manually approved** delivery. It creates no mapping or customer account and sends no email.
+- `GET /api/applicant-assessment`: rechecks signed grant, active stored mapping, consumed email verification and domain continuity. Only returns limited aggregate measurements using existing `freeAssessmentEvidence` and does not call providers, expose raw answers or unlock paid access.
+- `/basvuru-analiz#token=...`: new isolated applicant-facing UI; missing evidence is explicitly shown as insufficient rather than zero or a demo score.
+- Remaining blockers: approved and auditable business ownership verification and actual persisted mapping (none exists), customer-controlled secure grant delivery/refresh, privacy and replay/expiry threat review, realistic HTTP/E2E tests, payment completion and panel integration. Tokens are bearer links; short TTL reduces but does not eliminate link-sharing risk. Do not send via unapproved outreach.
+- **Release HOLD**. This is integration code in draft PR #229, not a live customer feature; no production migration, new email, merge, deployment, provider call or payment has been performed.
