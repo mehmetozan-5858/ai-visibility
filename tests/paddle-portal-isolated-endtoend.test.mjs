@@ -111,3 +111,57 @@ test("wrong currency and tenant, preexisting paid label and missing proof table 
   else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=previous;
  }
 });
+
+
+test("webhook HTTP handler rejects forged signature and accepts synthetic completed payment only once",async()=>{
+ const oldFlag=process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
+ const oldSecret=process.env.PADDLE_LIVE_WEBHOOK_SECRET;
+ process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED="true";
+ process.env.PADDLE_LIVE_WEBHOOK_SECRET="test-only-signing-key-not-provider-key";
+ const {db,recordPaddleLiveEvent,verifyPaddleLiveSignature}=await harness();
+ try{
+  await db.query("INSERT INTO clients(id,name,domain,status) VALUES($1,'Synthetic A','example.invalid','active')",[client]);
+  await db.query("INSERT INTO payments(id,client_id,reference_code,status,plan,setup_amount,monthly_amount,currency) VALUES($1,$2,'SYNTH-WEBHOOK-HTTP','pending','Starter',120,49,'TRY')",[payment,client]);
+  const source=(await readFile(new URL("../app/api/paddle/webhook/route.js",import.meta.url),"utf8"))
+   .replace(/^import .*;\\s*$/gm,"").replace(/^export /gm,"");
+  const POST=new Function("verifyPaddleLiveSignature","recordPaddleLiveEvent","Response","Buffer","console","process",
+   source+";return POST;")(verifyPaddleLiveSignature,recordPaddleLiveEvent,Response,Buffer,{info:()=>{},error:()=>{}},process);
+  const raw=JSON.stringify(event({id:"evt_httpfixturea",tx:"txn_httpfixturea"}));
+  const ts=Math.floor(Date.now()/1000);
+  const sig=createHmac("sha256",process.env.PADDLE_LIVE_WEBHOOK_SECRET).update(ts+":"+raw).digest("hex");
+  const request=signature=>({text:async()=>raw,headers:{get:k=>k==="paddle-signature"?signature:null}});
+  const forged=await POST(request("ts="+ts+";h1="+"f".repeat(64)));
+  assert.equal(forged.status,401);assert.equal(await allowed(db,client),false);
+  const valid=await POST(request("ts="+ts+";h1="+sig));
+  assert.equal(valid.status,200);assert.equal((await valid.json()).recorded,true);
+  assert.equal(await allowed(db,client),true);
+  const duplicate=await POST(request("ts="+ts+";h1="+sig));
+  assert.equal(duplicate.status,200);assert.equal((await duplicate.json()).duplicate,true);
+  assert.equal((await db.query("SELECT count(*)::int AS total FROM verified_customer_settlements")).rows[0].total,1);
+ }finally{
+  await db.close();
+  if(oldFlag===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=oldFlag;
+  if(oldSecret===undefined)delete process.env.PADDLE_LIVE_WEBHOOK_SECRET;else process.env.PADDLE_LIVE_WEBHOOK_SECRET=oldSecret;
+ }
+});
+test("refunded settlement and later completed notice cannot revive customer access",async()=>{
+ const prev=process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
+ process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED="true";
+ const {db,recordPaddleLiveEvent}=await harness();
+ try{
+  await db.query("INSERT INTO clients(id,name,domain,status) VALUES($1,'Synthetic A','example.invalid','active')",[client]);
+  await db.query("INSERT INTO payments(id,client_id,reference_code,status,plan,setup_amount,monthly_amount,currency) VALUES($1,$2,'SYNTH-REFUND-HTTP','pending','Starter',120,49,'TRY')",[payment,client]);
+  await recordPaddleLiveEvent(event({id:"evt_before_refund",tx:"txn_refundfirst"}));
+  assert.equal(await allowed(db,client),true);
+  // Simulates independent refund reconciliation, not a provider refund webhook.
+  await db.query("UPDATE payments SET status='refunded' WHERE id=$1",[payment]);
+  assert.equal(await allowed(db,client),false);
+  const late=await recordPaddleLiveEvent(event({id:"evt_after_refund",tx:"txn_refundsecond"}));
+  assert.equal(late.linked,false);assert.equal(late.reason,"payment-refunded");
+  assert.equal(await allowed(db,client),false);
+  assert.equal((await db.query("SELECT COUNT(*)::int AS total FROM verified_customer_settlements")).rows[0].total,1);
+ }finally{
+  await db.close();
+  if(prev===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=prev;
+ }
+});
