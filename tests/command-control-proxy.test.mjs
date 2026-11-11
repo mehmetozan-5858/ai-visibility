@@ -20,7 +20,7 @@ test('only exact synthetic pilot reads are public; adjacent data and writes reta
  for(const path of ['/api/rd/audit-pilot','/arge/denetim-pilotu']){
   for(const method of ['GET','HEAD'])assert.equal(await (await proxy(req(path,method))).text(),'next');
  }
- for(const [path,method] of [['/api/rd/audit-pilot','POST'],['/api/rd/audit-pilot/events','GET'],['/api/rd/customer-records','GET'],['/api/client-portal','GET']])
+ for(const [path,method] of [['/api/rd/audit-pilot','POST'],['/api/rd/audit-pilot/events','GET'],['/api/rd/customer-records','GET'],['/api/admin/rd-audit-readonly','GET'],['/api/client-portal','GET']])
   assert.equal((await proxy(req(path,method))).status,401);
 });
 test('synthetic pilot cannot escape sandbox isolation',async()=>{
