@@ -71,7 +71,7 @@ async function isolated(){
    "getClientAccount","resolveRequestLanguage","getClientProfile","servicePrice","formatMoney","SERVICE_CODES","Response"],
   [readCustomerComparisonReport,()=>db,()=>"fixture",customerAccess,cookies,verifyClientToken,account,()=>"tr",
    async()=>null,()=>null,()=>"",[],Response]);
- return {db,login,portal,setSession:token=>{activeToken=token},password};
+ return {db,login,portal,account,customerAccess,cookies,setSession:token=>{activeToken=token},password};
 }
 test("synthetic real login cookie and paid customer portal are denied before settlement, isolate reports after proof, revoked after cancellation",async()=>{
  const oldAuth=process.env.AUTH_SECRET,oldStrict=process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
@@ -100,6 +100,54 @@ test("synthetic real login cookie and paid customer portal are denied before set
   const cross=await fixture.portal({});assert.equal(cross.status,403);
   fixture.setSession("invalid-token");
   const anonymous=await fixture.portal({});assert.equal(anonymous.status,401);
+ }finally{
+  await fixture.db.close();
+  if(oldAuth===undefined)delete process.env.AUTH_SECRET;else process.env.AUTH_SECRET=oldAuth;
+  if(oldStrict===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=oldStrict;
+ }
+});
+
+test("authenticated paid PDF report uses only the session tenant and becomes unavailable after cancellation",async()=>{
+ const oldAuth=process.env.AUTH_SECRET,oldStrict=process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
+ process.env.AUTH_SECRET="synthetic-auth-key-not-for-production-".repeat(2);
+ process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED="true";
+ const fixture=await isolated();
+ try{
+  await fixture.db.query("INSERT INTO verified_customer_settlements(payment_id,client_id,paddle_event_id,transaction_id) VALUES ($1,$2,'evt_fixturepdftest','txn_fixturepdftest')",[paid,mine]);
+  fixture.setSession(await createClientToken(mine));
+  let requested=null;
+  const pdfSource=await readFile(new URL("../app/api/client-portal/report/route.js",import.meta.url),"utf8");
+  const generate=async payload=>{
+   requested=payload;
+   return new Response("synthetic-pdf-byte-placeholder",{
+    headers:{"content-type":"application/pdf","content-disposition":'attachment; filename="customer-fixture.pdf"'}
+   });
+  };
+  const handler=compile(pdfSource,"GET",
+   ["readCustomerComparisonReport","databasePool","getDatabaseUrl","customerAccess","cookies",
+    "verifyClientToken","getClientAccount","buildReportResponse","Response"],
+   [readCustomerComparisonReport,()=>fixture.db,()=>"fixture",fixture.customerAccess,
+    fixture.cookies,verifyClientToken,async id=>{
+     const account=await fixture.account(id);
+     return account?{...account,scans:[]}:null;
+    },generate,Response]);
+  const file=await handler({url:"https://example.test/api/client-portal/report?download=1"});
+  assert.equal(file.status,200);assert.equal(file.headers.get("content-type"),"application/pdf");
+  assert.equal(file.headers.get("cache-control").includes("no-store"),true);
+  assert.equal(requested.clientId,mine);
+  assert.equal(requested.comparisons.length,1);
+  assert.equal(requested.comparisons[0].query,"Customer A query");
+  assert.equal(JSON.stringify(requested).includes("PRIVATE: Customer B"),false);
+  requested=null;
+  fixture.setSession(await createClientToken(other));
+  assert.equal((await handler({url:"https://example.test/api/client-portal/report"})).status,403);
+  assert.equal(requested,null);
+  await fixture.db.query("UPDATE clients SET status='payment-review' WHERE id=$1",[mine]);
+  fixture.setSession(await createClientToken(mine));
+  assert.equal((await handler({url:"https://example.test/api/client-portal/report"})).status,403);
+  assert.equal(requested,null);
+  fixture.setSession("invalid");
+  assert.equal((await handler({url:"https://example.test/api/client-portal/report"})).status,401);
  }finally{
   await fixture.db.close();
   if(oldAuth===undefined)delete process.env.AUTH_SECRET;else process.env.AUTH_SECRET=oldAuth;
