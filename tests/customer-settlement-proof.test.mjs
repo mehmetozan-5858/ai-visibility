@@ -36,7 +36,9 @@ test('webhook records proof only after validated signed transaction completion',
 });
 test('portal access is strict-gated but unchanged by default',async()=>{
  const source=await readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8');
- assert.match(source,/CUSTOMER_SETTLEMENT_PROOF_ENABLED!=='true'\|\|await customerHasVerifiedSettlement/);
+ assert.match(source,/CUSTOMER_SETTLEMENT_PROOF_ENABLED!=='true'/);
+ assert.match(source,/await customerHasVerifiedSettlement\(account.client.id\)/);
+ assert.match(source,/const pilot=await getPilotAccess\(account.client.id\)/);
  assert.match(source,/independent-settlement-proof-required/);
 });
 test('evidence schema is unique to exact tenant and payment, not an internal status flag',async()=>{
