@@ -36,3 +36,20 @@ test('same snapshot and mailbox keep one delivery key; new recipient or report g
  assert.notEqual(customerReportDeliveryKey(data),customerReportDeliveryKey({...data,email:'other@example.org'}));
  assert.notEqual(customerReportDeliveryKey(data),customerReportDeliveryKey({...data,report:{query:'new'}}));
 });
+
+test('historical scored scans no longer hide newer AI answers from report delivery',async()=>{
+ const builds=[];let reads=0;
+ const newer={clientId:own,query:'New question',results:[{provider:'gemini',status:'answer-received-unverified',answer:'New answer'}]};
+ const f=fixture({getAccount:async()=>({client:{id:own},scans:[{status:'completed',score:42}]}),readComparisons:async(_pool,id)=>{assert.equal(id,own);reads++;return [newer]},buildReport:async data=>{builds.push(data);return new Response('PDF')}});
+ assert.equal((await f.handler(f.request())).status,200);assert.equal(reads,1);
+ assert.deepEqual(builds[0].comparisons,[newer]);assert.equal(builds[0].allScans.length,1);
+ assert.equal(builds[0].comparisonEvidenceUnavailable,false);
+});
+test('comparison outage is explicit when historical scans exist; without scans no email is sent',async()=>{
+ for(const hasScan of [true,false]){
+  const builds=[];const f=fixture({getAccount:async()=>({client:{id:own},scans:hasScan?[{status:'completed',score:42}]:[]}),readComparisons:async()=>{throw Error('private-driver-data')},buildReport:async data=>{builds.push(data);return new Response('PDF')}});
+  const response=await f.handler(f.request());assert.equal(response.status,hasScan?200:503);
+  assert.equal(f.sends.length,hasScan?1:0);
+  if(hasScan){assert.equal(builds[0].comparisonEvidenceUnavailable,true);assert.deepEqual(builds[0].comparisons,[])}
+ }
+});

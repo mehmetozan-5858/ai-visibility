@@ -4,10 +4,10 @@ import fs from 'node:fs/promises';
 import {PDFDocument} from 'pdf-lib';
 import {buildReportResponse} from '../lib/report-pdf.js';
 const source=(await fs.readFile(new URL('../app/api/client-portal/report/route.js',import.meta.url),'utf8')).replace(/^import .*;$/gm,'').replace(/export /g,'');
-function endpoint({comparisons=[],pilot=false,session={clientId:'own'},account={client:{id:'own',status:'active'},payments:[{status:'paid'}],scans:[{status:'completed',score:42}]}}={}){
+function endpoint({comparisonReadFails=false,comparisons=[],pilot=false,session={clientId:'own'},account={client:{id:'own',status:'active'},payments:[{status:'paid'}],scans:[{status:'completed',score:42}]}}={}){
  const builds=[],reads=[];
  const get=new Function('cookies','verifyClientToken','getClientAccount','buildReportResponse','customerAccess','readCustomerComparisonReport','databasePool','getDatabaseUrl',source+';return GET')(
- async()=>({get:()=>({value:'token'})}),async()=>session,async id=>{assert.equal(id,'own');return account},async data=>{builds.push(data);return new Response('pdf',{headers:{'content-disposition':'attachment; filename=report.pdf'}})},async a=>({allowed:!!a&&a.client?.status!=='payment-review'&&(pilot||(a.payments||[]).some(p=>p.status==='paid')),kind:pilot?'pilot':'paid'}),async (_pool,id)=>{reads.push(id);return comparisons},()=>({}),()=> 'fixture');
+ async()=>({get:()=>({value:'token'})}),async()=>session,async id=>{assert.equal(id,'own');return account},async data=>{builds.push(data);return new Response('pdf',{headers:{'content-disposition':'attachment; filename=report.pdf'}})},async a=>({allowed:!!a&&a.client?.status!=='payment-review'&&(pilot||(a.payments||[]).some(p=>p.status==='paid')),kind:pilot?'pilot':'paid'}),async (_pool,id)=>{reads.push(id);if(comparisonReadFails)throw Error("private-db-error");return comparisons},()=>({}),()=> 'fixture');
  return {get,builds,reads};
 }
 test('customer report requires session, payment, completed scan and ignores requested customer ID',async()=>{
@@ -31,9 +31,17 @@ test('approved pilot can download evidence-only PDF without a score; foreign URL
  assert.deepEqual(f.builds[0].allScans,[]);assert.deepEqual(f.builds[0].comparisons,comparisons);
  assert.match(response.headers.get('cache-control'),/private.*no-store/);assert.equal(response.headers.get('vary'),'Cookie');
 });
-test('existing scored report does not depend on comparison storage; unauthorized requests never read comparisons',async()=>{
- const f=endpoint();await f.get();assert.deepEqual(f.reads,[]);
+test('existing scored report also reads current comparisons; unauthorized requests never read comparisons',async()=>{
+ const comparison={clientId:'own',query:'new fixture',results:[]};
+ const f=endpoint({comparisons:[comparison]});await f.get();assert.deepEqual(f.reads,['own']);assert.deepEqual(f.builds[0].comparisons,[comparison]);
  for(const config of [{session:null},{account:null},{account:{client:{status:'active'},payments:[],scans:[]}}]){
   const denied=endpoint(config);await denied.get();assert.deepEqual(denied.reads,[]);
  }
+});
+
+test('download explicitly marks comparison read failures and refuses an empty fallback',async()=>{
+ const f=endpoint({comparisonReadFails:true});assert.equal((await f.get()).status,200);
+ assert.equal(f.builds[0].comparisonEvidenceUnavailable,true);
+ const empty=endpoint({comparisonReadFails:true,account:{client:{id:'own',status:'active'},payments:[{status:'paid'}],scans:[]}});
+ assert.equal((await empty.get()).status,500);assert.equal(empty.builds.length,0);
 });

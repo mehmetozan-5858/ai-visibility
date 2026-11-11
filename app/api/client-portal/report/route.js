@@ -17,9 +17,11 @@ export async function GET(req){
   const access=await customerAccess(account);
   if(!access.allowed)return Response.json({error:"Aktif ücretli hesap veya onaylı pilot erişimi gerekli."},{status:403});
   const scans=account.scans.filter(s=>s.status==="completed"&&s.score!=null&&Number.isFinite(Number(s.score)));
-  const comparisons=scans.length?[]:await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId);
+  let comparisons=[],comparisonEvidenceUnavailable=false;
+  try{comparisons=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId)}
+  catch{if(!scans.length)throw Error();comparisonEvidenceUnavailable=true}
   if(!scans.length&&!comparisons.length)return Response.json({error:"Tamamlanmış rapor henüz yok."},{status:409});
-  const response=await buildReportResponse({comparisons,pilot:access.kind==="pilot",clients:[account.client],clientId:session.clientId,allScans:scans.map(s=>({...s,clientId:session.clientId}))});
+  const response=await buildReportResponse({comparisons,comparisonEvidenceUnavailable,pilot:access.kind==="pilot",clients:[account.client],clientId:session.clientId,allScans:scans.map(s=>({...s,clientId:session.clientId}))});
   response.headers.set("Cache-Control","private, no-store, max-age=0");
   response.headers.set("Vary","Cookie");
   const disposition=response.headers.get("content-disposition");
