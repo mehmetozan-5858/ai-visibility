@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {freeAssessmentPresentation} from '../lib/free-assessment-presentation.mjs';
+import {validFreeAssessmentResponse} from '../lib/free-assessment-response.mjs';
 export default function FreeAssessment(){
  const [data,setData]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);
  useEffect(()=>{
@@ -9,7 +10,7 @@ export default function FreeAssessment(){
   if(!token){setError('E-postanızdaki ücretsiz ön değerlendirme bağlantısını açın. / Open the free assessment link in your email.');setLoading(false);return ()=>controller.abort()}
   // Avoid leaving the short-lived preview bearer in copied URLs and current browser history.
   window.history.replaceState(window.history.state,'',window.location.pathname+window.location.search);
-  fetch('/api/free-assessment',{headers:{'x-preview-token':token},cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Ön değerlendirme alınamadı.');setData(d)}).catch(e=>{if(e.name!=='AbortError')setError(e.message)}).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
+  fetch('/api/free-assessment',{headers:{'x-preview-token':token},cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Ön değerlendirme alınamadı.');if(!validFreeAssessmentResponse(d))throw Error('Ön değerlendirme verisi eksik veya geçersiz.');setData(d)}).catch(e=>{if(e.name!=='AbortError')setError(e.message)}).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
  },[]);
  const tr=data?.language!=='en',a=data?.assessment,proof=freeAssessmentPresentation(a);
