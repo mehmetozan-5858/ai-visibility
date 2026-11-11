@@ -32,7 +32,7 @@ test('full live webhook processor: early subscription, activation, settlement, r
   assert.equal((await db.query('SELECT status FROM clients WHERE id=$1',[clientId])).rows[0].status,'pending');
   const completion=event('evt_completedabc','transaction.completed',
    {id:transactionId,status:'completed',origin:'api',currency_code:'EUR',subscription_id:subscriptionId,
-    items:[{quantity:1,price:{unit_price:{amount:'4900'}}}],
+    details:{totals:{subtotal:'4900',discount:'0',tax:'0',total:'4900',credit:'0',credit_to_balance:'0',balance:'0',grand_total:'4900',currency_code:'EUR'}},items:[{quantity:1,price:{tax_mode:'internal',unit_price:{amount:'4900'}}}],
     custom_data:{payment_id:paymentId,client_id:clientId}},'2026-11-01T08:02:00Z');
   const result=await record(completion);
   assert.equal(result.recorded,true);

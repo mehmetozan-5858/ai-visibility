@@ -97,3 +97,12 @@ test('live paid and past_due notices are recognized but not settlement authoriza
  const source=readFileSync(new URL('../lib/paddle-live.js',import.meta.url),'utf8');
  assert.ok(source.includes("item.type==='transaction.paid'||item.type==='transaction.past_due'"));
 });
+
+test('final totals support explicit tax-inclusive and tax-exclusive prices without accepting unknown modes',async()=>{
+ const {validPaddleCompletionTotals}=await import('../lib/paddle-live.js');
+ const data={status:'completed',items:[{price:{tax_mode:'internal'}}],details:{totals:{subtotal:'14000',tax:'2900',discount:'0',total:'16900',grand_total:'16900',credit:'0',credit_to_balance:'0',balance:'0',currency_code:'EUR'}}};
+ assert.equal(validPaddleCompletionTotals(data,16900,'EUR'),true);
+ data.items[0].price.tax_mode='external';assert.equal(validPaddleCompletionTotals(data,14000,'EUR'),true);
+ assert.equal(validPaddleCompletionTotals(data,16900,'EUR'),false);
+ data.details.totals.discount='1';assert.equal(validPaddleCompletionTotals(data,14000,'EUR'),false);
+});
