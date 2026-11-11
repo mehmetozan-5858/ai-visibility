@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {providerEvidenceStatus} from '../lib/provider-evidence-status.mjs';
+const now = Date.parse('2026-11-11T00:00:00Z');
+const valid = {enabled:true,consent:true,authorized:true,evidenceType:'real-api-response',responseId:'api-123',persisted:true,observedAt:'2026-11-10T23:30:00Z'};
+test('fresh authenticated persisted provider evidence is recent, not provider health guarantee',()=>assert.equal(providerEvidenceStatus(valid,now).status,'recent-evidence'));
+test('old provider evidence is historical',()=>assert.equal(providerEvidenceStatus({...valid,observedAt:'2026-11-08T00:00:00Z'},now).status,'historical'));
+test('prechecks and historical counters cannot establish real API measurement',()=>{for(const update of [{evidenceType:'provider-precheck'},{responseId:''},{persisted:false},{observedAt:'not-date'},{observedAt:'2026-11-12T00:00:00Z'}])assert.equal(providerEvidenceStatus({...valid,...update},now).status,'unknown')});
+test('a disabled, unconsented or unauthorized provider never looks healthy',()=>{assert.equal(providerEvidenceStatus({...valid,enabled:false},now).status,'disabled');assert.equal(providerEvidenceStatus({...valid,enabled:undefined},now).status,'unknown');assert.equal(providerEvidenceStatus({...valid,consent:false},now).status,'blocked');assert.equal(providerEvidenceStatus({...valid,authorized:false},now).status,'blocked')});
+test('error and rate limits are preserved rather than masquerading as zero',()=>{assert.equal(providerEvidenceStatus({...valid,errorCategory:'rate-limit'},now).status,'blocked');assert.equal(providerEvidenceStatus({...valid,errorCategory:'server-error'},now).status,'error')});
+test('missing record remains unknown',()=>assert.equal(providerEvidenceStatus(null,now).status,'unknown'));
