@@ -49,7 +49,8 @@ jobs:
       - name: Install Playwright test runner
         run: npm install --no-save --no-package-lock @playwright/test@1.55.1
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
+        # Avoid apt DNS calls; require Chromium execution in the actual smoke test.
       - name: Build exact commit
         run: npm run build
       - name: Start exact commit
