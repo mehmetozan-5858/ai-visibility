@@ -144,6 +144,40 @@ test("webhook HTTP handler rejects forged signature and accepts synthetic comple
   if(oldSecret===undefined)delete process.env.PADDLE_LIVE_WEBHOOK_SECRET;else process.env.PADDLE_LIVE_WEBHOOK_SECRET=oldSecret;
  }
 });
+test("delayed renewal records payment but cannot reopen canceled subscription access",async()=>{
+ const prev=process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
+ process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED="true";
+ const {db,recordPaddleLiveEvent}=await harness();
+ try{
+  await db.query("INSERT INTO clients(id,name,domain,status) VALUES($1,'Synthetic A','example.invalid','active')",[client]);
+  await db.query("INSERT INTO payments(id,client_id,reference_code,status,plan,setup_amount,monthly_amount,currency) VALUES($1,$2,'SYNTH-LATE-RENEWAL','pending','Starter',120,49,'TRY')",[payment,client]);
+  await recordPaddleLiveEvent(event({id:'evt_renewalinitial',tx:'txn_initialrenewal'}));
+  assert.equal(await allowed(db,client),true);
+  const cancelled=event({id:'evt_renewalcancel',type:'subscription.canceled',tx:'sub_synthetica'});
+  cancelled.data.status='canceled';cancelled.data.items=[];
+  await recordPaddleLiveEvent(cancelled);
+  assert.equal(await allowed(db,client),false);
+  const renewal=event({id:'evt_delayedrenewal',tx:'txn_delayedrenewal',amount:'4900'});
+  renewal.data.origin='subscription_recurring';
+  const receipt=await recordPaddleLiveEvent(renewal);
+  assert.equal(receipt.renewalRecorded,true);
+  assert.equal(await allowed(db,client),false);
+  assert.equal((await db.query('SELECT status FROM clients WHERE id=$1',[client])).rows[0].status,'payment-review');
+  assert.equal((await db.query('SELECT COUNT(*)::int AS count FROM payments')).rows[0].count,2);
+  assert.equal((await recordPaddleLiveEvent(renewal)).duplicate,true);
+  // A newer, explicitly active lifecycle event for the bound subscription
+  // can restore access; recording the receipt alone cannot.
+  const resumed=event({id:'evt_verifiedresume',type:'subscription.resumed',tx:'sub_synthetica'});
+  resumed.occurred_at=new Date(Date.parse(cancelled.occurred_at)+1000).toISOString();
+  resumed.data.status='active';resumed.data.items=[];
+  assert.equal((await recordPaddleLiveEvent(resumed)).accessChanged,true);
+  assert.equal(await allowed(db,client),true);
+ }finally{
+  await db.close();
+  if(prev===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=prev;
+ }
+});
+
 test("refunded settlement and later completed notice cannot revive customer access",async()=>{
  const prev=process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
  process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED="true";
