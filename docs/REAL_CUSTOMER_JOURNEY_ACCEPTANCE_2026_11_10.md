@@ -100,3 +100,11 @@ No production database migration, deployment, payment creation, email send or cu
 - Scope: provider-confirmed Paddle payments only. Reconciled bank transfers would require a separate trusted bank verification mechanism; no new provider expenditure or payment occurs here.
 - **Critical release sequence:** review and approve SQL migration → assure signed completed webhook integration and subscription/reversal behavior with no real charge → isolate tenant/account tests → configure feature flag and credentials only with release approval → verify actual customer portal outcomes. Do not set the flag before the schema and end-to-end proof are ready.
 - Passing local policy or CI tests does not prove a real Paddle checkout, payment settlement, external callback delivery, or customer access. **Production HOLD.**
+
+
+## Isolated paid-portal entitlement acceptance (11 Nov 2026)
+- Adjusted `lib/pilot-access.js`: when strict settlement rollout is enabled, an old bank-transfer `paid` label cannot masquerade as Paddle settlement. A separately approved active pilot remains independently eligible instead of being accidentally blocked by that legacy label; this does not turn the pilot into paid revenue.
+- Synthetic Neon transaction on isolated `br-restless-thunder-b27p3xvv` confirmed: (1) `bank-transfer/paid` denied; (2) `paddle/paid` without signed settlement-proof row denied; (3) evidence for matching tenant permitted by the SQL read predicate; (4) other tenant denied; (5) `payment-review` state denied. Synthetic rows were rolled back; separate count check verified zero test client rows and zero settlement evidence rows.
+- Exact code commit `64df994d51a5777a2f821a3bb47587bf7c5bd0a0` passed GitHub CI, Web & Mobile Production Smoke, and Customer Journey Browser Acceptance on Ubuntu 24.04. This is still **not** a real Paddle charge, live webhook, or external customer authorization test.
+- Production confirmed to lack `verified_customer_settlements`; no enabled flags, actual charge, email, production mutation, merge or deploy.
+- Next gate: full signed Paddle callback and portal login against a fresh isolated database, including replay, refund/cancel/renewal sequencing, and a tenant-specific verified report before release.
