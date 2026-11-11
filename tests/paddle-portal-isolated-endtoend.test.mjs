@@ -123,7 +123,7 @@ test("webhook HTTP handler rejects forged signature and accepts synthetic comple
   await db.query("INSERT INTO clients(id,name,domain,status) VALUES($1,'Synthetic A','example.invalid','active')",[client]);
   await db.query("INSERT INTO payments(id,client_id,reference_code,status,plan,setup_amount,monthly_amount,currency) VALUES($1,$2,'SYNTH-WEBHOOK-HTTP','pending','Starter',120,49,'TRY')",[payment,client]);
   const source=(await readFile(new URL("../app/api/paddle/webhook/route.js",import.meta.url),"utf8"))
-   .replace(/^import .*;\\s*$/gm,"").replace(/^export /gm,"");
+   .replace(/^import .*;\s*$/gm,"").replace(/^export /gm,"");
   const POST=new Function("verifyPaddleLiveSignature","recordPaddleLiveEvent","Response","Buffer","console","process",
    source+";return POST;")(verifyPaddleLiveSignature,recordPaddleLiveEvent,Response,Buffer,{info:()=>{},error:()=>{}},process);
   const raw=JSON.stringify(event({id:"evt_httpfixturea",tx:"txn_httpfixturea"}));
