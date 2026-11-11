@@ -41,7 +41,7 @@ function event({id="evt_synthcompletea",type="transaction.completed",tx="txn_syn
  return {
   event_id:id,event_type:type,occurred_at:new Date().toISOString(),
   data:{id:tx,status:"completed",currency_code:currency,origin:"api",
-   subscription_id:subscriptionId,items:[{quantity:1,price:{unit_price:{amount}}}],
+   details:{totals:{subtotal:amount,discount:"0",tax:"0",total:amount,credit:"0",credit_to_balance:"0",balance:"0",grand_total:amount,currency_code:currency}},subscription_id:subscriptionId,items:[{quantity:1,price:{tax_mode:"internal",unit_price:{amount}}}],
    custom_data:{payment_id:paymentId,client_id:clientId}}
  };
 }
@@ -198,4 +198,34 @@ test("refunded settlement and later completed notice cannot revive customer acce
   await db.close();
   if(prev===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=prev;
  }
+});
+
+test('zero, discounted, missing or inconsistent final totals never grant paid access or settlement proof',async()=>{
+ const previous=process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED='true';
+ const {db,recordPaddleLiveEvent}=await harness();
+ try{
+  await db.query("INSERT INTO clients(id,name,domain,status) VALUES($1,'Synthetic','example.invalid','pending')",[client]);
+  await db.query("INSERT INTO payments(id,client_id,reference_code,status,plan,setup_amount,monthly_amount,currency) VALUES($1,$2,'SYNTH-TOTALS','pending','Starter',120,49,'TRY')",[payment,client]);
+  const variants=[
+   d=>{delete d.details},
+   d=>{Object.assign(d.details.totals,{discount:'16900',subtotal:'16900',total:'0',grand_total:'0'})},
+   d=>{Object.assign(d.details.totals,{discount:'100',subtotal:'16900',total:'16800',grand_total:'16800'})},
+   d=>{Object.assign(d.details.totals,{credit:'16900',grand_total:'0'})},
+   d=>{d.details.totals.grand_total='1'},d=>{d.details.totals.balance='1'},
+   d=>{d.details.totals.currency_code='EUR'},d=>{d.status='paid'},
+   d=>{d.items[0].price.tax_mode='unknown'},d=>{d.details.totals.tax='9007199254740992'}
+  ];
+  for(const [i,mutate] of variants.entries()){
+   const e=event({id:'evt_totalsnegative'+i,tx:'txn_totalsnegative'+i});mutate(e.data);
+   const result=await recordPaddleLiveEvent(e);
+   assert.equal(result.linked,false);assert.equal(result.reason,'final-totals-unverified');
+   assert.equal(await allowed(db,client),false);
+   assert.equal((await db.query('SELECT status FROM payments WHERE id=$1',[payment])).rows[0].status,'pending');
+   assert.equal((await db.query('SELECT status FROM clients WHERE id=$1',[client])).rows[0].status,'pending');
+   assert.equal((await db.query('SELECT count(*)::int AS n FROM verified_customer_settlements')).rows[0].n,0);
+  }
+  const valid=event({id:'evt_totalsvalid',tx:'txn_totalsvalid'});
+  assert.equal((await recordPaddleLiveEvent(valid)).paymentChanged,true);
+  assert.equal(await allowed(db,client),true);
+ }finally{if(previous===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=previous;await db.close()}
 });
