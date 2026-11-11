@@ -41,5 +41,9 @@ test("preview rechecks the active exact link and exposes only aggregate evidence
  assert.doesNotMatch(src,/createFreeAssessmentToken|Paddle|startScan|sendVerificationEmail/);
  const component=await readFile(new URL("../components/ApplicantAssessment.js",import.meta.url),"utf8");
  assert.match(component,/window\.location\.hash/);
- assert.match(component,/a\.status==="ready"/);
+ assert.match(component,/a\?\.status==="ready"/);
+ assert.match(component,/Number\.isInteger\(a\.score\)/);
+ assert.match(component,/a\.samples>=6/);
+ assert.match(component,/a\.providers>=2/);
+ assert.match(component,/a\.queries>=2/);
 });
