@@ -108,3 +108,10 @@ No production database migration, deployment, payment creation, email send or cu
 - Exact code commit `64df994d51a5777a2f821a3bb47587bf7c5bd0a0` passed GitHub CI, Web & Mobile Production Smoke, and Customer Journey Browser Acceptance on Ubuntu 24.04. This is still **not** a real Paddle charge, live webhook, or external customer authorization test.
 - Production confirmed to lack `verified_customer_settlements`; no enabled flags, actual charge, email, production mutation, merge or deploy.
 - Next gate: full signed Paddle callback and portal login against a fresh isolated database, including replay, refund/cancel/renewal sequencing, and a tenant-specific verified report before release.
+
+
+## Portal admission edge cases and settlement replay hardening (11 Nov 2026)
+- Tightened the opt-in `CUSTOMER_SETTLEMENT_PROOF_ENABLED` webhook branch: new immutable settlement evidence now requires `paymentResult.paymentChanged===true`, in addition to a correctly linked `transaction.completed` event, paid status, currency/amount validation and non-renewal. A pre-existing `paid` label or another completed notice for an already-paid record can no longer mint a **new** independent Paddle settlement proof.
+- Added focused regression tests for the stricter transition condition. This deliberately refuses automatic retroactive proof; any migration of historical genuine Paddle payments requires an independently verified reconciliation process, not a DB status update.
+- Added `tests/customer-portal-payment-tenant-acceptance.test.mjs` testing tenant isolation, empty/unverified evidence handling and customer-session-derived report query. Cross-tenant rows returned by a compromised/mock data layer are filtered before presentation; unverified answers are never described as source-supported.
+- Browser/CI reruns are required for exact commit. This work **does not establish** production Paddle webhook delivery, a real settlement, real customer sign-in or report receipt.
