@@ -63,7 +63,7 @@ export async function POST(req){
   const token=createApplicantAssessmentGrant({leadId,prospectId});
   const link=applicantAssessmentLink(token);
   await sendApplicantAssessmentLink({email:recipient,link});
-  outcome="sent";
+  outcome="provider-accepted";
  }catch{}
  try{
   await db.query(`UPDATE public.applicant_assessment_deliveries SET status=$2,completed_at=NOW(),
@@ -71,5 +71,5 @@ export async function POST(req){
     WHERE id=$1 AND status='reserved'`,[deliveryId,outcome]);
  }catch{return json({error:"Delivery outcome could not be recorded; manual review required"},503)}
  if(outcome==="failed")return json({error:"Delivery unconfirmed; automatic retry disabled"},503);
- return json({ok:true,deliveryId,status:"sent",expiryMinutes:15,automaticRetry:false});
+ return json({ok:true,deliveryId,status:"provider-accepted",expiryMinutes:15,automaticRetry:false});
 }
