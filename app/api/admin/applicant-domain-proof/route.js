@@ -63,7 +63,9 @@ export async function POST(req){
    const email=(await conn.query(`SELECT 1 FROM public.lead_email_challenges c
      JOIN public.customer_leads l ON l.id=c.lead_id AND lower(l.email)=c.email
      WHERE c.lead_id=$1 AND c.verified_at IS NOT NULL AND c.consumed_at IS NOT NULL`,[input.leadId])).rows.length;
-   if(!email||!row||row.nonce!==challenge.nonce||row.domain!==context.domain||row.verified_at||new Date(row.expires_at).getTime()<=Date.now()){
+   const current=(await conn.query("SELECT l.website,p.domain FROM public.customer_leads l JOIN public.prospects p ON p.id=$2 WHERE l.id=$1",[input.leadId,input.prospectId])).rows[0];
+   if(matchingApplicantDomain(current,{domain:current?.domain})!==context.domain||
+      !email||!row||row.nonce!==challenge.nonce||row.domain!==context.domain||row.verified_at||new Date(row.expires_at).getTime()<=Date.now()){
     await conn.query("ROLLBACK");return json({error:"Verification state changed; retry review"},409);
    }
    const reviewId=randomUUID();
