@@ -1,5 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
+import {freeAssessmentPresentation} from '../lib/free-assessment-presentation.mjs';
 export default function FreeAssessment(){
  const [data,setData]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);
  useEffect(()=>{
@@ -9,15 +10,15 @@ export default function FreeAssessment(){
   fetch('/api/free-assessment',{headers:{'x-preview-token':token},cache:'no-store',signal:controller.signal}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||'Ön değerlendirme alınamadı.');setData(d)}).catch(e=>{if(e.name!=='AbortError')setError(e.message)}).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
   return ()=>controller.abort();
  },[]);
- const tr=data?.language!=='en',a=data?.assessment;
+ const tr=data?.language!=='en',a=data?.assessment,proof=freeAssessmentPresentation(a);
  return <main style={{maxWidth:820,margin:'0 auto',padding:'32px 20px 100px',overflowWrap:'anywhere'}}>
   <a href="/">AI Visibility Works</a><h1>{tr?'Ücretsiz ön değerlendirme':'Your free assessment'}</h1>
   {loading?<p role="status">Ön değerlendirme yükleniyor… / Loading your assessment…</p>:null}
   {error?<section className="panel" role="alert"><p>{error}</p><a href="/iletisim">İletişim / Contact</a></section>:null}
   {data?<><section className="panel"><h2>{data.business.name}</h2><p>{[data.business.city,data.business.country,data.business.sector].filter(Boolean).join(' · ')}</p>
-   <h3>{tr?'Örnek yanıt eşleşme puanı':'Sample-answer match score'}</h3>
-   {a.status==='ready'?<><p style={{fontSize:48,fontWeight:800,margin:'16px 0'}}>{a.score}/100</p><p>{tr?'Puan, uygun kayıtlı yanıtların yüzde kaçında tam marka adı veya alan adı eşleşmesi bulunduğunu gösterir.':'The score shows the percentage of eligible recorded answers with an exact business-name or domain match.'}</p></>:<><p style={{fontSize:28,fontWeight:700}}>{tr?'Yeterli veri yok':'Insufficient evidence'}</p><p>{tr?'Puan için son 14 günde en az 6 farklı yanıt örneği, 2 sağlayıcı ve 2 farklı markasız sorgu gerekir. Eksik ölçüm sıfır puan olarak gösterilmez.':'A score requires at least 6 distinct answer samples, 2 providers and 2 different unbranded questions within the last 14 days. Missing evidence is not shown as a zero score.'}</p></>}
-   <p>{a.samples} {tr?'yanıt örneği':'answer samples'} · {a.providers} {tr?'sağlayıcı':'providers'} · {a.queries} {tr?'sorgu':'questions'}</p>
+   <h3>{tr?'Örnek yanıt eşleşme puanı':'Sample-answer match score'}</h3><p role="status" style={{fontWeight:600}}>{tr?proof.labels.tr:proof.labels.en}</p>
+   {proof.showScore?<><p style={{fontSize:48,fontWeight:800,margin:'16px 0'}}>{a.score}/100</p><p>{tr?'Puan, uygun kayıtlı yanıtların yüzde kaçında tam marka adı veya alan adı eşleşmesi bulunduğunu gösterir.':'The score shows the percentage of eligible recorded answers with an exact business-name or domain match.'}</p></>:<><p style={{fontSize:28,fontWeight:700}}>{tr?'Yeterli veri yok':'Insufficient evidence'}</p><p>{tr?'Puan için son 14 günde en az 6 farklı yanıt örneği, 2 sağlayıcı ve 2 farklı markasız sorgu gerekir. Eksik ölçüm sıfır puan olarak gösterilmez.':'A score requires at least 6 distinct answer samples, 2 providers and 2 different unbranded questions within the last 14 days. Missing evidence is not shown as a zero score.'}</p></>}
+   <p>{a.samples} {tr?'yanıt örneği':'answer samples'} · {a.providers} {tr?'sağlayıcı':'providers'} · {a.queries} {tr?'sorgu':'questions'}</p>{!proof.showScore&&proof.missing&&<p>{tr?'Gerekli ek kanıt':'Additional evidence required'}: {proof.missing.samples} {tr?'örnek':'samples'}, {proof.missing.providers} {tr?'sağlayıcı':'providers'}, {proof.missing.queries} {tr?'farklı sorgu':'distinct queries'}.</p>}
    {a.measuredAt?<p>{tr?'Son uygun örnek':'Latest eligible sample'}: {new Date(a.measuredAt).toLocaleString(tr?'tr-TR':'en-GB',{timeZone:'UTC'})} UTC</p>:null}
    <small>{tr?'Bu sınırlı API yanıt örneklemi genel AI görünürlüğü, tüketici uygulamalarındaki sıralama veya satış olasılığı ölçümü değildir. Modelin kaynak içeriği ayrıca doğrulanmış sayılmaz.':'This limited API-answer sample is not a measure of general AI visibility, consumer-app ranking or likelihood of sales. Referenced source content is not independently verified.'}</small>
   </section>
