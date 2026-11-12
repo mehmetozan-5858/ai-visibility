@@ -4,14 +4,17 @@ import {freeAssessmentEvidence} from "../../../lib/free-assessment-rules";
 import {databasePool} from "../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../lib/db";
 import {checkRateLimit} from "../../../lib/api-security";
+import {buildApplicantAssessmentPdf} from "../../../lib/applicant-assessment-pdf.mjs";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
-const headers={"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow"};
+const headers={"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow","Vary":"x-applicant-assessment-token","X-Content-Type-Options":"nosniff"};
 export async function GET(req){
- const limited=checkRateLimit(req,{bucket:"applicant-assessment-preview",limit:20,windowMs:60000});if(limited)return limited;
+ const limited=checkRateLimit(req,{bucket:"applicant-assessment-preview",limit:20,windowMs:60000});if(limited){for(const [key,value] of Object.entries(headers))limited.headers.set(key,value);return limited;}
  if(!linkedApplicantAssessmentEnabled())return Response.json({error:"Preview not enabled"},{status:503,headers});
  const grant=verifyApplicantAssessmentGrant(req.headers.get("x-applicant-assessment-token"));
  if(!grant)return Response.json({error:"Invalid or expired preview grant"},{status:401,headers});
+ const format=new URL(req.url).searchParams.get('format');
+ if(format!==null&&format!=='pdf')return Response.json({error:"Unsupported assessment format"},{status:400,headers});
  try{
   const url=getDatabaseUrl();if(!url)throw Error("no-database");const pool=databasePool(url);
   const row=(await pool.query(`SELECT l.website,l.email,p.id,p.name,p.domain,p.country,p.city,p.sector,
@@ -34,7 +37,12 @@ export async function GET(req){
   const assessment=freeAssessmentEvidence(row,runs);
   // Never expose source provider text, internal prospect fields, customer PII or unverified recommendations.
   const language=/^(Türkiye|Turkey|TR)$/i.test(row.country||"")?"tr":"en";
-  return Response.json({business:{name:row.name,country:row.country,city:row.city,sector:row.sector},
+  const business={name:row.name,country:row.country,city:row.city,sector:row.sector};
+  if(format==='pdf'){
+   const bytes=await buildApplicantAssessmentPdf({business,assessment,language});
+   return new Response(bytes,{headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'attachment; filename="ai-visibility-free-assessment.pdf"'}});
+  }
+  return Response.json({business,
    assessment,language,kind:"limited-sample-only",paidAccess:false,providerCallStarted:false},{headers});
  }catch{return Response.json({error:"Preview currently unavailable"},{status:503,headers})}
 }

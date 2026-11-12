@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {createAdminToken} from '../lib/admin-auth.js';
+import {buildApplicantAssessmentPdf} from '../lib/applicant-assessment-pdf.mjs';
+const pdfFixture=await buildApplicantAssessmentPdf({business:{name:'Synthetic browser fixture'},assessment:{status:'insufficient',score:null,samples:0,providers:0,queries:0}});
 const BASE='http://127.0.0.1:3000';
 const enabled=process.env.APPLICANT_INTAKE_SMOKE_ENABLED==='true';
 const leadId='11111111-1111-4111-8111-111111111111',prospectId='22222222-2222-4222-8222-222222222222';
@@ -9,7 +11,7 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  const unauthorized=await page.request.post(BASE+'/api/admin/applicant-intake',{data:{leadId,confirm:'prepare-applicant-business'}});
  expect(unauthorized.status()).toBe(401);
  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'}]);
- const calls=[];let verifies=0,grants=0,configReads=0,measurements=0;
+ const calls=[];let verifies=0,grants=0,configReads=0,measurements=0,pdfDownloads=0;
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname,body=route.request().postDataJSON()||{};
   if(path==='/api/answer-evidence'&&route.request().method()==='GET')return route.fulfill({json:{runs:[],freeMeasurement:{enabled:true,serverKeyConfigured:++configReads>1,modelConfigured:true,ready:configReads>1}}});
@@ -20,7 +22,13 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
   if(path==='/api/admin/applicant-domain-proof'&&body.action==='issue')return route.fulfill({json:{ok:true,challenge:{record:'_aiv-verify.example.com',value:'aiv-lead='+ 'a'.repeat(48)}}});
   if(path==='/api/admin/applicant-domain-proof'&&body.action==='verify')return ++verifies===1?route.fulfill({status:422,json:{ok:false,reason:'DNS TXT proof not confirmed'}}):route.fulfill({json:{ok:true,verified:true,accessGranted:false,providerCalled:false}});
   if(path==='/api/admin/applicant-assessment-grant')return ++grants===1?route.fulfill({status:403,json:{error:'Verified ownership and email required'}}):route.fulfill({json:{ok:true,token:'synthetic-local-preview',expiresInSeconds:900}});
-  if(path==='/api/applicant-assessment')return route.fulfill({json:{language:'tr',business:{name:'Yerel test',country:'Türkiye'},assessment:{status:'insufficient',score:null,samples:0,providers:0,queries:0}}});
+  if(path==='/api/applicant-assessment'){
+   if(new URL(route.request().url()).searchParams.get('format')==='pdf'){
+    expect(route.request().headers()['x-applicant-assessment-token']).toBe('synthetic-local-preview');
+    return ++pdfDownloads===1?route.fulfill({contentType:'application/pdf',headers:{'content-disposition':'attachment; filename="ai-visibility-free-assessment.pdf"'},body:Buffer.from(pdfFixture)}):route.fulfill({status:401,json:{error:'Expired fixture grant'}});
+   }
+   return route.fulfill({json:{language:'tr',business:{name:'Yerel test',country:'Türkiye'},assessment:{status:'insufficient',score:null,samples:0,providers:0,queries:0}}});
+  }
   return route.fulfill({status:503,json:{error:'Unexpected synthetic call'}});
  });
  await page.goto(BASE+'/admin/basvuru-kabul');
@@ -62,6 +70,14 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await preview.click();await expect(page.getByRole('status')).toContainText('Sonuç erişimi açılamadı.');await expect(preview).toBeEnabled();
  await preview.click();await expect(page.getByRole('heading',{name:'Ücretsiz AI ön değerlendirmeniz',exact:true})).toBeVisible();
  await expect(page.getByText('Henüz yeterli ölçüm bulunmuyor; skor gösterilmiyor.',{exact:true})).toBeVisible();
+ await expect(page).toHaveURL(BASE+'/basvuru-analiz');
+ const priorMeasurements=calls.filter(x=>x.path==='/api/answer-evidence').length;
+ const downloadEvent=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Ücretsiz ön değerlendirme PDF’ini indir',exact:true}).click();
+ expect((await downloadEvent).suggestedFilename()).toBe('ai-visibility-free-assessment.pdf');
+ await page.getByRole('button',{name:'Ücretsiz ön değerlendirme PDF’ini indir',exact:true}).click();
+ await expect(page.getByRole('alert').filter({hasText:'PDF erişimi doğrulanamadı.'})).toBeVisible();
+ expect(calls.filter(x=>x.path==='/api/answer-evidence')).toHaveLength(priorMeasurements);
  await expect(page).toHaveURL(BASE+'/basvuru-analiz');
  expect(calls.filter(x=>x.path==='/api/admin/applicant-assessment-grant')).toHaveLength(2);
  expect(calls.filter(x=>x.path==='/api/answer-evidence').every(x=>x.body.freeOnly===true)).toBe(true);
