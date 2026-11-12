@@ -1,7 +1,8 @@
 "use client";
-import {useEffect,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 export default function ApplicantAssessment(){
  const [value,setValue]=useState(null),[message,setMessage]=useState(""),[busy,setBusy]=useState(true);
+ const grant=useRef(null),[downloading,setDownloading]=useState(false);
  useEffect(()=>{
   const controller=new AbortController();
   const token=new URLSearchParams(window.location.hash.slice(1)).get("token");
@@ -9,13 +10,25 @@ export default function ApplicantAssessment(){
   if(!token){setMessage("Güvenli analiz bağlantısı gerekli. / A secure assessment link is required.");setBusy(false);return()=>controller.abort();}
   // Remove the short-lived bearer fragment from the visible address and current history entry immediately.
   window.history.replaceState(window.history.state,"",window.location.pathname+window.location.search);
+  grant.current=token;
   fetch("/api/applicant-assessment",{headers:{"x-applicant-assessment-token":token},cache:"no-store",signal:controller.signal})
    .then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||"Assessment unavailable");return data;})
    .then(data=>setValue(data)).catch(e=>{if(e.name!=="AbortError")setMessage(e.message);})
    .finally(()=>{if(!controller.signal.aborted)setBusy(false);});
-  return()=>controller.abort();
+  return()=>{grant.current=null;controller.abort();};
  },[]);
  const en=value?.language==="en",a=value?.assessment;
+ async function download(){
+  if(!grant.current||downloading)return;
+  setDownloading(true);setMessage('');
+  try{
+   const response=await fetch('/api/applicant-assessment?format=pdf',{headers:{'x-applicant-assessment-token':grant.current},cache:'no-store'});
+   if(!response.ok||!response.headers.get('content-type')?.startsWith('application/pdf'))throw Error(en?'PDF access could not be verified. Open a new secure assessment link.':'PDF erişimi doğrulanamadı. Yeni güvenli ön değerlendirme bağlantısını açın.');
+   const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement('a');
+   link.href=url;link.download='ai-visibility-free-assessment.pdf';document.body.append(link);link.click();link.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(error){setMessage(error.message)}finally{setDownloading(false)}
+ }
  const missing=a&&Number.isInteger(a.samples)&&Number.isInteger(a.providers)&&Number.isInteger(a.queries)?{samples:Math.max(0,6-a.samples),providers:Math.max(0,2-a.providers),queries:Math.max(0,2-a.queries)}:null;
  const measuredAt=a?.measuredAt&&Number.isFinite(Date.parse(a.measuredAt))?new Date(a.measuredAt).toLocaleString(en?"en-GB":"tr-TR",{timeZone:"Europe/Istanbul"}):null;
  const scoreReady=a?.status==="ready"&&Number.isInteger(a.score)&&a.score>=0&&a.score<=100&&
@@ -38,6 +51,7 @@ export default function ApplicantAssessment(){
    <p>{en?"What happens next:":"Sonraki aşama:"} {en?"Verified ownership and consent, evidence-backed measurement, then an optional detailed report. No new AI call is triggered by viewing this page.":"İşletme sahipliği ve onayın doğrulanması, kanıtlı ölçüm, ardından isteğe bağlı ayrıntılı rapor. Bu sayfayı açmak yeni AI isteği başlatmaz."}</p>
    <small>{en?"This measures a limited set of recorded model responses, not general market visibility or guaranteed sales.":"Bu yalnızca sınırlı sayıdaki kayıtlı model yanıtlarını ölçer; genel görünürlük veya satış garantisi değildir."}</small>
    <p>{en?"Detailed reports, service access and payments require separate verification.":"Detaylı rapor, hizmet erişimi ve ödeme ayrı doğrulama gerektirir."}</p>
+   <button type="button" disabled={downloading} onClick={download}>{downloading?(en?'Preparing PDF…':'PDF hazırlanıyor…'):(en?'Download free assessment PDF':'Ücretsiz ön değerlendirme PDF’ini indir')}</button>
    <a href="/hizmetler">{en?"Explore services":"Hizmetleri incele"}</a>
   </section>}
  </main>;
