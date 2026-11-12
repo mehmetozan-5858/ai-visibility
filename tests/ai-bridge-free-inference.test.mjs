@@ -103,3 +103,17 @@ test("a paid request fee prevents completion calls even with free tokens",async(
  assert.equal(result.reason,"model-not-verified-free");
  assert.equal(calls.length,1);
 });
+test("429 retains only allowed limit metadata and a bounded wait, never private error text",async()=>{
+ const fetcher=async url=>url.endsWith('/models')?{ok:true,json:async()=>({data:[model]})}:new Response(JSON.stringify({error:{message:'private-key-payload',metadata:{limit_source:'upstream_provider_shared_pool',raw:'private-provider-payload',user_id:'private-user'}}}),{status:429,headers:{'content-type':'application/json','retry-after':'60'}});
+ const result=await runFreeBridgeTask({modelId:id,prompt:'Neutral question',apiKey:'synthetic',enabled:true,fetcher});
+ assert.deepEqual(result,{ok:false,reason:'provider-request-failed',status:429,limitSource:'upstream_provider_shared_pool',retryAfterSeconds:60});
+ assert.doesNotMatch(JSON.stringify(result),/private-/);
+});
+test("malformed, oversized and unrecognized 429 diagnostics retain the HTTP failure",async()=>{
+ for(const [body,retry] of [['not JSON','secret-header'],[JSON.stringify({error:{metadata:{limit_source:'private-source'}}}),'999999'],[' '.repeat(16385),'30']]){
+  const fetcher=async url=>url.endsWith('/models')?{ok:true,json:async()=>({data:[model]})}:new Response(body,{status:429,headers:{'content-type':'application/json','retry-after':retry}});
+  const result=await runFreeBridgeTask({modelId:id,prompt:'Neutral question',apiKey:'synthetic',enabled:true,fetcher});
+  assert.equal(result.status,429);assert.equal(result.reason,'provider-request-failed');assert.equal(result.limitSource,undefined);
+  assert.equal(result.retryAfterSeconds,retry==='30'?30:undefined);assert.doesNotMatch(JSON.stringify(result),/private|secret/);
+ }
+});
