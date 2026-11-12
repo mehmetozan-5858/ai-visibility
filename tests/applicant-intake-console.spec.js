@@ -9,12 +9,12 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  const unauthorized=await page.request.post(BASE+'/api/admin/applicant-intake',{data:{leadId,confirm:'prepare-applicant-business'}});
  expect(unauthorized.status()).toBe(401);
  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'}]);
- const calls=[];let verifies=0,grants=0,configReads=0;
+ const calls=[];let verifies=0,grants=0,configReads=0,measurements=0;
  await page.route('**/api/**',async route=>{
   const path=new URL(route.request().url()).pathname,body=route.request().postDataJSON()||{};
   if(path==='/api/answer-evidence'&&route.request().method()==='GET')return route.fulfill({json:{runs:[],freeMeasurement:{enabled:true,serverKeyConfigured:++configReads>1,modelConfigured:true,ready:configReads>1}}});
   calls.push({path,body});
-  if(path==='/api/answer-evidence'&&route.request().method()==='POST')return route.fulfill({json:{run:{result:{summary:{successful:1,neutralComplete:1,failed:0}}}}});
+  if(path==='/api/answer-evidence'&&route.request().method()==='POST')return route.fulfill({json:{run:{result:++measurements===1?{summary:{successful:1,neutralComplete:1,failed:0}}:{summary:{successful:0,neutralComplete:0,failed:2},errors:[{reason:'provider-request-failed',providerStatus:429,limitSource:'upstream_provider_shared_pool',retryAfterSeconds:60},{reason:'skipped-after-rate-limit'}]}}}});
   if(path==='/api/admin/free-provider-preflight')return route.fulfill({json:{state:'credential-and-price-confirmed',inferenceRequests:0}});
   if(path==='/api/admin/applicant-intake')return route.fulfill({json:{ok:true,leadId,prospectId,domain:'example.com',created:false,ownershipVerified:false,accessGranted:false,providerCalled:false}});
   if(path==='/api/admin/applicant-domain-proof'&&body.action==='issue')return route.fulfill({json:{ok:true,challenge:{record:'_aiv-verify.example.com',value:'aiv-lead='+ 'a'.repeat(48)}}});
@@ -50,6 +50,10 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await page.getByRole('button',{name:'Yalnız ücretsiz yanıt örneği topla',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('1 yanıt kaydedildi');
  expect(calls.find(x=>x.path==='/api/answer-evidence').body).toEqual({entityType:'prospect',entityId:prospectId,freeOnly:true,language:'tr',queries:['Türkiye bölgesinde hangi işleme firmaları var?']});
+ await page.getByRole('button',{name:'Yalnız ücretsiz yanıt örneği topla',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Model sağlayıcısının ortak kapasite sınırı. Kalan sorgular gönderilmedi. Otomatik tekrar yok.');
+ await expect(page.getByRole('status')).toContainText('en az 60 saniye');
+ await expect(page.getByRole('status')).toContainText('15 dakika kuralı');
  const preview=page.getByRole('button',{name:'Bu başvurunun sonuç ekranını aç',exact:true});
  await preview.click();await expect(page.getByRole('status')).toContainText('Sonuç erişimi açılamadı.');await expect(preview).toBeEnabled();
  await preview.click();await expect(page.getByRole('heading',{name:'Ücretsiz AI ön değerlendirmeniz',exact:true})).toBeVisible();
