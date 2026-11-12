@@ -11,6 +11,7 @@ export default function Page(){
         <Link href="/admin">← Yönetim paneline dön</Link>
       </header>
       <p><Link href="/admin/arge">Ar-Ge ve ortak ajan denetimi</Link></p>
+      <p><Link href="/admin/basvuru-kabul">Başvuru ve işletme sahipliği kabulü</Link></p>
       <LaunchQAConsole/>
     </div>
   </main>;
