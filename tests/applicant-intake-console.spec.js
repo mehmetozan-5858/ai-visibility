@@ -9,9 +9,12 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  const unauthorized=await page.request.post(BASE+'/api/admin/applicant-intake',{data:{leadId,confirm:'prepare-applicant-business'}});
  expect(unauthorized.status()).toBe(401);
  await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'}]);
- const calls=[];let verifies=0,grants=0;
+ const calls=[];let verifies=0,grants=0,configReads=0;
  await page.route('**/api/**',async route=>{
-  const path=new URL(route.request().url()).pathname,body=route.request().postDataJSON()||{};calls.push({path,body});
+  const path=new URL(route.request().url()).pathname,body=route.request().postDataJSON()||{};
+  if(path==='/api/answer-evidence'&&route.request().method()==='GET')return route.fulfill({json:{runs:[],freeMeasurement:{enabled:true,serverKeyConfigured:++configReads>1,modelConfigured:true,ready:configReads>1}}});
+  calls.push({path,body});
+  if(path==='/api/answer-evidence'&&route.request().method()==='POST')return route.fulfill({json:{run:{result:{summary:{successful:1,neutralComplete:1,failed:0}}}}});
   if(path==='/api/admin/applicant-intake')return route.fulfill({json:{ok:true,leadId,prospectId,domain:'example.com',created:false,ownershipVerified:false,accessGranted:false,providerCalled:false}});
   if(path==='/api/admin/applicant-domain-proof'&&body.action==='issue')return route.fulfill({json:{ok:true,challenge:{record:'_aiv-verify.example.com',value:'aiv-lead='+ 'a'.repeat(48)}}});
   if(path==='/api/admin/applicant-domain-proof'&&body.action==='verify')return ++verifies===1?route.fulfill({status:422,json:{ok:false,reason:'DNS TXT proof not confirmed'}}):route.fulfill({json:{ok:true,verified:true,accessGranted:false,providerCalled:false}});
@@ -24,6 +27,8 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await page.getByLabel('Başvuru referansı',{exact:true}).fill(leadId);
  await page.getByRole('button',{name:'İşletme kaydını hazırla',exact:true}).click();
  const issue=page.getByRole('button',{name:'DNS doğrulama kaydı oluştur',exact:true});await expect(issue).toBeVisible();expect(calls).toHaveLength(1);
+ await expect(page.getByRole('button',{name:'Yalnız ücretsiz yanıt örneği topla',exact:true})).toBeDisabled();
+ await expect(page.getByText('Sunucu anahtarı tanımlı değil.',{exact:true})).toBeVisible();
  await issue.click();await expect(page.getByText('_aiv-verify.example.com',{exact:true})).toBeVisible();
  // A refreshed console must check the already-published challenge without rotating it.
  await page.reload();await page.getByLabel('Başvuru referansı',{exact:true}).fill(leadId);
@@ -37,13 +42,17 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await verify.click();await expect(page.getByRole('status')).toContainText('Alan adı sahipliği doğrulandı.');await expect(verify).toBeDisabled();
  expect(calls).toHaveLength(5);expect(calls[0].body).toEqual({leadId,confirm:'prepare-applicant-business'});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2)).toBe(false);
+ await page.getByLabel('Markasız ölçüm sorguları (her satıra bir sorgu, en fazla iki)',{exact:true}).fill('Türkiye bölgesinde hangi işleme firmaları var?');
+ await page.getByRole('button',{name:'Yalnız ücretsiz yanıt örneği topla',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('1 yanıt kaydedildi');
+ expect(calls.find(x=>x.path==='/api/answer-evidence').body).toEqual({entityType:'prospect',entityId:prospectId,freeOnly:true,language:'tr',queries:['Türkiye bölgesinde hangi işleme firmaları var?']});
  const preview=page.getByRole('button',{name:'Bu başvurunun sonuç ekranını aç',exact:true});
  await preview.click();await expect(page.getByRole('status')).toContainText('Sonuç erişimi açılamadı.');await expect(preview).toBeEnabled();
  await preview.click();await expect(page.getByRole('heading',{name:'Ücretsiz AI ön değerlendirmeniz',exact:true})).toBeVisible();
  await expect(page.getByText('Henüz yeterli ölçüm bulunmuyor; skor gösterilmiyor.',{exact:true})).toBeVisible();
  await expect(page).toHaveURL(BASE+'/basvuru-analiz');
  expect(calls.filter(x=>x.path==='/api/admin/applicant-assessment-grant')).toHaveLength(2);
- expect(calls.every(x=>!x.path.includes('answer-evidence'))).toBe(true);
+ expect(calls.filter(x=>x.path==='/api/answer-evidence').every(x=>x.body.freeOnly===true)).toBe(true);
  await page.goto(BASE+'/admin/basvuru-kabul');
  await expect(preview).toHaveCount(0);
  await page.getByLabel('Başvuru referansı',{exact:true}).fill('33333333-3333-4333-8333-333333333333');
