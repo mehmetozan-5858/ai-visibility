@@ -30,6 +30,8 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await page.getByRole('button',{name:'İşletme kaydını hazırla',exact:true}).click();
  const verify=page.getByRole('button',{name:'DNS kaydını kontrol et',exact:true});await expect(verify).toBeVisible();
  expect(calls.filter(x=>x.body.action==='issue')).toHaveLength(1);
+ await expect(page.getByRole('button',{name:'Bu başvurunun sonuç ekranını aç',exact:true})).toBeVisible();
+ expect(calls.filter(x=>x.path==='/api/admin/applicant-assessment-grant')).toHaveLength(0);
  await verify.click();
  await expect(page.getByRole('status')).toHaveText('DNS TXT proof not confirmed');await expect(verify).toBeEnabled();
  await verify.click();await expect(page.getByRole('status')).toContainText('Alan adı sahipliği doğrulandı.');await expect(verify).toBeDisabled();
