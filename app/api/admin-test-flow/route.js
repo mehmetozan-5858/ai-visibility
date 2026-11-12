@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import {servicePrice} from "../../../lib/regional-pricing";
 import {addClient,findClientByIdentity,createScan,completeScan,getLatestCompletedScan,getOrCreatePaymentIntent,recordPaymentConsent,reportPayment,confirmPayment} from "../../../lib/repository";
 import {createPaymentAccessToken} from "../../../lib/admin-auth";
-import {hashPassword,withClientCredentialDatabase} from "../../../lib/client-credentials";
+import {hashPassword,withClientCredentialDatabase,getClientCredential} from "../../../lib/client-credentials";
 import {completeTestCredential} from "../../../lib/test-customer-verification";
 import {createVerificationCode,sendVerificationEmail} from "../../../lib/email-verification";
 import {requireAdmin,enforceSameOrigin,checkRateLimit} from "../../../lib/api-security";
@@ -69,6 +69,7 @@ export async function POST(req){
 
     if(action!=="start")return json({error:"Geçersiz test işlemi."},{status:400});
     const client=await ensureTestClient();
+    if(await getClientCredential(client.id))return json({error:"Test hesabının mevcut giriş kaydı korunuyor. Testi tekrarlamak şifrenizi değiştirmez; müşteri girişini kullanın.",code:"test-credential-exists"},{status:409});
     const {scan,payment}=await ensureTestData(client);
     const token=await createPaymentAccessToken(client.id,7200,"business-diagnosis");
     const verification=await createVerificationCode(client.id,email);
@@ -85,6 +86,7 @@ export async function POST(req){
     });
   }catch(e){
     const m=String(e?.message||"");
+    if(m==="test-credential-already-exists")return json({error:"Mevcut müşteri şifresi korundu. Test üzerinden yeni şifre üretilmedi; müşteri girişini kullanın.",code:"test-credential-exists"},{status:409});
     if(m==="verification-rate-limit")return json({error:"Yeni kod istemeden önce 60 saniye bekleyin."},{status:429});
     if(m==="email-provider-not-configured"||m.startsWith("email-send-failed"))return json({error:"Doğrulama e-postası gönderilemedi."},{status:503});
     if(m==="verification-invalid-or-expired")return json({error:"Kod hatalı veya süresi dolmuş."},{status:400});
