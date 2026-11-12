@@ -20,7 +20,11 @@ export default function ApplicantIntakeConsole(){
     const summary=data.run?.result?.summary;
     if(!summary)throw Error('Ölçüm sonucu doğrulanamadı.');
     const reasons=[...new Set((data.run.result.errors||[]).map(x=>[x.reason,x.providerStatus?'HTTP '+x.providerStatus:''].filter(Boolean).join(' ')).filter(Boolean))].join(' · ');
-    setMessage(`${summary.successful} yanıt kaydedildi; ${summary.neutralComplete} tam ve tarafsız örnek; ${summary.failed} hata. Tek sağlayıcı skora yetmez. Sonuç ekranından kayıtlı kanıtı inceleyebilirsiniz.${reasons?' Hata sınıfı: '+reasons:''}`);
+    const limited=(data.run.result.errors||[]).find(x=>x.providerStatus===429);
+    const limitLabels={'openrouter_free_tier_per_minute':'OpenRouter dakika kotası','openrouter_free_tier_per_day':'OpenRouter günlük kotası','upstream_provider_shared_pool':'Model sağlayıcısının ortak kapasite sınırı'};
+    const skipped=(data.run.result.errors||[]).some(x=>x.reason==='skipped-after-rate-limit');
+    const limitNote=limited?` ${limitLabels[limited.limitSource]||'Ücretsiz sağlayıcının istek sınırı; hangi katmanda olduğu bildirilmedi'}. ${skipped?'Kalan sorgular gönderilmedi. ':'Ölçüm sonlandırıldı. '}Otomatik tekrar yok.${Number.isInteger(limited.retryAfterSeconds)?' Sağlayıcı en az '+limited.retryAfterSeconds+' saniye beklemeyi bildirdi; uygulamanın 15 dakika kuralı da geçerlidir.':''}`:'';
+    setMessage(`${summary.successful} yanıt kaydedildi; ${summary.neutralComplete} tam ve tarafsız örnek; ${summary.failed} hata veya gönderilmemiş sorgu. Tek sağlayıcı skora yetmez. Sonuç ekranından kayıtlı kanıtı inceleyebilirsiniz.${limitNote}${reasons?' Hata sınıfı: '+reasons:''}`);
     return;
    }
    if(action==='preview'){
