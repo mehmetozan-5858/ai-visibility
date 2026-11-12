@@ -23,10 +23,15 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await page.getByRole('button',{name:'İşletme kaydını hazırla',exact:true}).click();
  const issue=page.getByRole('button',{name:'DNS doğrulama kaydı oluştur',exact:true});await expect(issue).toBeVisible();expect(calls).toHaveLength(1);
  await issue.click();await expect(page.getByText('_aiv-verify.example.com',{exact:true})).toBeVisible();
- const verify=page.getByRole('button',{name:'DNS kaydını kontrol et',exact:true});await verify.click();
+ // A refreshed console must check the already-published challenge without rotating it.
+ await page.reload();await page.getByLabel('Başvuru referansı',{exact:true}).fill(leadId);
+ await page.getByRole('button',{name:'İşletme kaydını hazırla',exact:true}).click();
+ const verify=page.getByRole('button',{name:'DNS kaydını kontrol et',exact:true});await expect(verify).toBeVisible();
+ expect(calls.filter(x=>x.body.action==='issue')).toHaveLength(1);
+ await verify.click();
  await expect(page.getByRole('status')).toHaveText('DNS TXT proof not confirmed');await expect(verify).toBeEnabled();
  await verify.click();await expect(page.getByRole('status')).toContainText('Alan adı sahipliği doğrulandı.');await expect(verify).toBeDisabled();
- expect(calls).toHaveLength(4);expect(calls[0].body).toEqual({leadId,confirm:'prepare-applicant-business'});
+ expect(calls).toHaveLength(5);expect(calls[0].body).toEqual({leadId,confirm:'prepare-applicant-business'});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2)).toBe(false);
  await page.getByLabel('Başvuru referansı',{exact:true}).fill('33333333-3333-4333-8333-333333333333');
  await expect(verify).toHaveCount(0);await expect(page.getByText('_aiv-verify.example.com',{exact:true})).toHaveCount(0);

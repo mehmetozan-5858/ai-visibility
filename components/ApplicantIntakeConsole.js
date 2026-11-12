@@ -25,8 +25,9 @@ export default function ApplicantIntakeConsole(){
    <button disabled={busy||verified} type="button" onClick={()=>run('issue')}>{challenge?'Yeni DNS kaydı oluştur':'DNS doğrulama kaydı oluştur'}</button>
    {challenge&&<div><dl><dt>Tür</dt><dd>TXT</dd><dt>Kayıt adı</dt><dd>{challenge.record}</dd><dt>Değer</dt><dd>{challenge.value}</dd></dl>
     <p>Yeni kayıt oluşturmak önceki doğrulanmamış kaydı geçersiz kılar. DNS yayılımından sonra kontrol edin.</p>
-    <button disabled={busy||verified} type="button" onClick={()=>run('verify')}>DNS kaydını kontrol et</button>
    </div>}
+   <p>TXT kaydını daha önce eklediyseniz yeni kayıt oluşturmadan kontrol edebilirsiniz.</p>
+   <button disabled={busy||verified} type="button" onClick={()=>run('verify')}>DNS kaydını kontrol et</button>
   </div>}
   {busy&&<p role="status">İşleniyor…</p>}
   {message&&<p role="status" aria-live="polite">{message}</p>}
