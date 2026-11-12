@@ -1,0 +1,33 @@
+import {test,expect} from '@playwright/test';
+import {createAdminToken} from '../lib/admin-auth.js';
+const BASE='http://127.0.0.1:3000';
+const enabled=process.env.APPLICANT_INTAKE_SMOKE_ENABLED==='true';
+const leadId='11111111-1111-4111-8111-111111111111',prospectId='22222222-2222-4222-8222-222222222222';
+for(const width of [390,1440])test(`admin applicant intake ${width}: explicit steps and failed DNS stays blocked`,async({page,context})=>{
+ test.skip(!enabled,'Local synthetic admin fixture only');
+ await page.setViewportSize({width,height:844});
+ const unauthorized=await page.request.post(BASE+'/api/admin/applicant-intake',{data:{leadId,confirm:'prepare-applicant-business'}});
+ expect(unauthorized.status()).toBe(401);
+ await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'}]);
+ const calls=[];let verifies=0;
+ await page.route('**/api/**',async route=>{
+  const path=new URL(route.request().url()).pathname,body=route.request().postDataJSON();calls.push({path,body});
+  if(path==='/api/admin/applicant-intake')return route.fulfill({json:{ok:true,leadId,prospectId,domain:'example.com',created:false,ownershipVerified:false,accessGranted:false,providerCalled:false}});
+  if(path==='/api/admin/applicant-domain-proof'&&body.action==='issue')return route.fulfill({json:{ok:true,challenge:{record:'_aiv-verify.example.com',value:'aiv-lead='+ 'a'.repeat(48)}}});
+  if(path==='/api/admin/applicant-domain-proof'&&body.action==='verify')return ++verifies===1?route.fulfill({status:422,json:{ok:false,reason:'DNS TXT proof not confirmed'}}):route.fulfill({json:{ok:true,verified:true,accessGranted:false,providerCalled:false}});
+  return route.fulfill({status:503,json:{error:'Unexpected synthetic call'}});
+ });
+ await page.goto(BASE+'/admin/basvuru-kabul');
+ await expect(page.getByRole('heading',{name:'Başvuru kabulü',exact:true})).toBeVisible();expect(calls).toHaveLength(0);
+ await page.getByLabel('Başvuru referansı',{exact:true}).fill(leadId);
+ await page.getByRole('button',{name:'İşletme kaydını hazırla',exact:true}).click();
+ const issue=page.getByRole('button',{name:'DNS doğrulama kaydı oluştur',exact:true});await expect(issue).toBeVisible();expect(calls).toHaveLength(1);
+ await issue.click();await expect(page.getByText('_aiv-verify.example.com',{exact:true})).toBeVisible();
+ const verify=page.getByRole('button',{name:'DNS kaydını kontrol et',exact:true});await verify.click();
+ await expect(page.getByRole('status')).toHaveText('DNS TXT proof not confirmed');await expect(verify).toBeEnabled();
+ await verify.click();await expect(page.getByRole('status')).toContainText('Alan adı sahipliği doğrulandı.');await expect(verify).toBeDisabled();
+ expect(calls).toHaveLength(4);expect(calls[0].body).toEqual({leadId,confirm:'prepare-applicant-business'});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2)).toBe(false);
+ await page.getByLabel('Başvuru referansı',{exact:true}).fill('33333333-3333-4333-8333-333333333333');
+ await expect(verify).toHaveCount(0);await expect(page.getByText('_aiv-verify.example.com',{exact:true})).toHaveCount(0);
+});
