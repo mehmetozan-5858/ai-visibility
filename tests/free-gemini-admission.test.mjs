@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {evaluateFreeGeminiAdmission,FREE_GEMINI_MODEL_ALLOWLIST} from '../lib/free-gemini-admission.mjs';
 const complete = Object.freeze({
   billingStatus:'verified-free-no-billing',freeTierEligible:true,remainingRequests:1,
+  projectModelAccessVerified:true,
   privacyPermission:'explicit-for-intended-data',tenantAuthorized:true,
   model:'gemini-2.5-flash-lite',verifiedModelPriceUsd:0,priceEvidenceTrusted:true,
   serverKeyConfigured:true,zeroCostReceiptAvailable:true,manualAdminAction:true,
@@ -22,7 +23,9 @@ test('each gate fails closed independently and never authorizes inference',()=>{
   }
 });
 test('only fixed allowlisted model and exact verified-free pricing can pass',()=>{
-  assert.deepEqual(FREE_GEMINI_MODEL_ALLOWLIST,['gemini-2.5-flash-lite']);
+  assert.deepEqual(FREE_GEMINI_MODEL_ALLOWLIST,['gemini-2.5-flash-lite','gemini-3.5-flash-lite']);
+  assert.equal(evaluateFreeGeminiAdmission({...complete,model:'gemini-3.5-flash-lite'}).status,'evidence-complete-not-executable');
+  assert.equal(evaluateFreeGeminiAdmission({...complete,model:'gemini-3.5-flash-lite',projectModelAccessVerified:false}).status,'blocked');
   for(const model of ['gemini-2.5-pro','gemini-3.8-flash','GEMINI-2.5-FLASH-LITE','gemini-2.5-flash-lite:free'])
     assert.equal(evaluateFreeGeminiAdmission({...complete,model}).status,'blocked');
   for(const price of [undefined,null,'0',0.001,-1,NaN])
