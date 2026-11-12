@@ -1,6 +1,7 @@
 "use client";
 import {useEffect,useState} from "react";
 import LeadEmailVerification from "./LeadEmailVerification";
+import {applicantEmailResumeHref} from "../lib/applicant-email-resume.mjs";
 import ecosystem from "../lib/ecosystem-contract.cjs";
 import {currencyForCountry,formatMoney,PADDLE_SERVICE_CODES} from "../lib/regional-pricing";
 import {trackAnalyticsEvent} from "../lib/analytics-client";
@@ -70,6 +71,7 @@ export default function NewCustomerLeadForm({initialService="",initialCountry=""
     </section>
     {msg&&<p className="client-message" role={ok?"status":"alert"} aria-live="polite" style={{marginBottom:0}}>{msg}</p>}
     {ok&&submittedLead&&<LeadEmailVerification leadId={submittedLead.id} email={submittedLead.email} language={lang}/> }
+    {ok&&submittedLead&&applicantEmailResumeHref(submittedLead.id)&&<a href={applicantEmailResumeHref(submittedLead.id)} referrerPolicy="no-referrer">{lang==="en"?"Reopen email verification without another application":"Yeni başvuru oluşturmadan e-posta doğrulamasını yeniden aç"}</a>}
     <style jsx>{`@media (max-width:640px){.new-customer-location-grid{grid-template-columns:1fr!important;}}`}</style>
   </form>;
 }

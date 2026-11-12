@@ -9,10 +9,10 @@ for(const [language,width] of [['tr',390],['en',390],['en',1440]]){
   await page.setViewportSize({width,height:844});
   await context.addCookies([{name:'ai_lang',value:language,url:BASE}]);
   const leadId='11111111-1111-4111-8111-111111111111';
-  const calls=[];
+  const calls=[];let leadWrites=0;
   await page.route('**/api/**',async route=>{
    const path=new URL(route.request().url()).pathname;
-   if(path==='/api/leads'&&route.request().method()==='POST')return route.fulfill({json:{ok:true,lead:{id:leadId,status:'new'}}});
+   if(path==='/api/leads'&&route.request().method()==='POST'){leadWrites++;return route.fulfill({json:{ok:true,lead:{id:leadId,status:'new'}}});}
    if(path==='/api/lead-email/issue'){
     calls.push({path,body:route.request().postDataJSON()});
     return calls.filter(x=>x.path===path).length===1
@@ -55,5 +55,17 @@ for(const [language,width] of [['tr',390],['en',390],['en',1440]]){
   for(const call of calls)expect(call.body).toMatchObject({leadId,email:'fixture@example.com'});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2);
   expect(overflow).toBe(false);
+  const resume=page.getByRole('link',{name:tr?'Yeni başvuru oluşturmadan e-posta doğrulamasını yeniden aç':'Reopen email verification without another application',exact:true});
+  await expect(resume).toHaveAttribute('href','/basvuru-dogrula#lead='+leadId);
+  await resume.click();
+  const resumeEmail=page.getByLabel(tr?'Başvuru e-postası':'Application email',{exact:true});
+  await expect(resumeEmail).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('');
+  await page.reload();await expect(resumeEmail).toBeVisible();await expect(resumeEmail).toHaveValue('');
+  await resumeEmail.fill('fixture@example.com');
+  await page.getByRole('button',{name:tr?'Devam et':'Continue',exact:true}).click();
+  await expect(send).toBeVisible();await send.click();await expect(code).toBeVisible();
+  expect(calls.at(-1).body).toEqual({leadId,email:'fixture@example.com'});
+  expect(leadWrites).toBe(1);
  });
 }
