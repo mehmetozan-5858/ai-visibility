@@ -18,7 +18,7 @@ test('disabled and branded requests never call an inference provider',async()=>{
 });
 test('two real-shaped answers retain model, response ID, completeness, exact zero cost and one provider identity',async()=>{
  const calls=[],costs=[];
- const r=await collectFreeAnswerEvidence(entity,{queries},{env,request:async args=>{calls.push(args);return {ok:true,verifiedZeroPriceAtRequest:true,usage:{cost:0},modelId:env.OPENROUTER_FREE_MODEL,answer:'Other firms.',complete:calls.length===1,responseId:'local-'+calls.length}},recordCost:async c=>costs.push(c)});
+ const r=await collectFreeAnswerEvidence(entity,{queries},{env,request:async args=>{calls.push(args);return {ok:true,verifiedZeroPriceAtRequest:true,usage:{cost:0},modelId:env.OPENROUTER_FREE_MODEL,answer:'Other firms.',complete:calls.length===1,responseId:'local-'+calls.length}},recordCost:async c=>{costs.push(c);return {id:'synthetic-cost'}}});
  assert.equal(calls.length,2);assert.ok(calls.every(x=>x.enabled===true&&x.modelId.endsWith(':free')));
  assert.equal(r.summary.successful,2);assert.equal(r.summary.neutralComplete,1);assert.equal(r.observations[1].truncated,true);
  assert.equal(new Set(r.observations.map(x=>x.provider)).size,1);assert.equal(r.observations[0].responseId,'local-1');
@@ -36,5 +36,18 @@ test('adapter marks length-limited and absent finish reasons incomplete, preserv
   const fetcher=async url=>({ok:true,json:async()=>url.endsWith('/models')?{data:[{id:env.OPENROUTER_FREE_MODEL,pricing:{prompt:'0',completion:'0'}}]}:{id:'fixture-response',model:env.OPENROUTER_FREE_MODEL,choices:[{finish_reason,message:{content:'Test answer.'}}],usage:{cost:0}}});
   const r=await runFreeBridgeTask({enabled:true,apiKey:'synthetic',modelId:env.OPENROUTER_FREE_MODEL,prompt:'Neutral test question',fetcher});
   assert.equal(r.complete,finish_reason==='stop');assert.equal(r.responseId,'fixture-response');assert.deepEqual(r.usage,{cost:0});
+ }
+});
+
+test('safe failure categories retain HTTP status without reflecting private provider text',async()=>{
+ for(const [reason,status,expected] of [['provider-request-failed',402,'provider-request-failed'],['unexpected-model',undefined,'unexpected-model'],['private-secret',401,'unclassified-provider-failure']]){
+  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:false,reason,status,raw:'private-payload'}),recordCost:async()=>{throw Error('must not record')}});
+  assert.equal(r.observations.length,0);assert.equal(r.errors[0].reason,expected);assert.equal(r.errors[0].providerStatus,status);assert.doesNotMatch(JSON.stringify(r),/private-secret|private-payload/);
+ }
+});
+test('missing or failed cost persistence cannot produce accepted evidence',async()=>{
+ for(const recordCost of [async()=>null,async()=>{throw Error('private database error')}]){
+  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true}),recordCost});
+  assert.equal(r.observations.length,0);assert.equal(r.errors[0].reason,'cost-recording-failed');assert.doesNotMatch(JSON.stringify(r),/private database/);
  }
 });

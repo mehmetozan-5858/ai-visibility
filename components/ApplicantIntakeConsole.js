@@ -19,7 +19,8 @@ export default function ApplicantIntakeConsole(){
     if(!response.ok)throw Error(data.error||(data.run?.skipped?'Ölçüm bekliyor; yeni çağrı yapılmadı.':'Ölçüm tamamlanamadı.'));
     const summary=data.run?.result?.summary;
     if(!summary)throw Error('Ölçüm sonucu doğrulanamadı.');
-    setMessage(`${summary.successful} yanıt kaydedildi; ${summary.neutralComplete} tam ve tarafsız örnek; ${summary.failed} hata. Tek sağlayıcı skora yetmez. Sonuç ekranından kayıtlı kanıtı inceleyebilirsiniz.`);
+    const reasons=[...new Set((data.run.result.errors||[]).map(x=>[x.reason,x.providerStatus?'HTTP '+x.providerStatus:''].filter(Boolean).join(' ')).filter(Boolean))].join(' · ');
+    setMessage(`${summary.successful} yanıt kaydedildi; ${summary.neutralComplete} tam ve tarafsız örnek; ${summary.failed} hata. Tek sağlayıcı skora yetmez. Sonuç ekranından kayıtlı kanıtı inceleyebilirsiniz.${reasons?' Hata sınıfı: '+reasons:''}`);
     return;
    }
    if(action==='preview'){
