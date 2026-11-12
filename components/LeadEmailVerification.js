@@ -16,14 +16,23 @@ export default function LeadEmailVerification({leadId,email,language="tr"}){
    const data=await r.json().catch(()=>({}));
    if(!r.ok)throw Error(path==="verify"&&r.status===400?c.invalid:c.error);
    if(path==="issue"){setCode("");setSent(true);setMessage(c.sent);}
-   else if(data.verified===true){setVerified(true);setMessage(c.verified);}
+   else if(data.verified===true){setVerified(true);setMessage("");setCode("");}
    else throw Error(c.error);
   }catch(err){setMessage([c.invalid,c.error].includes(err.message)?err.message:c.error)}
   finally{setBusy(false)}
  }
  return <section className="panel lead-email-verification" aria-label={c.title} style={{marginTop:16,padding:18}}>
   <h3>{c.title}</h3><p>{c.help}</p>
-  {verified?<p role="status">{c.verified}</p>:<>
+  {verified?<>
+   <p role="status">{c.verified}</p>
+   <h4>{language==="en"?"What happens next?":"Sırada ne var?"}</h4>
+   <ol>
+    <li>{language==="en"?"Email ownership: completed.":"E-posta sahipliği: tamamlandı."}</li>
+    <li>{language==="en"?"Business website ownership: a separate verification is required before report access.":"İşletmenin web sitesi sahipliği: rapor erişiminden önce ayrı doğrulama gerekir."}</li>
+    <li>{language==="en"?"Assessment: eligible recorded answers must be checked before a result can be shared.":"Ön değerlendirme: sonuç paylaşılmadan önce uygun kayıtlı yanıtlar kontrol edilmelidir."}</li>
+   </ol>
+   <p>{language==="en"?"Your application is saved. You do not need to submit it again. This step does not sign you into a customer account.":"Başvurun kayıtlı; yeniden başvuru yapmana gerek yok. Bu adım müşteri hesabına giriş yapmaz."}</p>
+  </>:<>
    <button type="button" onClick={()=>submit("issue",{leadId,email})} disabled={busy}>{busy?c.busy:c.send}</button>
    {sent&&<div style={{marginTop:14}}>
     <label>{c.code}<input type="text" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} pattern="[0-9]{6}" maxLength={6} value={code} disabled={busy} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}/></label>
