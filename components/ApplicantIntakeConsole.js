@@ -6,6 +6,13 @@ export default function ApplicantIntakeConsole(){
   setBusy(true);setMessage('');
   try{
    const prepare=action==='prepare';
+   if(action==='preview'){
+    const response=await fetch('/api/admin/applicant-assessment-grant',{method:'POST',headers:{'content-type':'application/json'},cache:'no-store',body:JSON.stringify({leadId})});
+    const data=await response.json();
+    if(!response.ok||!data.ok||typeof data.token!=='string'||!data.token||data.token.length>350)throw Error('Sonuç erişimi açılamadı. E-posta ve alan adı doğrulamasını kontrol edin.');
+    window.location.replace('/basvuru-analiz#token='+encodeURIComponent(data.token));
+    return;
+   }
    const response=await fetch(prepare?'/api/admin/applicant-intake':'/api/admin/applicant-domain-proof',{method:'POST',headers:{'content-type':'application/json'},cache:'no-store',body:JSON.stringify(prepare?{leadId,confirm:'prepare-applicant-business'}:{action,leadId,prospectId:business.prospectId})});
    const data=await response.json();if(!response.ok)throw Error(data.error||data.reason||'İşlem tamamlanamadı.');
    if(prepare){if(!data.prospectId)throw Error('İşletme referansı alınamadı.');setBusiness(data);setChallenge(null);setVerified(false);setMessage(data.created?'İşletme kaydı oluşturuldu. Sahiplik henüz doğrulanmadı.':'Mevcut işletme kaydı bulundu. Sahiplik ayrıca doğrulanmalıdır.');}
@@ -28,6 +35,11 @@ export default function ApplicantIntakeConsole(){
    </div>}
    <p>TXT kaydını daha önce eklediyseniz yeni kayıt oluşturmadan kontrol edebilirsiniz.</p>
    <button disabled={busy||verified} type="button" onClick={()=>run('verify')}>DNS kaydını kontrol et</button>
+  </div>}
+  {business&&<div style={{marginTop:20}}>
+   <h3>Ücretsiz sonuç önizlemesi</h3>
+   <p>Sunucu mevcut e-posta ve alan adı doğrulamasını yeniden denetler; yalnız bu başvurunun kayıtlı ölçümlerini açar. Veri yetersizse skor gösterilmez; AI çağrısı, ödeme veya e-posta başlatılmaz. Erişim 15 dakika geçerlidir.</p>
+   <button disabled={busy} type="button" onClick={()=>run('preview')}>Bu başvurunun sonuç ekranını aç</button>
   </div>}
   {busy&&<p role="status">İşleniyor…</p>}
   {message&&<p role="status" aria-live="polite">{message}</p>}
