@@ -76,7 +76,7 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await page.getByRole('button',{name:'Ücretsiz ön değerlendirme PDF’ini indir',exact:true}).click();
  expect((await downloadEvent).suggestedFilename()).toBe('ai-visibility-free-assessment.pdf');
  await page.getByRole('button',{name:'Ücretsiz ön değerlendirme PDF’ini indir',exact:true}).click();
- await expect(page.getByRole('alert')).toContainText('PDF erişimi doğrulanamadı.');
+ await expect(page.getByRole('alert').filter({hasText:'PDF erişimi doğrulanamadı.'})).toBeVisible();
  expect(calls.filter(x=>x.path==='/api/answer-evidence')).toHaveLength(priorMeasurements);
  await expect(page).toHaveURL(BASE+'/basvuru-analiz');
  expect(calls.filter(x=>x.path==='/api/admin/applicant-assessment-grant')).toHaveLength(2);
