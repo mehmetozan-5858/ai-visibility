@@ -36,9 +36,9 @@ export default function ApplicantIntakeConsole(){
    <p>TXT kaydını daha önce eklediyseniz yeni kayıt oluşturmadan kontrol edebilirsiniz.</p>
    <button disabled={busy||verified} type="button" onClick={()=>run('verify')}>DNS kaydını kontrol et</button>
   </div>}
-  {business&&verified&&<div style={{marginTop:20}}>
+  {business&&<div style={{marginTop:20}}>
    <h3>Ücretsiz sonuç önizlemesi</h3>
-   <p>Yalnız bu başvurunun kayıtlı ölçümlerini açar. Veri yetersizse skor gösterilmez; AI çağrısı, ödeme veya e-posta başlatılmaz. Erişim 15 dakika geçerlidir.</p>
+   <p>Sunucu mevcut e-posta ve alan adı doğrulamasını yeniden denetler; yalnız bu başvurunun kayıtlı ölçümlerini açar. Veri yetersizse skor gösterilmez; AI çağrısı, ödeme veya e-posta başlatılmaz. Erişim 15 dakika geçerlidir.</p>
    <button disabled={busy} type="button" onClick={()=>run('preview')}>Bu başvurunun sonuç ekranını aç</button>
   </div>}
   {busy&&<p role="status">İşleniyor…</p>}
