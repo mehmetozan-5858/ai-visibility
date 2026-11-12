@@ -22,7 +22,8 @@ export default function ApplicantIntakeConsole(){
     const reasons=[...new Set((data.run.result.errors||[]).map(x=>[x.reason,x.providerStatus?'HTTP '+x.providerStatus:''].filter(Boolean).join(' ')).filter(Boolean))].join(' · ');
     const limited=(data.run.result.errors||[]).find(x=>x.providerStatus===429);
     const limitLabels={'openrouter_free_tier_per_minute':'OpenRouter dakika kotası','openrouter_free_tier_per_day':'OpenRouter günlük kotası','upstream_provider_shared_pool':'Model sağlayıcısının ortak kapasite sınırı'};
-    const limitNote=limited?` ${limitLabels[limited.limitSource]||'Ücretsiz sağlayıcının istek sınırı; hangi katmanda olduğu bildirilmedi'}. Kalan sorgular gönderilmedi. Otomatik tekrar yok.${Number.isInteger(limited.retryAfterSeconds)?' Sağlayıcı en az '+limited.retryAfterSeconds+' saniye beklemeyi bildirdi; uygulamanın 15 dakika kuralı da geçerlidir.':''}`:'';
+    const skipped=(data.run.result.errors||[]).some(x=>x.reason==='skipped-after-rate-limit');
+    const limitNote=limited?` ${limitLabels[limited.limitSource]||'Ücretsiz sağlayıcının istek sınırı; hangi katmanda olduğu bildirilmedi'}. ${skipped?'Kalan sorgular gönderilmedi. ':'Ölçüm sonlandırıldı. '}Otomatik tekrar yok.${Number.isInteger(limited.retryAfterSeconds)?' Sağlayıcı en az '+limited.retryAfterSeconds+' saniye beklemeyi bildirdi; uygulamanın 15 dakika kuralı da geçerlidir.':''}`:'';
     setMessage(`${summary.successful} yanıt kaydedildi; ${summary.neutralComplete} tam ve tarafsız örnek; ${summary.failed} hata veya gönderilmemiş sorgu. Tek sağlayıcı skora yetmez. Sonuç ekranından kayıtlı kanıtı inceleyebilirsiniz.${limitNote}${reasons?' Hata sınıfı: '+reasons:''}`);
     return;
    }
