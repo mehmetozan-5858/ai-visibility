@@ -49,7 +49,11 @@ for(const [language,width] of [['tr',390],['en',390],['en',1440]]){
   const visual=await code.evaluate(el=>{const s=getComputedStyle(el);return {color:s.color,background:s.backgroundColor,fontSize:parseFloat(s.fontSize),height:el.getBoundingClientRect().height}});
   expect(visual.color).not.toBe(visual.background);expect(visual.fontSize).toBeGreaterThanOrEqual(16);expect(visual.height).toBeGreaterThanOrEqual(44);
   await verify.click();
-  await expect(panel.getByText(tr?'E-posta adresiniz doğrulandı.':'Your email address is verified.',{exact:true}).first()).toBeVisible();
+  await expect(panel.getByRole('status')).toHaveCount(1);
+  await expect(panel.getByRole('status')).toHaveText(tr?'E-posta adresiniz doğrulandı.':'Your email address is verified.');
+  await expect(panel.getByRole('heading',{name:tr?'Sırada ne var?':'What happens next?',exact:true})).toBeVisible();
+  await expect(panel.getByRole('listitem')).toHaveCount(3);
+  await expect(panel).toContainText(tr?'yeniden başvuru yapmana gerek yok':'do not need to submit it again');
   await expect(send).toHaveCount(0);await expect(code).toHaveCount(0);
   expect(calls).toHaveLength(5);
   for(const call of calls)expect(call.body).toMatchObject({leadId,email:'fixture@example.com'});
