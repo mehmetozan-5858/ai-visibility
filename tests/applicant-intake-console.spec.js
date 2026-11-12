@@ -15,6 +15,7 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
   if(path==='/api/answer-evidence'&&route.request().method()==='GET')return route.fulfill({json:{runs:[],freeMeasurement:{enabled:true,serverKeyConfigured:++configReads>1,modelConfigured:true,ready:configReads>1}}});
   calls.push({path,body});
   if(path==='/api/answer-evidence'&&route.request().method()==='POST')return route.fulfill({json:{run:{result:{summary:{successful:1,neutralComplete:1,failed:0}}}}});
+  if(path==='/api/admin/free-provider-preflight')return route.fulfill({json:{state:'credential-and-price-confirmed',inferenceRequests:0}});
   if(path==='/api/admin/applicant-intake')return route.fulfill({json:{ok:true,leadId,prospectId,domain:'example.com',created:false,ownershipVerified:false,accessGranted:false,providerCalled:false}});
   if(path==='/api/admin/applicant-domain-proof'&&body.action==='issue')return route.fulfill({json:{ok:true,challenge:{record:'_aiv-verify.example.com',value:'aiv-lead='+ 'a'.repeat(48)}}});
   if(path==='/api/admin/applicant-domain-proof'&&body.action==='verify')return ++verifies===1?route.fulfill({status:422,json:{ok:false,reason:'DNS TXT proof not confirmed'}}):route.fulfill({json:{ok:true,verified:true,accessGranted:false,providerCalled:false}});
@@ -42,6 +43,9 @@ for(const width of [390,1440])test(`admin applicant intake ${width}: explicit st
  await verify.click();await expect(page.getByRole('status')).toContainText('Alan adı sahipliği doğrulandı.');await expect(verify).toBeDisabled();
  expect(calls).toHaveLength(5);expect(calls[0].body).toEqual({leadId,confirm:'prepare-applicant-business'});
  expect(await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2)).toBe(false);
+ await page.getByRole('button',{name:'Ücretsiz bağlantıyı AI çağrısı yapmadan denetle',exact:true}).click();
+ await expect(page.getByRole('status')).toContainText('Anahtar ve modelin sıfır katalog fiyatı doğrulandı.');
+ expect(calls.filter(x=>x.path==='/api/answer-evidence')).toHaveLength(0);
  await page.getByLabel('Markasız ölçüm sorguları (her satıra bir sorgu, en fazla iki)',{exact:true}).fill('Türkiye bölgesinde hangi işleme firmaları var?');
  await page.getByRole('button',{name:'Yalnız ücretsiz yanıt örneği topla',exact:true}).click();
  await expect(page.getByRole('status')).toContainText('1 yanıt kaydedildi');

@@ -7,6 +7,12 @@ export default function ApplicantIntakeConsole(){
   setBusy(true);setMessage('');
   try{
    const prepare=action==='prepare';
+   if(action==='preflight'){
+    const response=await fetch('/api/admin/free-provider-preflight',{cache:'no-store'}),data=await response.json();
+    if(!response.ok)throw Error('Bağlantı kontrolü tamamlanamadı; ölçüm başlatılmadı.');
+    const states={'credential-and-price-confirmed':'Anahtar ve modelin sıfır katalog fiyatı doğrulandı. Kota ve gerçek yanıt ayrıca denetlenmelidir.','credential-rejected':'OpenRouter anahtarı kabul etmedi. Production ortamına gerçek OpenRouter API anahtarını Secret olarak kaydedin.','not-configured':'Ücretsiz bağlantı ayarları eksik.','model-not-verified-free':'Model sıfır fiyatlı olarak doğrulanamadı; model çağrılmadı.'};
+    setMessage((states[data.state]||'Sağlayıcı kontrolü tamamlanamadı; ölçüm başlatılmadı.')+(data.providerStatus?' HTTP '+data.providerStatus+'.':'')+' Bu kontrol AI yanıtı üretmez.');return;
+   }
    if(action==='measure'){
     const response=await fetch('/api/answer-evidence',{method:'POST',headers:{'content-type':'application/json'},cache:'no-store',body:JSON.stringify({entityType:'prospect',entityId:business.prospectId,freeOnly:true,language:'tr',queries:queries.split('\n').map(x=>x.trim()).filter(Boolean)})});
     const data=await response.json();
@@ -52,6 +58,7 @@ export default function ApplicantIntakeConsole(){
    <h3>Yalnız ücretsiz gerçek ölçüm</h3>
    <p>En fazla iki markasız sorgu, tek OpenRouter modeli. Her istekten önce katalog fiyatı sıfır olmalıdır; ücretli modele geçiş ve otomatik tekrar yoktur. Tamamlanmayan yanıtlar uygun örnek sayılmaz. Bu yol tek sağlayıcı sayılır; tek başına skor üretmez.</p>
    {!freeStatus?<p>Ücretsiz bağlantı durumu alınamadı; ölçüm kapalı.</p>:<p>{freeStatus.ready?'Bağlantı tanımlı; sıfır fiyat her istekte yeniden kontrol edilecek.':[!freeStatus.enabled&&'Ücretsiz ölçüm etkin değil.',!freeStatus.serverKeyConfigured&&'Sunucu anahtarı tanımlı değil.',!freeStatus.modelConfigured&&'Ücretsiz model seçilmemiş.'].filter(Boolean).join(' ')}</p>}
+   <button disabled={busy||!freeStatus?.ready} type="button" onClick={()=>run('preflight')}>Ücretsiz bağlantıyı AI çağrısı yapmadan denetle</button>
    <label>Markasız ölçüm sorguları (her satıra bir sorgu, en fazla iki)<textarea rows={4} maxLength={1001} value={queries} disabled={busy} onChange={event=>setQueries(event.target.value)} placeholder="Sektör ve konumu belirtin; marka veya alan adını yazmayın."/></label>
    <button disabled={busy||!freeStatus?.ready||!queries.trim()} type="button" onClick={()=>run('measure')}>Yalnız ücretsiz yanıt örneği topla</button>
    <h3>Ücretsiz sonuç önizlemesi</h3>
