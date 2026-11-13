@@ -9,7 +9,7 @@ import {verifyAdminToken,verifyClientToken,verifyPaymentAccessToken} from '../li
 import {recipientScopeIssue} from '../lib/recipient-scope.js';
 const id='12345678-1234-1234-1234-123456789012',now=Date.now(),secret='test-purpose-key';
 const entity={id,domain:'example.com'};
-const observation=(provider,query,brandMentioned=true)=>({provider,query,brandMentioned,brandPrompted:false,truncated:false,model:'model',mode:'search',text:'Recorded response',responseId:'synthetic-'+provider,checkedAt:new Date(now-1000).toISOString()});
+const observation=(provider,query,brandMentioned=true)=>({provider,query,brandMentioned,brandPrompted:false,truncated:false,model:'model',mode:'search',text:'Recorded response',responseId:'synthetic-'+provider+'-'+query,checkedAt:new Date(now-1000).toISOString()});
 const observations=['ChatGPT','Gemini','Perplexity'].flatMap(provider=>['question one','question two'].map((q,i)=>observation(provider,q,i===0)));
 const run=(obs=observations)=>({entityId:id,entityType:'prospect',domain:entity.domain,createdAt:new Date(now).toISOString(),result:{observations:obs}});
 test('tokens are purpose-bound, expire, reject tampering and keep credentials in fragment',async()=>{
