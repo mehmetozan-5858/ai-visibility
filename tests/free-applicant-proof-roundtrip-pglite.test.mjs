@@ -5,7 +5,7 @@ import {persistVerifiedFreeApplicantPair} from '../lib/free-applicant-atomic-sto
 import {readVerifiedFreeApplicantAssessment} from '../lib/free-applicant-verified-db-read.mjs';
 const entity={id:'550e8400-e29b-41d4-a716-446655440000',domain:'example.test'};
 const schema=[
-'CREATE TABLE free_applicant_verified_receipts(id text PRIMARY KEY,tenant_id text NOT NULL,domain text NOT NULL,provider text NOT NULL,model text NOT NULL,response_id text NOT NULL,query_text text NOT NULL,amount numeric NOT NULL CHECK(amount=0),currency text NOT NULL CHECK(currency=\'USD\'),estimated boolean NOT NULL CHECK(NOT estimated),operation text NOT NULL,verified_zero_price boolean NOT NULL,response_complete boolean NOT NULL,verified_model_identity boolean NOT NULL,UNIQUE(id,tenant_id,domain,provider,model,response_id,query_text));',
+'CREATE TABLE free_applicant_verified_receipts(id text PRIMARY KEY,tenant_id text NOT NULL,domain text NOT NULL,provider text NOT NULL,model text NOT NULL,response_id text NOT NULL,query_text text NOT NULL,amount numeric NOT NULL CHECK(amount=0),currency text NOT NULL CHECK(currency=\'USD\'),estimated boolean NOT NULL CHECK(NOT estimated),operation text NOT NULL,verified_zero_price boolean NOT NULL,response_complete boolean NOT NULL,verified_model_identity boolean NOT NULL,UNIQUE(id,tenant_id,domain,provider,model,response_id,query_text),UNIQUE(tenant_id,provider,response_id));',
 'CREATE TABLE free_applicant_verified_observations(receipt_id text PRIMARY KEY,tenant_id text NOT NULL,domain text NOT NULL,provider text NOT NULL,model text NOT NULL,response_id text NOT NULL,query_text text NOT NULL,result_text text NOT NULL,brand_mentioned boolean NOT NULL,brand_prompted boolean NOT NULL,truncated boolean NOT NULL,mode text NOT NULL,recorded_at timestamptz NOT NULL,FOREIGN KEY(receipt_id,tenant_id,domain,provider,model,response_id,query_text) REFERENCES free_applicant_verified_receipts(id,tenant_id,domain,provider,model,response_id,query_text));'
 ].join('\n');
 const poolFor=db=>({query:(...a)=>db.query(...a),connect:async()=>({query:(...a)=>db.query(...a),release(){}})});
@@ -55,15 +55,17 @@ test('actual SQL join cannot promote duplicate provider response with alternate 
    const item=pair(provider,i,new Date(now-(i+1)*60000).toISOString());
    assert.equal((await persistVerifiedFreeApplicantPair({pool,scope:{tenantId:entity.id,domain:entity.domain},...item})).stored,true);
   }
-  // The draft fixture intentionally lacks a unique(provider,response_id) key:
-  // read side must independently fail closed even on such a legacy schema.
+  // The future isolated schema also protects response identity at DB level;
+  // the read-side duplicate guard remains defense-in-depth for old schemas.
   const duplicate=pair('Gemini',0,new Date(now-60000).toISOString());
   duplicate.receipt.id='Gemini-alternate-receipt-0';
   duplicate.observation.text='Conflicting provider answer';
-  assert.equal((await persistVerifiedFreeApplicantPair({pool,scope:{tenantId:entity.id,domain:entity.domain},...duplicate})).stored,true);
+  assert.deepEqual(await persistVerifiedFreeApplicantPair({pool,scope:{tenantId:entity.id,domain:entity.domain},...duplicate}),
+    {stored:false,reason:'transaction-failed'});
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_observations')).rows[0].n,6);
   const verdict=await readVerifiedFreeApplicantAssessment(pool,entity,{now});
-  assert.equal(verdict.status,'insufficient');
-  assert.equal(verdict.samples,5);
-  assert.equal(verdict.score,null);
+  assert.equal(verdict.status,'ready');
+  assert.equal(verdict.samples,6);
+  assert.equal(verdict.score,33);
  }finally{await db.close();}
 });
