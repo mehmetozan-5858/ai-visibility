@@ -47,7 +47,7 @@ test('safe failure categories retain HTTP status without reflecting private prov
 });
 test('missing or failed cost persistence cannot produce accepted evidence',async()=>{
  for(const recordCost of [async()=>null,async()=>{throw Error('private database error')}]){
-  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true,responseId:'synthetic-response'},recordCost});
+  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true,responseId:'synthetic-response'}),recordCost});
   assert.equal(r.observations.length,0);assert.equal(r.errors[0].reason,'cost-recording-failed');assert.doesNotMatch(JSON.stringify(r),/private database/);
  }
 });
