@@ -157,3 +157,43 @@ test('no consent, withdrawn consent or missing verified link block provider netw
   }finally{await db.close();}
  }
 });
+
+test('withdrawal during in-flight provider response prevents proof persistence',async()=>{
+ const db=new PGlite();
+ try{
+  await schema(db);let calls=0;
+  const result=await collectAndPersistVerifiedFreeApplicant({
+   pool:poolFor(db),entity,env,queries,consentVerified:true,tenantAuthorized:true,
+   request:async()=>{
+    calls++;
+    await db.query('UPDATE public.applicant_free_provider_consents SET revoked_at=NOW()');
+    return fake(1);
+   },...trustedLedger()
+  });
+  assert.equal(calls,1);
+  assert.equal(result.accepted,0);
+  assert.equal(result.reason,'partial-or-rejected');
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,0);
+ }finally{await db.close()}
+});
+test('withdrawal after first stored response stops the second provider call',async()=>{
+ const db=new PGlite();
+ try{
+  await schema(db);let calls=0;
+  const ledger=trustedLedger();
+  const result=await collectAndPersistVerifiedFreeApplicant({
+   pool:poolFor(db),entity,env,queries,consentVerified:true,tenantAuthorized:true,
+   request:async()=>{calls++;return fake(calls)},
+   findTrustedReceipt:ledger.findTrustedReceipt,
+   readTrustedReceipt:async (id,tenant)=>{
+    const receipt=await ledger.readTrustedReceipt(id,tenant);
+    if(id==='receipt-1')
+     await db.query('UPDATE public.applicant_free_provider_consents SET revoked_at=NOW()');
+    return receipt;
+   }
+  });
+  assert.equal(calls,1);
+  assert.equal(result.accepted,0);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,0);
+ }finally{await db.close()}
+});
