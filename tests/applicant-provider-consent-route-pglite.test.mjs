@@ -65,3 +65,11 @@ test('signed applicant action persists consent and withdraws with PostgreSQL sem
   assert.equal((await route.POST(request('bad-confirmation'))).status,400);
  }finally{await db.close();}
 });
+
+test('disabled consent feature is not offered as a broken customer action',async()=>{
+ const route=await readFile(new URL('../app/api/applicant-assessment/route.js',import.meta.url),'utf8');
+ const ui=await readFile(new URL('../components/ApplicantAssessment.js',import.meta.url),'utf8');
+ assert.match(route,/providerConsentEnabled:process\.env\.APPLICANT_FREE_PROVIDER_CONSENT_ENABLED==="true"/);
+ assert.match(ui,/value\.providerConsentEnabled===true&&<section/);
+ assert.match(src,/process\.env\.APPLICANT_FREE_PROVIDER_CONSENT_ENABLED!=='true'/);
+});
