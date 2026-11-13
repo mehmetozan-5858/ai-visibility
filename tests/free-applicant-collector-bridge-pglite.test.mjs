@@ -29,11 +29,11 @@ const fake=(i=0,patch={})=>({ok:true,complete:true,
   answer:'This synthetic answer has no brand match.',...patch});
 async function schema(db,{consent=true}={}){
  await db.exec(await readFile(new URL('../migrations/free-applicant-verified-proof-review.sql',import.meta.url),'utf8'));
- await db.exec(`CREATE TABLE public.customer_leads(id UUID PRIMARY KEY,email TEXT NOT NULL);
+ await db.exec(`CREATE TABLE public.customer_leads(id UUID PRIMARY KEY,email TEXT NOT NULL,website TEXT NOT NULL);
  CREATE TABLE public.prospects(id UUID PRIMARY KEY,domain TEXT NOT NULL);
  CREATE TABLE public.lead_email_challenges(lead_id UUID,email TEXT,verified_at timestamptz,consumed_at timestamptz);
  CREATE TABLE public.applicant_assessment_links(lead_id UUID,prospect_id UUID,verified_domain TEXT,verified_at timestamptz,revoked_at timestamptz);
- INSERT INTO public.customer_leads VALUES ('11111111-1111-4111-8111-111111111111','test@example.test');
+ INSERT INTO public.customer_leads VALUES ('11111111-1111-4111-8111-111111111111','test@example.test','https://example.test/');
  INSERT INTO public.prospects VALUES ('550e8400-e29b-41d4-a716-446655440000','example.test');
  INSERT INTO public.lead_email_challenges VALUES ('11111111-1111-4111-8111-111111111111','test@example.test',NOW(),NOW());
  INSERT INTO public.applicant_assessment_links VALUES ('11111111-1111-4111-8111-111111111111','550e8400-e29b-41d4-a716-446655440000','example.test',NOW(),NULL);`);
