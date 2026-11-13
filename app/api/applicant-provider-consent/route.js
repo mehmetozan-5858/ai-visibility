@@ -1,8 +1,8 @@
-import {verifyApplicantAssessmentGrant} from '../../../../lib/applicant-assessment-grant.mjs';
-import {normalizedBusinessDomain} from '../../../../lib/customer-assessment-candidates.mjs';
-import {databasePool} from '../../../../lib/database-runtime';
-import {getDatabaseUrl} from '../../../../lib/db';
-import {checkRateLimit,enforceSameOrigin} from '../../../../lib/api-security';
+import {verifyApplicantAssessmentGrant} from '../../../lib/applicant-assessment-grant.mjs';
+import {normalizedBusinessDomain} from '../../../lib/customer-assessment-candidates.mjs';
+import {databasePool} from '../../../lib/database-runtime';
+import {getDatabaseUrl} from '../../../lib/db';
+import {checkRateLimit,enforceSameOrigin} from '../../../lib/api-security';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 const headers={'Cache-Control':'private, no-store, max-age=0',
