@@ -64,3 +64,21 @@ test('reused response ID cannot impersonate two independent provider answers',()
  assert.equal(r.status,'insufficient');
  assert.equal(r.score,null);
 });
+
+test('case variants of one provider cannot meet two-provider free score requirement',()=>{
+ const obs=['OpenRouter','OPENROUTER','openrouter'].flatMap(p=>queries.map((q,i)=>observation(p,q,{responseId:'distinct-'+p+'-'+i})));
+ const r=freeAssessmentEvidence(entity,fixture(obs),{now});
+ assert.equal(r.providers,1);
+ assert.equal(r.samples,2);
+ assert.equal(r.status,'insufficient');
+ assert.equal(r.score,null);
+});
+test('case variants of one provider cannot replay the same response identity on different questions',()=>{
+ const r=freeAssessmentEvidence(entity,fixture([
+  observation('OpenRouter',queries[0],{responseId:'same-response'}),
+  observation('OPENROUTER',queries[1],{responseId:'same-response'})
+ ]),{now});
+ assert.equal(r.samples,1);
+ assert.equal(r.providers,1);
+ assert.equal(r.status,'insufficient');
+});
