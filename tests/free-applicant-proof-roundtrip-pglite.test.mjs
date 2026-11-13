@@ -45,3 +45,25 @@ test('no proof schema is unavailable rather than silently scoring legacy rows',a
    {status:'unavailable',score:null,reason:'trusted-proof-read-unavailable'});
  }finally{await db.close();}
 });
+
+test('actual SQL join cannot promote duplicate provider response with alternate receipt',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(schema);
+  const pool=poolFor(db),now=Date.now();
+  for(const provider of ['OpenRouter','Gemini'])for(let i=0;i<3;i++){
+   const item=pair(provider,i,new Date(now-(i+1)*60000).toISOString());
+   assert.equal((await persistVerifiedFreeApplicantPair({pool,scope:{tenantId:entity.id,domain:entity.domain},...item})).stored,true);
+  }
+  // The draft fixture intentionally lacks a unique(provider,response_id) key:
+  // read side must independently fail closed even on such a legacy schema.
+  const duplicate=pair('Gemini',0,new Date(now-60000).toISOString());
+  duplicate.receipt.id='Gemini-alternate-receipt-0';
+  duplicate.observation.text='Conflicting provider answer';
+  assert.equal((await persistVerifiedFreeApplicantPair({pool,scope:{tenantId:entity.id,domain:entity.domain},...duplicate})).stored,true);
+  const verdict=await readVerifiedFreeApplicantAssessment(pool,entity,{now});
+  assert.equal(verdict.status,'insufficient');
+  assert.equal(verdict.samples,5);
+  assert.equal(verdict.score,null);
+ }finally{await db.close();}
+});
