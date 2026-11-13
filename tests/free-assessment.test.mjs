@@ -9,7 +9,7 @@ import {verifyAdminToken,verifyClientToken,verifyPaymentAccessToken} from '../li
 import {recipientScopeIssue} from '../lib/recipient-scope.js';
 const id='12345678-1234-1234-1234-123456789012',now=Date.now(),secret='test-purpose-key';
 const entity={id,domain:'example.com'};
-const observation=(provider,query,brandMentioned=true)=>({provider,query,brandMentioned,brandPrompted:false,truncated:false,model:'model',mode:'search',text:'Recorded response'});
+const observation=(provider,query,brandMentioned=true)=>({provider,query,brandMentioned,brandPrompted:false,truncated:false,model:'model',mode:'search',text:'Recorded response',responseId:'synthetic-'+provider,checkedAt:new Date(now-1000).toISOString()});
 const observations=['ChatGPT','Gemini','Perplexity'].flatMap(provider=>['question one','question two'].map((q,i)=>observation(provider,q,i===0)));
 const run=(obs=observations)=>({entityId:id,entityType:'prospect',domain:entity.domain,createdAt:new Date(now).toISOString(),result:{observations:obs}});
 test('tokens are purpose-bound, expire, reject tampering and keep credentials in fragment',async()=>{
@@ -24,7 +24,7 @@ test('scores require sufficient distinct recent unbiased complete samples',()=>{
  const ready=freeAssessmentEvidence(entity,[run()],{now});assert.equal(ready.score,50);assert.equal(ready.samples,6);
  for(const r of [run(observations.slice(0,5)),run(observations.map(o=>({...o,provider:'only'}))),run(observations.map(o=>({...o,query:'same'}))),run(observations.map(o=>({...o,brandPrompted:true}))),run(observations.map(o=>({...o,truncated:true}))),{...run(),entityId:'another'},{...run(),domain:'other.com'},{...run(),createdAt:new Date(now-15*86400000).toISOString()},{...run(),createdAt:new Date(now+1000).toISOString()}])assert.equal(freeAssessmentEvidence(entity,[r],{now}).score,null);
  assert.equal(freeAssessmentEvidence(entity,[run(),run(observations.map(o=>({...o,model:'other'})))],{now}).samples,6);
- const newer={...run(observations.map(o=>({...o,brandMentioned:false}))),createdAt:new Date(now+1000).toISOString()};assert.equal(freeAssessmentEvidence(entity,[run(),newer],{now:now+1000}).score,0);
+ const newer={...run(observations.map(o=>({...o,brandMentioned:false,checkedAt:new Date(now+1000).toISOString()}))),createdAt:new Date(now+1000).toISOString()};assert.equal(freeAssessmentEvidence(entity,[run(),newer],{now:now+1000}).score,0);
  assert.equal(JSON.stringify(ready).includes('Recorded response'),false);
 });
 test('four sector approaches preserve benefit, free/paid terms and exact reviewed copy',()=>{
