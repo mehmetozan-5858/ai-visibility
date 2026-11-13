@@ -16,11 +16,11 @@ test('disabled and branded requests never call an inference provider',async()=>{
  await assert.rejects(()=>collectFreeAnswerEvidence(entity,{queries:['Tell me about Acme Precision.']},{...deps,env}),/neutral/);
  assert.equal(calls,0);
 });
-test('two real-shaped answers retain model, response ID, completeness, exact zero cost and one provider identity',async()=>{
+test('only complete real-shaped zero-cost answers retain identity and enter cost/evidence',async()=>{
  const calls=[],costs=[];
  const r=await collectFreeAnswerEvidence(entity,{queries},{env,request:async args=>{calls.push(args);return {ok:true,verifiedZeroPriceAtRequest:true,usage:{cost:0},modelId:env.OPENROUTER_FREE_MODEL,answer:'Other firms.',complete:calls.length===1,responseId:'local-'+calls.length}},recordCost:async c=>{costs.push(c);return {id:'synthetic-cost'}}});
  assert.equal(calls.length,2);assert.ok(calls.every(x=>x.enabled===true&&x.modelId.endsWith(':free')));
- assert.equal(r.summary.successful,2);assert.equal(r.summary.neutralComplete,1);assert.equal(r.observations[1].truncated,true);
+ assert.equal(r.summary.successful,1);assert.equal(r.summary.neutralComplete,1);assert.equal(r.observations.length,1);assert.equal(r.errors.length,1);assert.equal(r.errors[0].reason,'answer-verification-failed');assert.equal(costs.length,1);
  assert.equal(new Set(r.observations.map(x=>x.provider)).size,1);assert.equal(r.observations[0].responseId,'local-1');
  assert.ok(costs.every(x=>x.amount===0&&x.estimated===false));
 });
@@ -47,7 +47,7 @@ test('safe failure categories retain HTTP status without reflecting private prov
 });
 test('missing or failed cost persistence cannot produce accepted evidence',async()=>{
  for(const recordCost of [async()=>null,async()=>{throw Error('private database error')}]){
-  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true}),recordCost});
+  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true,responseId:'synthetic-identified-response'}),recordCost});
   assert.equal(r.observations.length,0);assert.equal(r.errors[0].reason,'cost-recording-failed');assert.doesNotMatch(JSON.stringify(r),/private database/);
  }
 });
