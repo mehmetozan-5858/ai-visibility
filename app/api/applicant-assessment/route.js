@@ -52,6 +52,7 @@ export async function GET(req){
    return new Response(bytes,{headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'attachment; filename="ai-visibility-free-assessment.pdf"'}});
   }
   return Response.json({business,
-   assessment,language,kind:"limited-sample-only",paidAccess:false,providerCallStarted:false},{headers});
+   assessment,language,kind:"limited-sample-only",paidAccess:false,providerCallStarted:false,
+   providerConsentEnabled:process.env.APPLICANT_FREE_PROVIDER_CONSENT_ENABLED==="true"},{headers});
  }catch{return Response.json({error:"Preview currently unavailable"},{status:503,headers})}
 }
