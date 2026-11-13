@@ -7,11 +7,11 @@ const lead='11111111-1111-4111-8111-111111111111';
 const prospect='22222222-2222-4222-8222-222222222222';
 const scope={prospectId:prospect,businessDomain:'example.test',provider:'OpenRouter'};
 async function create(db){
- await db.exec(`CREATE TABLE public.customer_leads(id UUID PRIMARY KEY,email TEXT NOT NULL);
+ await db.exec(`CREATE TABLE public.customer_leads(id UUID PRIMARY KEY,email TEXT NOT NULL,website TEXT NOT NULL);
  CREATE TABLE public.prospects(id UUID PRIMARY KEY,domain TEXT NOT NULL);
  CREATE TABLE public.lead_email_challenges(lead_id UUID,email TEXT,verified_at timestamptz,consumed_at timestamptz);
  CREATE TABLE public.applicant_assessment_links(lead_id UUID,prospect_id UUID,verified_domain TEXT,verified_at timestamptz,revoked_at timestamptz);
- INSERT INTO public.customer_leads VALUES ('${lead}','applicant@example.test');
+ INSERT INTO public.customer_leads VALUES ('${lead}','applicant@example.test','https://example.test/');
  INSERT INTO public.prospects VALUES ('${prospect}','example.test');
  INSERT INTO public.lead_email_challenges VALUES ('${lead}','applicant@example.test',NOW(),NOW());
  INSERT INTO public.applicant_assessment_links VALUES ('${lead}','${prospect}','example.test',NOW(),NULL);`);
@@ -33,6 +33,10 @@ test('only a current applicant action consent joined to exact verified domain/em
   assert.equal((await readApplicantProviderConsent(db,{...scope,provider:'Gemini'})).authorized,false);
   assert.equal((await readApplicantProviderConsent(db,{...scope,businessDomain:'other.test'})).authorized,false);
   assert.equal((await readApplicantProviderConsent(db,{...scope,prospectId:'33333333-3333-4333-8333-333333333333'})).authorized,false);
+  await db.query('UPDATE public.customer_leads SET website=$1 WHERE id=$2',['https://mismatched.example/',lead]);
+  assert.equal((await readApplicantProviderConsent(db,scope)).authorized,false);
+  await db.query('UPDATE public.customer_leads SET website=$1 WHERE id=$2',['https://example.test/',lead]);
+  assert.equal((await readApplicantProviderConsent(db,scope)).authorized,true);
   await db.query('UPDATE public.applicant_free_provider_consents SET revoked_at=NOW()');
   assert.equal((await readApplicantProviderConsent(db,scope)).authorized,false);
  }finally{await db.close();}
