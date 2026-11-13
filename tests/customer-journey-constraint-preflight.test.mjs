@@ -11,10 +11,12 @@ test("read-only preflight checks exact security-critical foreign and unique keys
   "applicant_assessment_deliveries_lead_id_key",
   "verified_customer_settlements_paddle_event_id_key",
   "verified_customer_settlements_transaction_id_key",
-  "verified_customer_settlements_payment_id_fkey",
+  "verified_customer_settlements_payment_client_fkey",
   "verified_customer_settlements_client_id_fkey"
  ])assert.ok(sql.includes(name),`expected exact key missing: ${name}`);
  assert.match(sql,/c\.conname=e\.constraint_name AND c\.contype=e\.kind/);
+ assert.match(sql,/payments_id_client_id_uniq/);
+ assert.match(sql,/i\.indisunique AND i\.indisvalid/);
  assert.match(sql,/pg_catalog\.pg_get_constraintdef\(c\.oid\)/);
  assert.doesNotMatch(sql,/\b(?:INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE)\s+(?:TABLE|FROM|INTO|public\.)/i);
 });
