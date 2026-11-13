@@ -115,3 +115,12 @@ test("zero-price proof returns response identity and completion only when confir
  assert.equal(r.ok,true);assert.equal(r.responseId,"gen_test1");assert.equal(r.complete,true);
  assert.deepEqual(r.usage,{cost:0});
 });
+
+test("long verified free answer is bounded and marked incomplete; response id is bounded",async()=>{
+ const fetcher=async url=>url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
+  {ok:true,json:async()=>({id:"x".repeat(500),model:id,choices:[{finish_reason:"stop",message:{content:"a".repeat(6000)}}],usage:{cost:0}})};
+ const r=await runFreeBridgeTask({modelId:id,prompt:"Safe fixture",apiKey:"test",enabled:true,fetcher});
+ assert.equal(r.ok,true);assert.equal(r.answer.length,5000);
+ assert.equal(r.responseId.length,200);assert.equal(r.complete,false);
+ assert.deepEqual(r.usage,{cost:0});
+});
