@@ -21,6 +21,10 @@ test("successful request uses verified catalog and exactly one inference call",a
  const calls=[];
  const r=await runFreeBridgeTask({modelId:id,prompt:"Review this test",apiKey:"test",enabled:true,fetcher:mock(calls)});
  assert.equal(r.ok,true);assert.equal(calls.length,2);
+ assert.deepEqual(r.usage,{cost:0});
+ assert.equal(r.verifiedZeroPriceAtRequest,true);
+ assert.equal(r.complete,false); // No finish_reason supplied by the synthetic fixture.
+ assert.equal(r.responseId,'');
  assert.equal(calls[1].opts.method,"POST");
  assert.equal(JSON.parse(calls[1].opts.body).max_tokens,350);
 });
@@ -102,4 +106,21 @@ test("a paid request fee prevents completion calls even with free tokens",async(
  const result=await runFreeBridgeTask({modelId:id,prompt:"synthetic offline test",apiKey:"synthetic",enabled:true,fetcher});
  assert.equal(result.reason,"model-not-verified-free");
  assert.equal(calls.length,1);
+});
+
+test("zero-price proof returns response identity and completion only when confirmed",async()=>{
+ const fetcher=async url=>url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
+  {ok:true,json:async()=>({id:"gen_test1",model:id,choices:[{finish_reason:"stop",message:{content:"Verified output"}}],usage:{cost:"0.0000"}})};
+ const r=await runFreeBridgeTask({modelId:id,prompt:"Review synthetic fixture",apiKey:"test",enabled:true,fetcher});
+ assert.equal(r.ok,true);assert.equal(r.responseId,"gen_test1");assert.equal(r.complete,true);
+ assert.deepEqual(r.usage,{cost:0});
+});
+
+test("long verified free answer is bounded and marked incomplete; response id is bounded",async()=>{
+ const fetcher=async url=>url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
+  {ok:true,json:async()=>({id:"x".repeat(500),model:id,choices:[{finish_reason:"stop",message:{content:"a".repeat(6000)}}],usage:{cost:0}})};
+ const r=await runFreeBridgeTask({modelId:id,prompt:"Safe fixture",apiKey:"test",enabled:true,fetcher});
+ assert.equal(r.ok,true);assert.equal(r.answer.length,5000);
+ assert.equal(r.responseId.length,200);assert.equal(r.complete,false);
+ assert.deepEqual(r.usage,{cost:0});
 });
