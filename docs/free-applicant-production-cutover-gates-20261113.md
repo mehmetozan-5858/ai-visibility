@@ -45,3 +45,17 @@ Status: **BLOCKED / DRAFT ONLY**. This checklist is not a deployment approval.
   not be treated as proof of absence.
 - Last exact-head successful CI is not production acceptance. The proposed
   verified receipt/observation table remains a draft, isolated from live routes.
+
+
+## 13 Nov — Paddle LIVE read-only account inventory (separate payment blocker)
+- Paddle Live `products.list` returned **0 products** and no additional
+  pages; `prices.list` returned **0 prices** and no additional pages.
+- One checkout domain exists: `aivisibilityworks.com`, status **approved**;
+  Apple Pay verification is **verified**.
+- Domain readiness is NOT checkout readiness: there is no live catalog entry
+  with an active price for a customer to purchase.
+- No product, price, subscription, coupon, transaction, checkout or webhook
+  was created or modified during this read-only inspection.
+- Next condition is reviewed product taxonomy, verified tax classification,
+  actual price/currency/payment terms and deliberate live catalog approval.
+  Do not invent real revenue or use a paid transaction as a test.
