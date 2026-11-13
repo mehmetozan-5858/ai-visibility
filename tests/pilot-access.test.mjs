@@ -24,7 +24,7 @@ test('pilot grant audits atomically without writing payments and validates limit
 test('pilot report UI is reachable and paid implementation actions stay hidden',async()=>{
  const gate=await fs.readFile(new URL('../components/CustomerPortalGate.js',import.meta.url),'utf8');
  const portal=await fs.readFile(new URL('../components/CustomerPortal.js',import.meta.url),'utf8');
- assert.match(gate,/account\?\.access\?\.kind==="pilot"\|\|unlocked/);
+ assert.match(gate,/account\?\.access\?\.allowed===true&&\(account\?\.access\?\.kind==="pilot"\|\|unlocked\)/);
  assert.match(portal,/account\?\.access\?\.kind==="paid"/);
  assert.match(portal,/account\?\.access\?\.kind==="pilot"\?<StatusPill/);
 });
@@ -33,7 +33,7 @@ test('customer gate ignores historical paid labels unless server grants explicit
  const gate=await fs.readFile(new URL('../components/CustomerPortalGate.js',import.meta.url),'utf8');
  assert.match(gate,/const unlocked=account\?\.access\?\.allowed===true&&account\?\.access\?\.kind==="paid"/);
  assert.doesNotMatch(gate,/account\?\.payments\|\|\[\]/);
- assert.match(gate,/account\?\.access\?\.kind==="pilot"\|\|unlocked/);
+ assert.match(gate,/account\?\.access\?\.allowed===true&&\(account\?\.access\?\.kind==="pilot"\|\|unlocked\)/);
 });
 
 test('strict settlement rollout rejects legacy paid labels without independently verified Paddle proof',async()=>{
@@ -52,4 +52,9 @@ test('strict settlement rollout rejects legacy paid labels without independently
   if(old===undefined)delete process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED;
   else process.env.CUSTOMER_SETTLEMENT_PROOF_ENABLED=old;
  }
+});
+
+test('server allowed false cannot unlock pilot or paid report screens',async()=>{
+ const gate=await fs.readFile(new URL('../components/CustomerPortalGate.js',import.meta.url),'utf8');
+ assert.match(gate,/if\(account\?\.access\?\.allowed===true&&\(account\?\.access\?\.kind==="pilot"\|\|unlocked\)\)return <CustomerPortal\/>/);
 });
