@@ -16,6 +16,9 @@ test('read-only proof storage check is not equivalent to live evidence acceptanc
   assert.equal(after.status,'schema-present-unverified');
   assert.equal(after.receiptsTablePresent,true);
   assert.equal(after.observationsTablePresent,true);
+  assert.equal(after.receiptRlsEnabled,true);
+  assert.equal(after.observationRlsEnabled,true);
+  assert.ok(['privileged-role-bypasses-rls','unprivileged-role-not-yet-audited','role-unverified'].includes(after.dbRoleSafety));
   assert.equal(after.ready,false);
   assert.equal(after.customerAcceptance,false);
   assert.ok(!JSON.stringify(after).includes('response_id'));
@@ -29,4 +32,14 @@ test('unavailable or malformed database cannot report proof readiness',async()=>
   assert.equal(state.ready,false);
   assert.doesNotMatch(JSON.stringify(state),/private connection secret/);
  }
+});
+
+test('read-only diagnostic flags a privileged runtime role without leaking its identity',async()=>{
+ const sqlResult={rows:[{receipts:true,observations:true,privilegedRole:true,
+  receiptsRls:true,observationsRls:true}]};
+ const s=await freeApplicantProofStorageStatus({query:async()=>sqlResult});
+ assert.equal(s.dbRoleSafety,'privileged-role-bypasses-rls');
+ assert.equal(s.ready,false);
+ assert.equal(s.customerAcceptance,false);
+ assert.equal(JSON.stringify(s).includes('neondb_owner'),false);
 });
