@@ -19,13 +19,16 @@ const schema=`
   provider text NOT NULL,model text NOT NULL,response_id text NOT NULL,
   query_text text NOT NULL,amount numeric NOT NULL CHECK(amount=0),
   currency text NOT NULL CHECK(currency='USD'),estimated boolean NOT NULL CHECK(NOT estimated),
-  UNIQUE(tenant_id,provider,response_id)
+  UNIQUE(tenant_id,provider,response_id),
+  UNIQUE(id,tenant_id,domain,provider,model,response_id,query_text)
  );
  CREATE TABLE free_applicant_verified_observations(
-  receipt_id text PRIMARY KEY REFERENCES free_applicant_verified_receipts(id),
+  receipt_id text PRIMARY KEY,
   tenant_id text NOT NULL,domain text NOT NULL,provider text NOT NULL,
   model text NOT NULL,response_id text NOT NULL,query_text text NOT NULL,
-  result_text text NOT NULL,brand_mentioned boolean NOT NULL
+  result_text text NOT NULL,brand_mentioned boolean NOT NULL,
+  FOREIGN KEY(receipt_id,tenant_id,domain,provider,model,response_id,query_text)
+   REFERENCES free_applicant_verified_receipts(id,tenant_id,domain,provider,model,response_id,query_text)
  );`;
 const poolFor=db=>({connect:async()=>({query:(...args)=>db.query(...args),release(){}})});
 test('prototype commits response and proof together in isolated PGlite',async()=>{
@@ -67,4 +70,26 @@ test('missing, paid or cross-tenant proof stops before starting transaction',asy
   {observation,receipt:{...receipt,responseId:'other'},scope},
   {observation,receipt:null,scope}
  ])assert.deepEqual(await persistVerifiedFreeApplicantPair({pool,...x}),{stored:false,reason:'unverified-proof'});
+});
+
+test('database itself rejects forged tenant and response links even with valid receipt ID',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(schema);
+  await db.query(`INSERT INTO free_applicant_verified_receipts
+   (id,tenant_id,domain,provider,model,response_id,query_text,amount,currency,estimated)
+   VALUES($1,$2,$3,$4,$5,$6,$7,0,'USD',false)`,
+   [receipt.id,scope.tenantId,scope.domain,receipt.provider,receipt.model,receipt.responseId,receipt.query]);
+  for(const [tenant,model,responseId] of [
+   ['forged-tenant',observation.model,observation.responseId],
+   [scope.tenantId,'forged-model',observation.responseId],
+   [scope.tenantId,observation.model,'forged-response']
+  ]){
+   await assert.rejects(db.query(`INSERT INTO free_applicant_verified_observations
+    (receipt_id,tenant_id,domain,provider,model,response_id,query_text,result_text,brand_mentioned)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,false)`,
+    [receipt.id,tenant,scope.domain,observation.provider,model,responseId,observation.query,observation.text]));
+  }
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_observations')).rows[0].n,0);
+ }finally{await db.close();}
 });
