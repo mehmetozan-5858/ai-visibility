@@ -23,3 +23,25 @@ Status: **BLOCKED / DRAFT ONLY**. This checklist is not a deployment approval.
 - R&D Gemini admission is not executable and the draft receipt store/read adapter are **not** connected to production routes.
 - Site HTTP 200 / Vercel READY / GitHub green test results are not commercial acceptance.
 - Do not merge, deploy, migrate, call paid APIs, send emails or enable checkout as part of this checklist.
+
+
+## 13 Nov — external provider and production configuration inspection
+- Official Google Gemini API pricing lists a free tier for Gemini 2.5
+  Flash-Lite, but its free-tier terms say content may be used to improve
+  Google's products. See https://ai.google.dev/gemini-api/docs/pricing .
+  **This is not consent to send real customers' data.** Keep customer Gemini
+  calls blocked until independently documented purpose-specific data permission,
+  account/project free-tier eligibility, billing status and quota.
+- Official OpenRouter free-model collection says `:free` models are zero
+  priced but request-limited; it does not certify that any specific account
+  can complete a request or that every result has a trustworthy zero-cost
+  provider receipt. https://openrouter.ai/collections/free-models/
+- Vercel production project environment name inventory (values **not**
+  decrypted) includes `OPENROUTER_API_KEY`,
+  `OPENROUTER_FREE_MODEL` and `APPLICANT_FREE_MEASUREMENT_ENABLED`.
+  Variable presence is **not** evidence that a switch is enabled, a model is
+  currently available, a key works or a provider returns accepted receipts.
+  The inventory response was capped at 100 variables, so missing names must
+  not be treated as proof of absence.
+- Last exact-head successful CI is not production acceptance. The proposed
+  verified receipt/observation table remains a draft, isolated from live routes.
