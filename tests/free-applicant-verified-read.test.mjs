@@ -7,7 +7,7 @@ const questions=['Which shops sell clothes nearby?','Where can I buy quality app
 const pair=(provider,index)=>{
  const responseId=provider+'-response-'+index,receiptId=provider+'-receipt-'+index;
  const observation={tenantId:entity.id,domain:entity.domain,provider,model:provider==='Gemini'?'gemini-3.5-flash-lite':'google/gemma-4-31b-it:free',
-  responseId,receiptId,query:questions[index],text:'Synthetic neutral answer',
+  responseId,receiptId,query:questions[index],text:'Synthetic neutral answer',mode:'api-no-search',
   brandPrompted:false,truncated:false,brandMentioned:index===0,
   recordedAt:new Date(now-(index+1)*60000).toISOString()};
  const receipt={id:receiptId,tenantId:entity.id,domain:entity.domain,
