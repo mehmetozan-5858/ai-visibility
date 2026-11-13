@@ -22,4 +22,9 @@ CREATE INDEX IF NOT EXISTS applicant_free_provider_consents_active_idx
 -- No INSERT/UPDATE permission for the public app client. A future verified
 -- applicant consent endpoint must enforce anti-CSRF, exact ownership link,
 -- source attestation, policy purpose and refusal/withdrawal.
+-- An applicant's consent is sensitive permission history. Never grant the
+-- anonymous/default role direct table access or a permissive RLS policy.
+REVOKE ALL ON TABLE public.applicant_free_provider_consents FROM PUBLIC;
+ALTER TABLE public.applicant_free_provider_consents ENABLE ROW LEVEL SECURITY;
+-- The server's effective role/ownership and any grants require separate review.
 COMMIT;
