@@ -9,7 +9,7 @@ const providers=['OpenRouter','Gemini','Perplexity'];
 const observation=(provider,query,opts={})=>({
  provider,query,model:'test-model',mode:'api-no-search',
  text:'Source-grounded synthetic fixture',brandPrompted:false,truncated:false,
- brandMentioned:false,responseId:'response-fixture',checkedAt:'2026-11-13T14:59:00.000Z',...opts
+ brandMentioned:false,responseId:'synthetic-'+provider+'-'+query,checkedAt:'2026-11-13T14:59:00.000Z',...opts
 });
 const fixture=(observations,createdAt='2026-11-13T14:59:10.000Z')=>[{
  entityId:entity.id,entityType:'prospect',domain:entity.domain,createdAt,
