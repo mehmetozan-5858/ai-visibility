@@ -55,3 +55,12 @@ test('case and surrounding whitespace never create a second distinct neutral que
  assert.equal(r.status,'insufficient');
  assert.equal(r.score,null);
 });
+
+test('reused response ID cannot impersonate two independent provider answers',()=>{
+ const obs=providers.flatMap(p=>queries.map(q=>observation(p,q)));
+ obs[1].responseId=obs[0].responseId;
+ const r=freeAssessmentEvidence(entity,fixture(obs),{now});
+ assert.equal(r.samples,5);
+ assert.equal(r.status,'insufficient');
+ assert.equal(r.score,null);
+});
