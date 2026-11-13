@@ -24,7 +24,10 @@ test('pilot grant audits atomically without writing payments and validates limit
 test('pilot report UI is reachable and paid implementation actions stay hidden',async()=>{
  const gate=await fs.readFile(new URL('../components/CustomerPortalGate.js',import.meta.url),'utf8');
  const portal=await fs.readFile(new URL('../components/CustomerPortal.js',import.meta.url),'utf8');
- assert.match(gate,/account\?\.access\?\.kind==="pilot"\|\|unlocked/);
+ assert.match(gate,/account\?\.access\?\.allowed===true/);
+ assert.match(gate,/account\.access\.kind==="pilot"\|\|unlocked/);
+ assert.match(gate,/access\?\.kind==="paid"/);
+ assert.doesNotMatch(gate,/account\?\.payments\|\|\[\]/);
  assert.match(portal,/account\?\.access\?\.kind==="paid"/);
  assert.match(portal,/account\?\.access\?\.kind==="pilot"\?<StatusPill/);
 });
