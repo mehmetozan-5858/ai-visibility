@@ -94,3 +94,19 @@ test('free-provider incomplete and absent response identity retain safe failure 
   assert.doesNotMatch(JSON.stringify(output),/private-provider-message/);
  }
 });
+
+test('persisted free cost record binds trusted prospect and exact response identity',async()=>{
+ const writes=[];
+ const prospect={...entity,entityType:'prospect'};
+ const result=await collectFreeAnswerEvidence(prospect,{queries:[queries[0]]},{env,
+   request:async()=>({ok:true,complete:true,verifiedZeroPriceAtRequest:true,
+     modelId:env.OPENROUTER_FREE_MODEL,responseId:'provider-response-synthetic',
+     answer:'Other businesses offer similar services.',usage:{cost:0}}),
+   recordCost:async item=>{writes.push(item);return{id:'synthetic-cost-row'};}});
+ assert.equal(result.observations.length,1);
+ assert.equal(writes.length,1);
+ assert.equal(writes[0].prospectId,prospect.id);
+ assert.equal(writes[0].metadata.responseId,'provider-response-synthetic');
+ assert.equal(writes[0].metadata.pricingSource,'provider-reported-zero');
+ assert.equal(writes[0].amount,0);
+});
