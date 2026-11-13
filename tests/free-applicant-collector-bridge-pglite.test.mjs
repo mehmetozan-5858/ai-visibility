@@ -14,6 +14,15 @@ const queries=['Which local stores sell outdoor clothing?',
   'Where can buyers find quality running gear?'];
 const poolFor=db=>({query:(...args)=>db.query(...args),
   connect:async()=>({query:(...args)=>db.query(...args),release(){}})});
+const trustedReceipt=(i,query)=>({id:'receipt-'+i,tenantId:entity.id,domain:entity.domain,
+ provider:'OpenRouter',model:env.OPENROUTER_FREE_MODEL,responseId:'synthetic-provider-'+i,
+ query,amount:0,currency:'USD',estimated:false,operation:'answer-evidence',
+ verifiedZeroPriceAtRequest:true,responseComplete:true,verifiedModelIdentity:true});
+const trustedLedger=(specific=null)=>({
+ findTrustedReceipt:async ({responseId,query})=>({id:specific?.id||'receipt-'+responseId.split('-').at(-1)}),
+ readTrustedReceipt:async (id)=>specific||trustedReceipt(Number(id.split('-').at(-1)),
+  id==='receipt-2'?queries[1]:queries[0])
+});
 const fake=(i=0,patch={})=>({ok:true,complete:true,
   verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,
   usage:{cost:0},responseId:'synthetic-provider-'+i,
@@ -27,7 +36,7 @@ test('trusted isolated flow writes actual receipt and observation; no public sco
   await schema(db);let calls=0;
   const result=await collectAndPersistVerifiedFreeApplicant({
    pool:poolFor(db),entity,env,queries,consentVerified:true,tenantAuthorized:true,
-   request:async()=>fake(++calls),receiptId:()=> 'receipt-'+calls});
+   request:async()=>fake(++calls),...trustedLedger()});
   assert.equal(result.accepted,2);
   assert.equal(result.customerAcceptance,false);
   assert.equal(calls,2);
@@ -48,7 +57,7 @@ test('missing consent, tenant authorization, or storage prevents any provider ca
     {consentVerified:true,tenantAuthorized:true}]){
    const result=await collectAndPersistVerifiedFreeApplicant({
     pool:poolFor(db),entity,env,queries,...flags,
-    request:async()=>{calls++;return fake(calls)}});
+    request:async()=>{calls++;return fake(calls)},...trustedLedger()});
    assert.equal(result.accepted,0);
    assert.equal(result.customerAcceptance,false);
   }
@@ -70,7 +79,7 @@ test('paid, incomplete, replayed, or provider-mismatched responses are rejected 
    const result=await collectAndPersistVerifiedFreeApplicant({
     pool:poolFor(db),entity,env,queries:[queries[0]],
     consentVerified:true,tenantAuthorized:true,
-    request:async()=>fake(1,patch)});
+    request:async()=>fake(1,patch),...trustedLedger()});
    assert.equal(result.accepted,0);
    assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,0);
   }finally{await db.close();}
@@ -79,14 +88,41 @@ test('paid, incomplete, replayed, or provider-mismatched responses are rejected 
 test('same response identity cannot be stored twice even on retry, and database prevents duplicate',async()=>{
  const db=new PGlite();
  try{
-  await schema(db);let ids=0;
+  await schema(db);
   const result=await collectAndPersistVerifiedFreeApplicant({
    pool:poolFor(db),entity,env,queries,consentVerified:true,tenantAuthorized:true,
-   request:async()=>fake(1),
-   receiptId:()=> 'receipt-'+(++ids)});
+   request:async()=>fake(1),...trustedLedger()});
   assert.equal(result.accepted,1);
   assert.equal(result.attempted,2);
   assert.equal(result.reason,'partial-or-rejected');
   assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,1);
  }finally{await db.close();}
+});
+
+test('untrusted provider self-reported zero cannot stand in for independent receipt verification',async()=>{
+ const db=new PGlite();
+ try{
+  await schema(db);let calls=0;
+  const result=await collectAndPersistVerifiedFreeApplicant({
+   pool:poolFor(db),entity,env,queries,consentVerified:true,tenantAuthorized:true,
+   request:async()=>{calls++;return fake(1)}});
+  assert.equal(calls,0);
+  assert.equal(result.reason,'independent-cost-proof-unavailable');
+  const missing=await collectAndPersistVerifiedFreeApplicant({
+   pool:poolFor(db),entity,env,queries:[queries[0]],
+   consentVerified:true,tenantAuthorized:true,
+   request:async()=>{calls++;return fake(1)},
+   findTrustedReceipt:async()=>null,readTrustedReceipt:async()=>null});
+  assert.equal(missing.accepted,0);
+  assert.equal(calls,1);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,0);
+  const incorrect=await collectAndPersistVerifiedFreeApplicant({
+   pool:poolFor(db),entity,env,queries:[queries[0]],
+   consentVerified:true,tenantAuthorized:true,
+   request:async()=>fake(1),
+   findTrustedReceipt:async()=>({id:'receipt-1'}),
+   readTrustedReceipt:async()=>({...trustedReceipt(1,queries[0]),amount:0.5})});
+  assert.equal(incorrect.accepted,0);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,0);
+ }finally{await db.close()}
 });
