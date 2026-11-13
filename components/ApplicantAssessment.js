@@ -67,7 +67,7 @@ export default function ApplicantAssessment(){
    <p>{en?"What happens next:":"Sonraki aşama:"} {en?"Verified ownership and consent, evidence-backed measurement, then an optional detailed report. No new AI call is triggered by viewing this page.":"İşletme sahipliği ve onayın doğrulanması, kanıtlı ölçüm, ardından isteğe bağlı ayrıntılı rapor. Bu sayfayı açmak yeni AI isteği başlatmaz."}</p>
    <small>{en?"This measures a limited set of recorded model responses, not general market visibility or guaranteed sales.":"Bu yalnızca sınırlı sayıdaki kayıtlı model yanıtlarını ölçer; genel görünürlük veya satış garantisi değildir."}</small>
    <p>{en?"Detailed reports, service access and payments require separate verification.":"Detaylı rapor, hizmet erişimi ve ödeme ayrı doğrulama gerektirir."}</p>
-   <section aria-label={en?'AI data processing permission':'AI veri işleme izni'}>
+   {value.providerConsentEnabled===true&&<section aria-label={en?'AI data processing permission':'AI veri işleme izni'}>
     <h3>{en?'Optional AI provider permission':'İsteğe bağlı AI sağlayıcı izni'}</h3>
     <p>{en?
      'OpenRouter may transmit your business-related analysis questions to external model providers. Do not include personal, confidential or sensitive data. Permission does not guarantee a free quota, start a request, buy a service or approve a score.':
@@ -80,7 +80,7 @@ export default function ApplicantAssessment(){
        {en?'Withdraw permission':'İzni geri çek'}</button></p>
     {permissionState==='recorded'&&<p role="status">{en?'Permission recorded. No AI request started.':'İzin kaydedildi. AI isteği başlatılmadı.'}</p>}
     {permissionState==='withdrawn'&&<p role="status">{en?'Permission withdrawn.':'İzin geri çekildi.'}</p>}
-   </section>
+   </section>}
    <button type="button" disabled={downloading} onClick={download}>{downloading?(en?'Preparing PDF…':'PDF hazırlanıyor…'):(en?'Download free assessment PDF':'Ücretsiz ön değerlendirme PDF’ini indir')}</button>
    <a href="/hizmetler">{en?"Explore services":"Hizmetleri incele"}</a>
   </section>}
