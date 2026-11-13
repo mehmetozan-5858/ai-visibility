@@ -28,3 +28,10 @@ test('pilot report UI is reachable and paid implementation actions stay hidden',
  assert.match(portal,/account\?\.access\?\.kind==="paid"/);
  assert.match(portal,/account\?\.access\?\.kind==="pilot"\?<StatusPill/);
 });
+
+test('customer gate ignores historical paid labels unless server grants explicit paid access',async()=>{
+ const gate=await fs.readFile(new URL('../components/CustomerPortalGate.js',import.meta.url),'utf8');
+ assert.match(gate,/const unlocked=account\?\.access\?\.allowed===true&&account\?\.access\?\.kind==="paid"/);
+ assert.doesNotMatch(gate,/account\?\.payments\|\|\[\]/);
+ assert.match(gate,/account\?\.access\?\.kind==="pilot"\|\|unlocked/);
+});
