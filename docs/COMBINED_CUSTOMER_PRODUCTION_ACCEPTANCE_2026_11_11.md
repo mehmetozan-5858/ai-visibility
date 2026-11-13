@@ -27,3 +27,21 @@ Source URLs:
 - https://github.com/mehmetozan-5858/ai-visibility/actions/runs/43084561607
 - https://github.com/mehmetozan-5858/ai-visibility/actions/runs/43084561609
 - https://vercel.com/ai-visibility2/ai-visibility/BtqQYxFaPmGpzZmkvDqMhiu5x9mn
+
+
+## Additional read-only acceptance evidence — 2026-11-13 (supersedes earlier snapshot where conflicting)
+- Draft PR #240 exact head `e8ebf21fb355340413ac31fe2f2053a838eb7313`: CI run 43429820505, browser run 43429820316, and web/mobile run 43429820339 completed successfully. These are synthetic/offline checks, NOT verified external provider or payment acceptance.
+- Latest observed Vercel READY production deployment `dpl_5CX3jNCEhwLVWtgFvscpmUT91CkB`, source SHA `832ceb246ed20e0218e19f628c162ea5426df35f`. GitHub compare PR head vs this production SHA: diverged, 127 production-specific commits and 29 PR-specific commits. Never merge or deploy the review head directly without an exact-head reconciliation review.
+- Production `lib/ai-bridge-free-inference.mjs` already passes `usage:{cost:0}`, response identity and completion metadata; it also bounds response ID to 200 chars and refuses to mark truncated text complete. The draft PR was updated to preserve these safeguards. Do NOT count the draft improvement as a production fix or interpret a READY build as real API success.
+- Production `app/api/admin/free-provider-preflight/route.js` requires admin authorization, is rate-limited, uses GET, and calls key/catalog inspection, not inference. Without an authenticated authorized call its outcome is UNKNOWN; env-key presence is not proof of credential acceptance, model availability, quota or zero-price request execution.
+- Vercel production env metadata (no secret values read): `OPENROUTER_API_KEY` is defined; `OPENROUTER_FREE_MODEL=google/gemma-4-31b-it:free`, `APPLICANT_FREE_MEASUREMENT_ENABLED=true`; `GEMINI_API_KEY` and `PERPLEXITY_API_KEY` were observed only under Preview; no `CUSTOMER_SETTLEMENT_PROOF_ENABLED` production entry. A single enabled provider does not satisfy two-provider evidence acceptance.
+- Neon production read-only aggregate at inspection: 52 answer-evidence runs in 14 days, 48 automatic-repeat runs with zero observations and generic Perplexity errors; 4 non-repeat runs, one actual observation (one provider and one query), and three OpenRouter 429 errors among seven OpenRouter error entries. Runs are not model responses. A six-observation/two-provider/two-query acceptance gate remains unsatisfied. The 7-day automatic failure cooldown and new error classes are draft-only and are not deployed.
+- Neon production payment aggregate: one `transaction.completed` plus one `transaction.paid` event, neither with linked payment/client IDs; zero payment rows with `status='paid'` and `method='paddle'`. No customer settlement proof established.
+- Composite `payments(id,client_id)` unique index and `verified_customer_settlements` tenant-linked foreign key applied successfully to an isolated Neon temporary branch. The migration was explicitly discarded using `apply_changes=false`; temporary branch deleted. Production `verified_customer_settlements` table and `payments_id_client_id_uniq` index remain absent.
+- Production access is still HOLD: (1) reconcile live auth/payment/provider code and review head safely; (2) verify restricted reader and external customer authorization without passwords changing; (3) validate current zero-price model and quota with an authorized *no-inference* preflight; (4) obtain genuine consented multi-provider evidence without paid fallback; (5) prove signed, linked Paddle transaction and refund/cancellation/idempotency behavior. No release, merges, paid calls, emails, customer changes, payment, or production schema writes are authorized by this document.
+
+Evidence links:
+- https://github.com/mehmetozan-5858/ai-visibility/actions/runs/43429820505
+- https://github.com/mehmetozan-5858/ai-visibility/actions/runs/43429820316
+- https://github.com/mehmetozan-5858/ai-visibility/actions/runs/43429820339
+- https://vercel.com/ai-visibility2/ai-visibility/5CX3jNCEhwLVWtgFvscpmUT91CkB
