@@ -53,4 +53,12 @@ CREATE INDEX IF NOT EXISTS free_applicant_observation_recent_scope_idx
 -- Never grant these tables to PUBLIC or browser-facing roles.
 -- Review least-privilege DB grants, GDPR/data retention, provider provenance,
 -- duplicate backfills, and rollback before any production migration.
+-- These rows contain provider responses and proof identities; no browser/client
+-- roles receive direct access. Explicit server role grants are a separate gate.
+REVOKE ALL ON TABLE public.free_applicant_verified_receipts FROM PUBLIC;
+REVOKE ALL ON TABLE public.free_applicant_verified_observations FROM PUBLIC;
+ALTER TABLE public.free_applicant_verified_receipts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.free_applicant_verified_observations ENABLE ROW LEVEL SECURITY;
+-- Deliberately no broad RLS policy. A controlled service role and table owner
+-- behavior must be evaluated before live use; this is defense-in-depth only.
 COMMIT;
