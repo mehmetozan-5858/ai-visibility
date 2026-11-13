@@ -43,3 +43,15 @@ test('one free-only provider and duplicate responses cannot satisfy multi-provid
  assert.equal(r.status,'insufficient');assert.equal(r.samples,2);
  assert.equal(r.providers,1);assert.equal(r.score,null);
 });
+
+test('case and surrounding whitespace never create a second distinct neutral question',()=>{
+ const r=freeAssessmentEvidence(entity,fixture([
+  observation('OpenRouter','  WHICH BUSINESSES SELL PRECISION TOOLS?  '),
+  observation('Gemini','which businesses sell precision tools?'),
+  observation('Perplexity','Which Businesses Sell Precision Tools?')
+ ]),{now});
+ assert.equal(r.queries,1);
+ assert.equal(r.samples,3);
+ assert.equal(r.status,'insufficient');
+ assert.equal(r.score,null);
+});
