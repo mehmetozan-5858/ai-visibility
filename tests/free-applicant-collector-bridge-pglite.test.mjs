@@ -193,10 +193,9 @@ test('withdrawal after first stored response stops the second provider call',asy
    }
   });
   assert.equal(calls,1);
-  // First result was already authorized when committed; revocation in its
-  // trusted receipt read cannot retroactively undo that commit. It DOES stop
-  // the next outbound request. Never claim that previous evidence vanished.
-  assert.equal(result.accepted,1);
-  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,1);
+  // Revocation occurs during independent cost lookup, before the DB write.
+  // That response must not be persisted, nor may another provider call run.
+  assert.equal(result.accepted,0);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM free_applicant_verified_receipts')).rows[0].n,0);
  }finally{await db.close()}
 });
