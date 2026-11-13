@@ -47,7 +47,7 @@ test('safe failure categories retain HTTP status without reflecting private prov
 });
 test('missing or failed cost persistence cannot produce accepted evidence',async()=>{
  for(const recordCost of [async()=>null,async()=>{throw Error('private database error')}]){
-  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true}),recordCost});
+  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true,responseId:'synthetic-response'},recordCost});
   assert.equal(r.observations.length,0);assert.equal(r.errors[0].reason,'cost-recording-failed');assert.doesNotMatch(JSON.stringify(r),/private database/);
  }
 });
@@ -61,4 +61,25 @@ test('first rate limit prevents a second network call and cost write, retaining 
 test('injected unrecognized limit hints cannot enter the evidence record',async()=>{
  const result=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:false,reason:'provider-request-failed',status:429,limitSource:'private-data',retryAfterSeconds:999999}),recordCost:async()=>{throw Error('not called')}});
  assert.equal(result.errors[0].limitSource,undefined);assert.equal(result.errors[0].retryAfterSeconds,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
+});
+
+test('unidentified provider completion cannot trigger cost ledger or evidence',async()=>{
+ let costs=0;
+ const result=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{
+  env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,
+   usage:{cost:0},answer:'Unidentified completion',complete:true}),
+  recordCost:async()=>{costs++;return {id:'should-not-be-written'};}
+ });
+ assert.equal(costs,0);assert.equal(result.observations.length,0);
+ assert.equal(result.errors[0].reason,'answer-verification-failed');
+});
+test('replayed provider response between neutral questions never writes second receipt',async()=>{
+ let costs=0;
+ const result=await collectFreeAnswerEvidence(entity,{queries},{
+  env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,
+   usage:{cost:0},answer:'Synthetic answer',responseId:'same-response-id',complete:true}),
+  recordCost:async()=>{costs++;return {id:'receipt-'+costs};}
+ });
+ assert.equal(costs,1);assert.equal(result.observations.length,1);
+ assert.equal(result.errors.length,1);assert.equal(result.errors[0].reason,'answer-verification-failed');
 });
