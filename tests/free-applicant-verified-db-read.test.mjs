@@ -52,6 +52,10 @@ test('invalid or missing server-authorized scope makes zero database calls',asyn
  const pool={query:async()=>{throw Error('query-not-allowed')}};
  assert.equal((await readVerifiedFreeApplicantAssessment(pool,{id:'other',domain:'example.test'})).status,'unavailable');
  assert.equal((await readVerifiedFreeApplicantAssessment(pool,null)).status,'unavailable');
+ for(const domain of ['https://example.test','example.test/path','EXAMPLE.TEST','example.test:443','*.example.test','localhost','example..test'])
+   assert.equal((await readVerifiedFreeApplicantAssessment(pool,{...entity,domain})).status,'unavailable');
+ for(const id of ['00000000-0000-0000-0000-000000000000','abcd----abcd-1234-1234-abcdefabcde0'])
+   assert.equal((await readVerifiedFreeApplicantAssessment(pool,{...entity,id})).status,'unavailable');
 });
 test('no legacy fallback when trusted receipt query returns nothing',async()=>{
  const result=await readVerifiedFreeApplicantAssessment(mocked([]),entity,{now});
