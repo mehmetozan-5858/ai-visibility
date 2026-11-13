@@ -83,3 +83,14 @@ test('replayed provider response between neutral questions never writes second r
  assert.equal(costs,1);assert.equal(result.observations.length,1);
  assert.equal(result.errors.length,1);assert.equal(result.errors[0].reason,'answer-verification-failed');
 });
+
+test('free-provider incomplete and absent response identity retain safe failure reasons only',async()=>{
+ for(const reason of ['missing-response-identity','incomplete-provider-response']){
+  const output=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{
+   env,request:async()=>({ok:false,reason,raw:'private-provider-message'}),
+   recordCost:async()=>{throw Error('must-not-record')}});
+  assert.equal(output.observations.length,0);
+  assert.equal(output.errors[0].reason,reason);
+  assert.doesNotMatch(JSON.stringify(output),/private-provider-message/);
+ }
+});
