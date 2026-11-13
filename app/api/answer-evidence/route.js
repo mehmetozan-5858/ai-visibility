@@ -1,4 +1,7 @@
 import {freeMeasurementStatus,collectFreeAnswerEvidence} from '../../../lib/free-answer-evidence.mjs';
+import {freeApplicantProofStorageStatus} from '../../../lib/free-applicant-proof-storage-status.mjs';
+import {databasePool} from '../../../lib/database-runtime';
+import {getDatabaseUrl} from '../../../lib/db';
 import {clientBaselineOptions} from '../../../lib/answer-evidence-baseline';
 import {answerEvidenceStatus} from '../../../lib/answer-evidence-status';
 import {repeatEvidenceOptions} from '../../../lib/answer-evidence-comparison';
@@ -12,8 +15,15 @@ import {listAnswerEvidence,measureAnswerEvidence,getAnswerEvidenceRun} from '../
 export const runtime='nodejs';
 export const maxDuration=60;
 const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+async function proofStorageHealth(){
+ try{
+  const url=getDatabaseUrl();
+  if(!url)return {status:'unavailable',ready:false,reason:'database-unconfigured',customerAcceptance:false};
+  return await freeApplicantProofStorageStatus(databasePool(url));
+ }catch{return {status:'unavailable',ready:false,reason:'proof-storage-check-unavailable',customerAcceptance:false};}
+}
 export async function GET(req){const denied=await requireAdmin(req);if(denied)return denied;
- try{const params=new URL(req.url).searchParams,entityType=params.get('entityType'),entityId=params.get('entityId');if((entityType&&!['prospect','client'].includes(entityType))||(entityId&&!uuid(entityId)))return Response.json({error:'Geçersiz kayıt filtresi.'},{status:400});const [history,automation]=await Promise.allSettled([listAnswerEvidence({entityType,entityId}),answerEvidenceStatus({entityType,entityId})]);if(history.status!=='fulfilled')throw Error('history-unavailable');return Response.json({runs:history.value,status:automation.status==='fulfilled'?automation.value:{supported:true,error:'Otomatik ölçüm durumu alınamadı; bekleyen sayısı bilinmiyor.'},providers:answerProviders(),freeMeasurement:freeMeasurementStatus()},{headers:{'cache-control':'no-store'}})}catch{return Response.json({error:'Yanıt kanıtları alınamadı.'},{status:503})}}
+ try{const params=new URL(req.url).searchParams,entityType=params.get('entityType'),entityId=params.get('entityId');if((entityType&&!['prospect','client'].includes(entityType))||(entityId&&!uuid(entityId)))return Response.json({error:'Geçersiz kayıt filtresi.'},{status:400});const [history,automation,proofStorage]=await Promise.allSettled([listAnswerEvidence({entityType,entityId}),answerEvidenceStatus({entityType,entityId}),proofStorageHealth()]);if(history.status!=='fulfilled')throw Error('history-unavailable');return Response.json({runs:history.value,status:automation.status==='fulfilled'?automation.value:{supported:true,error:'Otomatik ölçüm durumu alınamadı; bekleyen sayısı bilinmiyor.'},providers:answerProviders(),freeMeasurement:freeMeasurementStatus(),freeApplicantProofStorage:proofStorage.status==='fulfilled'?proofStorage.value:{status:'unavailable',ready:false,customerAcceptance:false}},{headers:{'cache-control':'no-store'}})}catch{return Response.json({error:'Yanıt kanıtları alınamadı.'},{status:503})}}
 export async function POST(req){const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;
  try{
   const body=await req.json();if(!['prospect','client'].includes(body.entityType)||!uuid(body.entityId))return Response.json({error:'Geçerli bir işletme seçin.'},{status:400});
