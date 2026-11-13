@@ -48,6 +48,9 @@ test('evidence schema is unique to exact tenant and payment, not an internal sta
  assert.match(source,/client_id UUID NOT NULL/);
  assert.match(source,/paddle_event_id TEXT NOT NULL UNIQUE/);
  assert.match(source,/transaction_id TEXT NOT NULL UNIQUE/);
+ assert.match(source,/CREATE UNIQUE INDEX IF NOT EXISTS payments_id_client_id_uniq/);
+ assert.match(source,/FOREIGN KEY \(payment_id,client_id\)/);
+ assert.match(source,/REFERENCES public\.payments\(id,client_id\) ON DELETE RESTRICT/);
 });
 
 test('settlement proof ignores paid statuses without an actual new payment transition',async()=>{
