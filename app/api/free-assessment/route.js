@@ -20,7 +20,15 @@ export async function GET(req){
   // Authorized prospect comes from the signed preview grant and trusted database.
   // Legacy answer_evidence_runs cannot certify zero-cost provider receipts.
   const proof=await readVerifiedFreeApplicantAssessment(pool,entity);
-  const assessment=proof.status==='ready'?proof:{score:null,status:'insufficient',samples:0,providers:0,queries:0,measuredAt:null,
+  // A trusted, but insufficient, receipt-linked sample count is useful to a
+  // customer; unknown/unavailable proof must never be presented as measured.
+  const proofReadable=proof.status==='ready'||proof.status==='insufficient';
+  const assessment=proof.status==='ready'?proof:{
+    score:null,status:'insufficient',
+    samples:proofReadable&&Number.isSafeInteger(proof.samples)&&proof.samples>=0?proof.samples:0,
+    providers:proofReadable&&Number.isSafeInteger(proof.providers)&&proof.providers>=0?proof.providers:0,
+    queries:proofReadable&&Number.isSafeInteger(proof.queries)&&proof.queries>=0?proof.queries:0,
+    measuredAt:proofReadable&&typeof proof.measuredAt==='string'?proof.measuredAt:null,
     minimum:{samples:6,providers:2,queries:2},methodVersion:'linked-receipt-only-v1',
     reason:proof.status==='unavailable'?'verified-proof-unavailable':'verified-proof-insufficient'};
   const language=/^(Türkiye|Turkey|TR)$/i.test(entity.country||'')?'tr':'en';
