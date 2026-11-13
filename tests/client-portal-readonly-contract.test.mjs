@@ -62,3 +62,24 @@ test('portal entitlement remains server-authorized rather than inferred from pay
  assert.match(src,/account\.access\.kind==="pilot"\|\|unlocked/);
  assert.doesNotMatch(src,/account\?\.payments\|\|\[\]/);
 });
+
+test('customer login only establishes an authenticated session, not paid settlement',async()=>{
+ const login=await source('app/api/client-auth/login/route.js');
+ const portal=await source('app/api/client-portal/route.js');
+ assert.match(login,/verifyClientCredential/);
+ assert.match(login,/createClientToken/);
+ assert.doesNotMatch(login,/grantPilot|customerHasVerifiedSettlement|payments\.status/);
+ assert.match(portal,/verifyClientToken/);
+ assert.match(portal,/customerAccess\(account\)/);
+ assert.match(portal,/if\(!access\.allowed\)return privateJson\(/);
+});
+
+test('legacy paid label is distinguished from verified Paddle settlement',async()=>{
+ const src=await source('lib/pilot-access.js');
+ const proof=await source('lib/customer-settlement-proof.mjs');
+ assert.match(src,/CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
+ assert.match(src,/customerHasVerifiedSettlement\(account\.client\.id\)/);
+ assert.match(proof,/verified_customer_settlements/);
+ assert.match(proof,/p\.method='paddle'/);
+ assert.match(proof,/catch\{return false\}/);
+});
