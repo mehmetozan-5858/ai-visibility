@@ -1,6 +1,6 @@
 import {verifyApplicantAssessmentGrant,linkedApplicantAssessmentEnabled} from "../../../lib/applicant-assessment-grant.mjs";
 import {normalizedBusinessDomain} from "../../../lib/customer-assessment-candidates.mjs";
-import {freeAssessmentEvidence} from "../../../lib/free-assessment-rules";
+import {readVerifiedFreeApplicantAssessment} from "../../../lib/free-applicant-verified-db-read.mjs";
 import {databasePool} from "../../../lib/database-runtime";
 import {getDatabaseUrl} from "../../../lib/db";
 import {checkRateLimit} from "../../../lib/api-security";
@@ -29,12 +29,21 @@ export async function GET(req){
   if(!row||!row.emailVerifiedAt||!row.emailConsumedAt||!domain||
      domain!==normalizedBusinessDomain(row.domain)||domain!==row.verifiedDomain)
     return Response.json({error:"Preview is not authorized"},{status:403,headers});
-  const runs=(await pool.query(`SELECT entity_id AS "entityId",entity_type AS "entityType",
-    domain,created_at AS "createdAt",result
-    FROM public.answer_evidence_runs
-    WHERE entity_id=$1 AND entity_type='prospect' AND created_at>=NOW()-INTERVAL '14 days'
-    ORDER BY created_at DESC LIMIT 50`,[row.id])).rows;
-  const assessment=freeAssessmentEvidence(row,runs);
+  // A reviewed identity link grants a scoped preview, not authority to score
+  // legacy provider runs. Both JSON and PDF must use the same receipt-linked
+  // evidence as the ordinary free assessment, or show no verified score.
+  const proof=await readVerifiedFreeApplicantAssessment(pool,row);
+  const readable=proof.status==='ready'||proof.status==='insufficient';
+  const assessment=proof.status==='ready'?proof:{
+    score:null,status:'insufficient',
+    samples:readable&&Number.isSafeInteger(proof.samples)&&proof.samples>=0?proof.samples:0,
+    providers:readable&&Number.isSafeInteger(proof.providers)&&proof.providers>=0?proof.providers:0,
+    queries:readable&&Number.isSafeInteger(proof.queries)&&proof.queries>=0?proof.queries:0,
+    measuredAt:readable&&typeof proof.measuredAt==='string'?proof.measuredAt:null,
+    minimum:{samples:6,providers:2,queries:2},
+    methodVersion:'linked-receipt-only-v1',
+    reason:proof.status==='unavailable'?'verified-proof-unavailable':'verified-proof-insufficient'
+  };
   // Never expose source provider text, internal prospect fields, customer PII or unverified recommendations.
   const language=/^(Türkiye|Turkey|TR)$/i.test(row.country||"")?"tr":"en";
   const business={name:row.name,country:row.country,city:row.city,sector:row.sector};
@@ -43,6 +52,7 @@ export async function GET(req){
    return new Response(bytes,{headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'attachment; filename="ai-visibility-free-assessment.pdf"'}});
   }
   return Response.json({business,
-   assessment,language,kind:"limited-sample-only",paidAccess:false,providerCallStarted:false},{headers});
+   assessment,language,kind:"limited-sample-only",paidAccess:false,providerCallStarted:false,
+   providerConsentEnabled:process.env.APPLICANT_FREE_PROVIDER_CONSENT_ENABLED==="true"},{headers});
  }catch{return Response.json({error:"Preview currently unavailable"},{status:503,headers})}
 }

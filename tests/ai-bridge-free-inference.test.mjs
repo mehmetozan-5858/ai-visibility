@@ -6,7 +6,7 @@ const model={id,pricing:{prompt:"0",completion:"0"}};
 const mock=(calls)=>(async (url,opts)=>{
   calls.push({url,opts});
   return url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
-    {ok:true,json:async()=>({model:id,choices:[{message:{content:"Reviewed safely."}}],usage:{cost:0}})};
+    {ok:true,json:async()=>({id:"synthetic-response-1",model:id,choices:[{finish_reason:"stop",message:{content:"Reviewed safely."}}],usage:{cost:0}})};
 });
 test("disabled by default makes no network requests",async()=>{
  const calls=[];const r=await runFreeBridgeTask({modelId:id,prompt:"hi",apiKey:"test",fetcher:mock(calls)});
@@ -116,4 +116,17 @@ test("malformed, oversized and unrecognized 429 diagnostics retain the HTTP fail
   assert.equal(result.status,429);assert.equal(result.reason,'provider-request-failed');assert.equal(result.limitSource,undefined);
   assert.equal(result.retryAfterSeconds,retry==='30'?30:undefined);assert.doesNotMatch(JSON.stringify(result),/private|secret/);
  }
+});
+
+test("zero-price response without provider response ID cannot be accepted",async()=>{
+ const fetcher=async url=>url.endsWith('/models')?{ok:true,json:async()=>({data:[model]})}:
+  {ok:true,json:async()=>({model:id,choices:[{finish_reason:'stop',message:{content:'Synthetic result'}}],usage:{cost:0}})};
+ const result=await runFreeBridgeTask({modelId:id,prompt:'Neutral synthetic prompt',apiKey:'synthetic',enabled:true,fetcher});
+ assert.equal(result.ok,false);assert.equal(result.reason,'missing-response-identity');
+});
+test("zero-price response with truncated completion cannot be accepted",async()=>{
+ const fetcher=async url=>url.endsWith('/models')?{ok:true,json:async()=>({data:[model]})}:
+  {ok:true,json:async()=>({id:'synthetic-response',model:id,choices:[{finish_reason:'length',message:{content:'Partial answer'}}],usage:{cost:0}})};
+ const result=await runFreeBridgeTask({modelId:id,prompt:'Neutral synthetic prompt',apiKey:'synthetic',enabled:true,fetcher});
+ assert.equal(result.ok,false);assert.equal(result.reason,'incomplete-provider-response');
 });

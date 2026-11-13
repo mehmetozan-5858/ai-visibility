@@ -12,11 +12,11 @@ test('free PDF supports Turkish names, bounds long input and refuses a score on 
  }
 });
 const source=(await readFile(new URL('../app/api/applicant-assessment/route.js',import.meta.url),'utf8')).replace(/^import .*;\s*$/gm,'').replace(/export /g,'');
-function fixture({grant=true,ownership=true,limited=false,renderFail=false}={}){
+function fixture({grant=true,ownership=true,limited=false,renderFail=false,proofStatus="insufficient",proofSamples=0}={}){
  const state={reads:0,renders:0};
  const pool={query:async sql=>{state.reads++;return {rows:sql.includes('FROM public.applicant_assessment_links')?[{id:'owned-prospect',name:'Owned business',country:'Türkiye',website:'example.com',domain:'example.com',verifiedDomain:ownership?'example.com':'other.com',emailVerifiedAt:'now',emailConsumedAt:'now',email:'private@example.com'}]:[]}}};
- const GET=new Function('verifyApplicantAssessmentGrant','linkedApplicantAssessmentEnabled','normalizedBusinessDomain','freeAssessmentEvidence','databasePool','getDatabaseUrl','checkRateLimit','buildApplicantAssessmentPdf',source+';return GET;')(
-  ()=>grant?{leadId:'owned-lead',prospectId:'owned-prospect'}:null,()=>true,x=>x,()=>({score:null,status:'insufficient',samples:0,providers:0,queries:0}),()=>pool,()=> 'db',()=>limited?new Response(null,{status:429}):null,
+ const GET=new Function('verifyApplicantAssessmentGrant','linkedApplicantAssessmentEnabled','normalizedBusinessDomain','readVerifiedFreeApplicantAssessment','databasePool','getDatabaseUrl','checkRateLimit','buildApplicantAssessmentPdf',source+';return GET;')(
+  ()=>grant?{leadId:'owned-lead',prospectId:'owned-prospect'}:null,()=>true,x=>x,()=>({score:null,status:proofStatus,samples:proofSamples,providers:proofSamples?1:0,queries:proofSamples?1:0}),()=>pool,()=> 'db',()=>limited?new Response(null,{status:429}):null,
   async input=>{state.renders++;assert.equal(input.business.email,undefined);assert.equal(input.assessment.score,null);if(renderFail)throw Error('private-error');return new Uint8Array([37,80,68,70,45]);}
  );return {GET,state};
 }
@@ -33,4 +33,20 @@ test('PDF format authenticates and rechecks live ownership before rendering, wit
 test('JSON preview never renders a PDF, and unsupported formats cannot select other data',async()=>{
  const {GET,state}=fixture();assert.equal((await GET(req('html'))).status,400);assert.equal(state.reads,0);
  const r=await GET(req());assert.equal(r.status,200);assert.equal(state.renders,0);assert.equal((await r.json()).paidAccess,false);
+});
+
+test('applicant JSON and PDF reject missing verified evidence and never read historical answer runs',async()=>{
+ for(const proofStatus of ['unavailable','insufficient']){
+  const {GET,state}=fixture({proofStatus,proofSamples:proofStatus==='insufficient'?2:100});
+  const json=await GET(req());
+  assert.equal(json.status,200);
+  const body=await json.json();
+  assert.equal(body.assessment.status,'insufficient');
+  assert.equal(body.assessment.score,null);
+  assert.equal(body.assessment.samples,proofStatus==='unavailable'?0:2);
+  assert.equal((await GET(req('pdf'))).status,200);
+  assert.equal(state.renders,1);
+ }
+ const route=await readFile(new URL('../app/api/applicant-assessment/route.js',import.meta.url),'utf8');
+ assert.doesNotMatch(route,/answer_evidence_runs|freeAssessmentEvidence\(row,runs\)/);
 });

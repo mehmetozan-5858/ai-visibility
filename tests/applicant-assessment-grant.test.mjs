@@ -36,7 +36,8 @@ test("preview rechecks the active exact link and exposes only aggregate evidence
  const src=await readFile(new URL("../app/api/applicant-assessment/route.js",import.meta.url),"utf8");
  assert.match(src,/verifyApplicantAssessmentGrant/);
  assert.match(src,/a\.lead_id=\$1 AND a\.prospect_id=\$2 AND a\.revoked_at IS NULL/);
- assert.match(src,/freeAssessmentEvidence\(row,runs\)/);
+ assert.match(src,/readVerifiedFreeApplicantAssessment\(pool,row\)/);
+ assert.doesNotMatch(src,/answer_evidence_runs|freeAssessmentEvidence\(row,runs\)/);
  assert.match(src,/paidAccess:false,providerCallStarted:false/);
  assert.doesNotMatch(src,/createFreeAssessmentToken|Paddle|startScan|sendVerificationEmail/);
  const component=await readFile(new URL("../components/ApplicantAssessment.js",import.meta.url),"utf8");

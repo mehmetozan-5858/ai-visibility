@@ -34,9 +34,10 @@ test('four sector approaches preserve benefit, free/paid terms and exact reviewe
  }
 });
 const source=(await readFile(new URL('../app/api/free-assessment/route.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
-function apiFixture({tables=true,fail=false}={}){
+function apiFixture({tables=true,fail=false,proofStatus='ready',proofSamples=0}={}){
  const state={queries:[]};const pool={query:async(sql,args)=>{state.queries.push({sql,args});if(fail)throw Error('private-error');if(sql.includes('to_regclass'))return{rows:[{prospects:tables?'prospects':null,evidence:tables?'evidence':null}]};if(sql.includes('FROM prospects'))return{rows:[{...entity,name:'Example',country:'Germany',city:'Berlin',sector:'Manufacturing',contactEmail:'private@example.com',qualificationScore:100}]};return{rows:[run()]}}};
- const GET=new Function('verifyFreeAssessmentToken','freeAssessmentEvidence','databasePool','getDatabaseUrl','checkRateLimit','servicePrice',source+';return GET;')(token=>verifyFreeAssessmentToken(token,{secret,now}),freeAssessmentEvidence,()=>pool,()=> 'test-db',()=>null,x=>({code:x.service,name:'Plan',amount:119,currency:'EUR',kind:'one-time'}));
+ const verifiedRead=async(_pool,prospect)=>proofStatus==='ready'?{status:'ready',score:50,samples:6,providers:3,queries:2,methodVersion:'linked-receipt-only-v1'}:{status:proofStatus,score:null,samples:proofSamples,providers:proofSamples>0?1:0,queries:proofSamples>0?2:0,measuredAt:proofSamples>0?new Date(now).toISOString():null};
+ const GET=new Function('verifyFreeAssessmentToken','readVerifiedFreeApplicantAssessment','databasePool','getDatabaseUrl','checkRateLimit','servicePrice',source+';return GET;')(token=>verifyFreeAssessmentToken(token,{secret,now}),verifiedRead,()=>pool,()=> 'test-db',()=>null,x=>({code:x.service,name:'Plan',amount:119,currency:'EUR',kind:'one-time'}));
  return{GET,state};
 }
 const req=token=>new Request('https://example.com/api/free-assessment',{headers:token?{'x-preview-token':token}:{}});
@@ -44,6 +45,39 @@ test('public endpoint authenticates before reads and exposes only free aggregate
  const {GET,state}=apiFixture();assert.equal((await GET(req())).status,401);assert.equal(state.queries.length,0);
  const r=await GET(req(createFreeAssessmentToken(id,{secret,now})));assert.equal(r.status,200);const body=await r.json();assert.equal(body.assessment.score,50);assert.equal(body.business.contactEmail,undefined);assert.equal(body.business.qualificationScore,undefined);assert.doesNotMatch(JSON.stringify(body),/Recorded response|private@example.com/);
  assert.ok(state.queries.every(x=>!/\b(INSERT|UPDATE|CREATE|ALTER|DELETE)\b/i.test(x.sql)));assert.equal(state.queries[1].args[0],id);assert.equal(r.headers.get('cache-control'),'no-store');
+});
+test('missing trusted provider receipts never let historical records create a public score',async()=>{
+ for(const proofStatus of ['unavailable','insufficient']){
+  const {GET,state}=apiFixture({proofStatus});
+  const response=await GET(req(createFreeAssessmentToken(id,{secret,now})));
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.equal(body.assessment.status,'insufficient');
+  assert.equal(body.assessment.score,null);
+  assert.equal(body.assessment.samples,0);
+  assert.ok(state.queries.every(q=>!q.sql.includes('answer_evidence_runs')));
+ }
+});
+test('trusted partial receipts retain measured counts without a score',async()=>{
+ const {GET}=apiFixture({proofStatus:'insufficient',proofSamples:3});
+ const response=await GET(req(createFreeAssessmentToken(id,{secret,now})));
+ assert.equal(response.status,200);
+ const {assessment}=await response.json();
+ assert.equal(assessment.status,'insufficient');
+ assert.equal(assessment.score,null);
+ assert.equal(assessment.samples,3);
+ assert.equal(assessment.providers,1);
+ assert.equal(assessment.queries,2);
+ assert.equal(assessment.reason,'verified-proof-insufficient');
+});
+test('unavailable trusted proof never adopts claimed partial counts',async()=>{
+ const {GET}=apiFixture({proofStatus:'unavailable',proofSamples:3});
+ const response=await GET(req(createFreeAssessmentToken(id,{secret,now})));
+ const {assessment}=await response.json();
+ assert.equal(assessment.score,null);
+ assert.equal(assessment.samples,0);
+ assert.equal(assessment.measuredAt,null);
+ assert.equal(assessment.reason,'verified-proof-unavailable');
 });
 test('source failures do not fabricate a zero score',async()=>{
  for(const options of [{tables:false},{fail:true}]){const {GET}=apiFixture(options);const r=await GET(req(createFreeAssessmentToken(id,{secret,now})));assert.equal(r.status,503);assert.equal((await r.json()).assessment,undefined)}

@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from "react";
 export default function ApplicantAssessment(){
  const [value,setValue]=useState(null),[message,setMessage]=useState(""),[busy,setBusy]=useState(true);
  const grant=useRef(null),[downloading,setDownloading]=useState(false);
+ const [permissionChecked,setPermissionChecked]=useState(false),[permissionState,setPermissionState]=useState("unknown"),[permissionBusy,setPermissionBusy]=useState(false);
  useEffect(()=>{
   const controller=new AbortController();
   const token=new URLSearchParams(window.location.hash.slice(1)).get("token");
@@ -17,6 +18,21 @@ export default function ApplicantAssessment(){
    .finally(()=>{if(!controller.signal.aborted)setBusy(false);});
   return()=>{grant.current=null;controller.abort();};
  },[]);
+ async function changeProviderPermission(withdraw=false){
+  if(!grant.current||permissionBusy||(!withdraw&&!permissionChecked))return;
+  setPermissionBusy(true);setMessage('');
+  try{
+   const response=await fetch('/api/applicant-provider-consent',{
+    method:withdraw?'DELETE':'POST',
+    headers:{'Content-Type':'application/json','x-applicant-assessment-token':grant.current},
+    cache:'no-store',
+    body:JSON.stringify({provider:'OpenRouter',policyVersion:'provider-data-sharing-2026-11',
+      confirm:withdraw?'withdraw-openrouter-data-permission':'agree-to-openrouter-data-permission'})});
+   if(!response.ok)throw Error(en?'Permission could not be saved. No AI request was sent.':'İzin kaydedilemedi. AI isteği gönderilmedi.');
+   setPermissionState(withdraw?'withdrawn':'recorded');
+   if(withdraw)setPermissionChecked(false);
+  }catch(e){setMessage(e.message);}finally{setPermissionBusy(false);}
+ }
  const en=value?.language==="en",a=value?.assessment;
  async function download(){
   if(!grant.current||downloading)return;
@@ -51,6 +67,20 @@ export default function ApplicantAssessment(){
    <p>{en?"What happens next:":"Sonraki aşama:"} {en?"Verified ownership and consent, evidence-backed measurement, then an optional detailed report. No new AI call is triggered by viewing this page.":"İşletme sahipliği ve onayın doğrulanması, kanıtlı ölçüm, ardından isteğe bağlı ayrıntılı rapor. Bu sayfayı açmak yeni AI isteği başlatmaz."}</p>
    <small>{en?"This measures a limited set of recorded model responses, not general market visibility or guaranteed sales.":"Bu yalnızca sınırlı sayıdaki kayıtlı model yanıtlarını ölçer; genel görünürlük veya satış garantisi değildir."}</small>
    <p>{en?"Detailed reports, service access and payments require separate verification.":"Detaylı rapor, hizmet erişimi ve ödeme ayrı doğrulama gerektirir."}</p>
+   {value.providerConsentEnabled===true&&<section aria-label={en?'AI data processing permission':'AI veri işleme izni'}>
+    <h3>{en?'Optional AI provider permission':'İsteğe bağlı AI sağlayıcı izni'}</h3>
+    <p>{en?
+     'OpenRouter may transmit your business-related analysis questions to external model providers. Do not include personal, confidential or sensitive data. Permission does not guarantee a free quota, start a request, buy a service or approve a score.':
+     'OpenRouter, işletmenizle ilgili analiz sorularını harici model sağlayıcılarına iletebilir. Kişisel, gizli veya hassas bilgi eklemeyin. İzin vermek ücretsiz kota garantisi, otomatik analiz, satın alma veya puan onayı anlamına gelmez.'}</p>
+    <label><input type="checkbox" checked={permissionChecked} onChange={e=>setPermissionChecked(e.target.checked)}/>
+      {en?'I understand and explicitly permit this provider-specific processing.':'Bu sağlayıcıya özel veri işlemeyi anladım ve açıkça izin veriyorum.'}</label>
+    <p><button type="button" disabled={!permissionChecked||permissionBusy||permissionState==='recorded'}
+       onClick={()=>changeProviderPermission(false)}>{en?'Save permission':'İzni kaydet'}</button>
+       <button type="button" disabled={permissionBusy} onClick={()=>changeProviderPermission(true)}>
+       {en?'Withdraw permission':'İzni geri çek'}</button></p>
+    {permissionState==='recorded'&&<p role="status">{en?'Permission recorded. No AI request started.':'İzin kaydedildi. AI isteği başlatılmadı.'}</p>}
+    {permissionState==='withdrawn'&&<p role="status">{en?'Permission withdrawn.':'İzin geri çekildi.'}</p>}
+   </section>}
    <button type="button" disabled={downloading} onClick={download}>{downloading?(en?'Preparing PDF…':'PDF hazırlanıyor…'):(en?'Download free assessment PDF':'Ücretsiz ön değerlendirme PDF’ini indir')}</button>
    <a href="/hizmetler">{en?"Explore services":"Hizmetleri incele"}</a>
   </section>}
