@@ -22,7 +22,7 @@ WITH expected(table_name,constraint_name,kind) AS (
  ('applicant_assessment_deliveries','applicant_assessment_deliveries_lead_id_fkey','f'),
  ('applicant_assessment_deliveries','applicant_assessment_deliveries_prospect_id_fkey','f'),
  ('verified_customer_settlements','verified_customer_settlements_pkey','p'),
- ('verified_customer_settlements','verified_customer_settlements_payment_id_fkey','f'),
+ ('verified_customer_settlements','verified_customer_settlements_payment_client_fkey','f'),
  ('verified_customer_settlements','verified_customer_settlements_client_id_fkey','f'),
  ('verified_customer_settlements','verified_customer_settlements_paddle_event_id_key','u'),
  ('verified_customer_settlements','verified_customer_settlements_transaction_id_key','u')
@@ -36,3 +36,15 @@ LEFT JOIN pg_catalog.pg_namespace n ON n.nspname='public'
 LEFT JOIN pg_catalog.pg_class t ON t.relnamespace=n.oid AND t.relname=e.table_name AND t.relkind IN ('r','p')
 LEFT JOIN pg_catalog.pg_constraint c ON c.conrelid=t.oid AND c.conname=e.constraint_name AND c.contype=e.kind::"char"
 ORDER BY e.table_name,e.constraint_name;
+
+
+-- Composite parent key for the payment/tenant binding: index metadata only.
+SELECT CASE WHEN EXISTS (
+ SELECT 1 FROM pg_catalog.pg_index i
+ JOIN pg_catalog.pg_class idx ON idx.oid=i.indexrelid
+ JOIN pg_catalog.pg_class tbl ON tbl.oid=i.indrelid
+ JOIN pg_catalog.pg_namespace n ON n.oid=tbl.relnamespace
+ WHERE n.nspname='public' AND tbl.relname='payments'
+   AND idx.relname='payments_id_client_id_uniq' AND i.indisunique AND i.indisvalid
+   AND pg_catalog.pg_get_indexdef(i.indexrelid) LIKE '%(id, client_id)%'
+) THEN 'PRESENT' ELSE 'MISSING' END AS payment_tenant_composite_index;
