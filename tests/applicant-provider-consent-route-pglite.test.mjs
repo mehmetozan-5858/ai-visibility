@@ -10,8 +10,8 @@ test('applicant permission endpoint is explicit, scope checked, opt-in and withd
  assert.match(src,/enforceSameOrigin\(req\)/);
  assert.match(src,/APPLICANT_FREE_PROVIDER_CONSENT_ENABLED/);
  assert.match(src,/a\.revoked_at IS NULL/);
- assert.match(src,/row\.emailVerifiedAt/);
- assert.match(src,/row\.emailConsumedAt/);
+ assert.match(src,/row\?\.emailVerifiedAt/);
+ assert.match(src,/row\?\.emailConsumedAt/);
  assert.match(src,/verifiedDomain!==row\.verifiedDomain/);
  assert.match(src,/agree-to-openrouter-data-permission/);
  assert.match(src,/withdraw-openrouter-data-permission/);
