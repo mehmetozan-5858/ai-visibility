@@ -55,3 +55,21 @@ test('malformed, wrong tenant and stale rows never produce a score',()=>{
  const malformed=verifiedFreeApplicantAssessment(null,{observations:sample.map(x=>x.observation)},{now});
  assert.equal(malformed.status,'insufficient');
 });
+
+test('same provider response with different receipt IDs poisons both proofs',()=>{
+ const observations=sample.map(x=>x.observation);
+ const receipts=sample.map(x=>x.receipt);
+ const forged={...sample[0].observation,receiptId:'another-receipt',
+   text:'Conflicting fabricated observation',brandMentioned:true};
+ const fakeReceipt={...sample[0].receipt,id:'another-receipt'};
+ const r=run([...observations,forged],[...receipts,fakeReceipt]);
+ assert.equal(r.status,'insufficient');
+ assert.equal(r.samples,5);
+ assert.equal(r.score,null);
+});
+test('replayed identical response row does not count or silently override original',()=>{
+ const observations=sample.map(x=>x.observation);
+ const receipts=sample.map(x=>x.receipt);
+ const r=run([...observations,{...observations[0]}],receipts);
+ assert.equal(r.status,'insufficient');assert.equal(r.samples,5);
+});
