@@ -2,7 +2,7 @@ import {freeMeasurementStatus,collectFreeAnswerEvidence} from '../../../lib/free
 import {clientBaselineOptions} from '../../../lib/answer-evidence-baseline';
 import {answerEvidenceStatus} from '../../../lib/answer-evidence-status';
 import {repeatEvidenceOptions} from '../../../lib/answer-evidence-comparison';
-import {requireAdmin,enforceSameOrigin} from '../../../lib/api-security';
+import {requireAdmin,enforceSameOrigin,checkRateLimit} from '../../../lib/api-security';
 import {getClient} from '../../../lib/repository';
 import {getClientProfile} from '../../../lib/client-profile';
 import {getProspect} from '../../../lib/prospects';
@@ -15,6 +15,7 @@ const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}
 export async function GET(req){const denied=await requireAdmin(req);if(denied)return denied;
  try{const params=new URL(req.url).searchParams,entityType=params.get('entityType'),entityId=params.get('entityId');if((entityType&&!['prospect','client'].includes(entityType))||(entityId&&!uuid(entityId)))return Response.json({error:'Geçersiz kayıt filtresi.'},{status:400});const [history,automation]=await Promise.allSettled([listAnswerEvidence({entityType,entityId}),answerEvidenceStatus({entityType,entityId})]);if(history.status!=='fulfilled')throw Error('history-unavailable');return Response.json({runs:history.value,status:automation.status==='fulfilled'?automation.value:{supported:true,error:'Otomatik ölçüm durumu alınamadı; bekleyen sayısı bilinmiyor.'},providers:answerProviders(),freeMeasurement:freeMeasurementStatus()},{headers:{'cache-control':'no-store'}})}catch{return Response.json({error:'Yanıt kanıtları alınamadı.'},{status:503})}}
 export async function POST(req){const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;
+ const limited=checkRateLimit(req,{bucket:'manual-answer-evidence',limit:6,windowMs:15*60*1000});if(limited)return limited;
  try{
   const body=await req.json();if(!['prospect','client'].includes(body.entityType)||!uuid(body.entityId))return Response.json({error:'Geçerli bir işletme seçin.'},{status:400});
   if(body.baseline!==undefined&&(body.baseline!==true||body.entityType!=='client'||body.repeatRunId!==undefined))return Response.json({error:'Başlangıç ölçümü yalnız müşteri için yeni bir tur olabilir.'},{status:400});
