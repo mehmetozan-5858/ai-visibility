@@ -65,7 +65,28 @@ test('invalid signature, invalid tenant and missing entitlement cause zero SQL',
 test('a broken database reader cannot be interpreted as an empty verified report',async()=>{
  await withSyntheticSecret(async()=>{
   const valid=await createClientToken(A);
-  await assert.rejects(readTrustedCustomerReportReview({query:async()=>({})},valid,true),/report-query-unavailable/);
+  await assert.rejects(readTrustedCustomerReportReview({query:async()=>({})},valid,true),/trusted-report-reader-role-unverified/);
   await assert.rejects(readTrustedCustomerReportReview(null,valid,true),/report-reader-unavailable/);
+ });
+});
+
+test('owner or overprivileged reader cannot run a customer report',async()=>{
+ await withSyntheticSecret(async()=>{
+  const token=await createClientToken(A);
+  let calls=0;
+  const pool={query:async sql=>{
+   calls++;
+   if(!sql.includes('current_user AS "name"'))throw Error('report-query-was-attempted');
+   return {rows:[{
+    name:'neondb_owner',login:true,superuser:false,bypassRls:true,
+    createDb:true,createRole:true,replication:false,schemaUsage:true,
+    schemaCreate:true,comparisonSelect:true,comparisonInsert:true,
+    comparisonUpdate:true,comparisonDelete:true,credentialSelect:true,
+    paymentSelect:true,settlementSelect:true
+   }]};
+  }};
+  await assert.rejects(readTrustedCustomerReportReview(pool,token,true),
+   /trusted-report-reader-role-unverified/);
+  assert.equal(calls,1,'no customer report query after unsafe role attestation');
  });
 });
