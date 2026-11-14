@@ -56,9 +56,24 @@ test('first rate limit prevents a second network call and cost write, retaining 
  const result=await collectFreeAnswerEvidence(entity,{queries},{env,request:async()=>{calls++;return {ok:false,reason:'provider-request-failed',status:429,limitSource:'openrouter_free_tier_per_minute',retryAfterSeconds:60,raw:'private-data'}},recordCost:async()=>{costs++}});
  assert.equal(calls,1);assert.equal(costs,0);assert.equal(result.observations.length,0);assert.equal(result.errors.length,2);
  assert.equal(result.errors[0].limitSource,'openrouter_free_tier_per_minute');assert.equal(result.errors[0].retryAfterSeconds,60);
- assert.equal(result.errors[1].reason,'skipped-after-rate-limit');assert.equal(result.errors[1].providerStatus,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
+ assert.equal(result.errors[1].reason,'skipped-after-provider-block');assert.equal(result.errors[1].providerStatus,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
 });
 test('injected unrecognized limit hints cannot enter the evidence record',async()=>{
  const result=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:false,reason:'provider-request-failed',status:429,limitSource:'private-data',retryAfterSeconds:999999}),recordCost:async()=>{throw Error('not called')}});
  assert.equal(result.errors[0].limitSource,undefined);assert.equal(result.errors[0].retryAfterSeconds,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
+});
+
+test('provider payment-required and unauthorized errors stop subsequent free requests',async()=>{
+ for(const status of [402,403,429]){
+  let calls=0,costs=0;
+  const result=await collectFreeAnswerEvidence(entity,{queries},{env,
+   request:async()=>{calls++;return {ok:false,reason:'provider-request-failed',status}},
+   recordCost:async()=>{costs++;return {id:'must-not-be-written'}}});
+  assert.equal(calls,1,'hard provider block must prevent second provider request');
+  assert.equal(costs,0);
+  assert.equal(result.observations.length,0);
+  assert.equal(result.errors[0].providerStatus,status);
+  assert.equal(result.errors[1].reason,'skipped-after-provider-block');
+  assert.equal(result.errors[1].providerStatus,undefined);
+ }
 });
