@@ -19,6 +19,21 @@ test('opt-in portal refuses report when PostgreSQL RLS is disabled, unforced or 
   await db.exec('ALTER TABLE public.ai_provider_comparisons FORCE ROW LEVEL SECURITY');
   const good=await inspectComparisonRlsPolicy(db);
   assert.equal(good.ready,true,JSON.stringify(good));
+  // Exercise the actual PostgreSQL catalog path, not just synthetic metadata.
+  // A policy that mentions both identifiers without comparing them must fail.
+  await db.exec(`DROP POLICY portal_verified_tenant_comparison_select ON public.ai_provider_comparisons;
+    CREATE POLICY portal_verified_tenant_comparison_select
+    ON public.ai_provider_comparisons FOR SELECT TO PUBLIC
+    USING (client_id = client_id AND current_setting('app.tenant_id', true) IS NOT NULL)`);
+  assert.equal((await inspectComparisonRlsPolicy(db)).ready,false,
+    'tautological row identity must not pass live catalog inspection');
+  await db.exec(`DROP POLICY portal_verified_tenant_comparison_select ON public.ai_provider_comparisons;
+    CREATE POLICY portal_verified_tenant_comparison_select
+    ON public.ai_provider_comparisons FOR SELECT TO PUBLIC
+    USING (client_id=NULLIF(current_setting('app.tenant_id',true),'')::uuid)`);
+  assert.equal((await inspectComparisonRlsPolicy(db)).ready,true,
+    'canonical reviewed tenant equality must still pass');
+
   await db.exec(`CREATE POLICY overly_broad_select ON public.ai_provider_comparisons
     FOR SELECT TO PUBLIC USING(true)`);
   assert.equal((await inspectComparisonRlsPolicy(db)).ready,false,'extra permissive policy cannot pass');
