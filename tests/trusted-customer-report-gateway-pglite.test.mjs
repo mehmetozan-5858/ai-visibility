@@ -11,17 +11,26 @@ const fixture=[{provider:'gemini',status:'answer-received-unverified',answer:'Sy
 test('review-only fixed SQL honors verified tenant A/B with real PostgreSQL query execution',async()=>{
  const original=process.env.AUTH_SECRET;
  process.env.AUTH_SECRET='isolated-synthetic-test-hmac-not-production';
+ const oldRole=process.env.PORTAL_REPORT_READER_ROLE;
+ process.env.PORTAL_REPORT_READER_ROLE='portal_gateway_reader_synthetic';
  const db=new PGlite();
  const pool={query:(sql,args)=>db.query(sql,args)};
  try{
   await db.exec(`CREATE TABLE public.ai_provider_comparisons(
    id UUID PRIMARY KEY, client_id UUID NOT NULL, query TEXT NOT NULL,
-   results JSONB NOT NULL, created_at TIMESTAMPTZ DEFAULT now());`);
+   results JSONB NOT NULL, created_at TIMESTAMPTZ DEFAULT now());
+   CREATE TABLE public.client_credentials(id UUID PRIMARY KEY);
+   CREATE TABLE public.payments(id UUID PRIMARY KEY);
+   CREATE TABLE public.verified_customer_settlements(id UUID PRIMARY KEY);
+   CREATE ROLE portal_gateway_reader_synthetic LOGIN;
+   GRANT USAGE ON SCHEMA public TO portal_gateway_reader_synthetic;
+   GRANT SELECT ON public.ai_provider_comparisons TO portal_gateway_reader_synthetic;`);
   // Test records are isolated in-memory and never copied from Neon customers.
   await db.query('INSERT INTO public.ai_provider_comparisons(id,client_id,query,results) VALUES ($1,$2,$3,$4),($5,$6,$7,$8)',[
    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',A,'Synthetic A',JSON.stringify(fixture),
    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',B,'Synthetic B',JSON.stringify(fixture)
   ]);
+  await db.exec('SET ROLE portal_gateway_reader_synthetic');
   const tokenA=await createClientToken(A);
   const tokenB=await createClientToken(B);
   assert.deepEqual((await readTrustedCustomerReportReview(pool,tokenA,true)).map(x=>x.query),['Synthetic A']);
@@ -34,6 +43,8 @@ test('review-only fixed SQL honors verified tenant A/B with real PostgreSQL quer
  }finally{
   if(original===undefined)delete process.env.AUTH_SECRET;
   else process.env.AUTH_SECRET=original;
+  if(oldRole===undefined)delete process.env.PORTAL_REPORT_READER_ROLE;
+  else process.env.PORTAL_REPORT_READER_ROLE=oldRole;
   await db.close();
  }
 });
