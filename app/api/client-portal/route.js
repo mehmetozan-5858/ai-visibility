@@ -2,6 +2,8 @@ import {readCustomerComparisonReport} from '../../../lib/customer-comparison-rep
 import {withVerifiedClientTenantRead} from '../../../lib/verified-tenant-transaction-review.mjs';
 import {inspectPortalReaderPrivileges} from '../../../lib/portal-role-readiness.mjs';
 import {inspectComparisonRlsPolicy} from '../../../lib/portal-report-rls-readiness.mjs';
+import {strictReportEntitlementReady} from '../../../lib/portal-report-entitlement.mjs';
+import {strictCustomerSettlementEnabled} from '../../../lib/customer-settlement-proof.mjs';
 import {databasePool} from '../../../lib/database-runtime';
 import {getDatabaseUrl,getPortalReadDatabaseUrl,portalReadDatabaseEnabled} from '../../../lib/db';
 import {customerAccess} from "../../../lib/pilot-access";
@@ -26,6 +28,10 @@ export async function GET(req){
     if(!access.allowed)return privateJson({error:en?"Customer access is not active. Contact support if you have a paid account or an active pilot.":"Müşteri erişimi aktif değil. Ödemeniz onaylıysa veya pilot erişiminiz varsa destek ekibiyle iletişime geçin."},403);
     let reportEvidence={available:false,comparisonCount:0};
     if(process.env.PORTAL_TENANT_RLS_ENABLED==='true'){
+      // Refuse legacy paid labels in secure mode; customerAccess() verifies
+      // independent settlement only when the strict launch flag is enabled.
+      if(!strictReportEntitlementReady(access,strictCustomerSettlementEnabled()))
+        return privateJson({error:'Verified customer entitlement is required.'},503);
       // Optional, fail-closed: never silently downgrade to a broad writer.
       // Existing default below is unchanged until a separate reviewed rollout.
       if(!portalReadDatabaseEnabled())
