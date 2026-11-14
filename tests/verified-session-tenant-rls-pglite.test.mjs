@@ -58,11 +58,22 @@ test('signed client session binds tenant per read-only transaction and is cleane
  }
 });
 
-test('missing session and malformed session scope fail closed before SQL',async()=>{
+test('invalid signature and invalid signed scope reject before SQL even with caller-supplied verifier',async()=>{
+ const previous=process.env.AUTH_SECRET;
+ process.env.AUTH_SECRET='synthetic-test-only-tenant-signing-key';
  let calls=0;
- const pool={connect:async()=>{calls++;throw Error('should-not-connect')}};
- for(const session of [null,{clientId:'other'},{clientId:''},{clientId:123}]){
-  await assert.rejects(withVerifiedClientTenantRead(pool,'fixture',async()=>{},async()=>session),/tenant-session-invalid/);
+ const pool={connect:async()=>{calls++;throw Error('must-not-connect')}};
+ try{
+  const badScope=await createClientToken('not-a-valid-uuid');
+  const forgedVerifier=async()=>({clientId:A});
+  for(const token of ['', 'bad-token',badScope]){
+   await assert.rejects(withVerifiedClientTenantRead(pool,token,async()=>{},forgedVerifier),/tenant-session-invalid/);
+  }
+  const valid=await createClientToken(A);
+  await assert.rejects(withVerifiedClientTenantRead(pool,valid.slice(0,-2)+'xx',async()=>{},forgedVerifier),/tenant-session-invalid/);
+  assert.equal(calls,0,'forged verifier cannot bypass token rejection');
+ }finally{
+  if(previous===undefined)delete process.env.AUTH_SECRET;
+  else process.env.AUTH_SECRET=previous;
  }
- assert.equal(calls,0);
 });
