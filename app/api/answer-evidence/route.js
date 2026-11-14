@@ -1,4 +1,5 @@
 import {freeMeasurementStatus,collectFreeAnswerEvidence} from '../../../lib/free-answer-evidence.mjs';
+import {readFreeProviderAccess} from '../../../lib/free-provider-preflight.mjs';
 import {clientBaselineOptions} from '../../../lib/answer-evidence-baseline';
 import {answerEvidenceStatus} from '../../../lib/answer-evidence-status';
 import {repeatEvidenceOptions} from '../../../lib/answer-evidence-comparison';
@@ -26,6 +27,11 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
   if(body.freeOnly!==true&&process.env.PAID_ANSWER_EVIDENCE_ENABLED!=='true')return Response.json({error:'Ücretli sağlayıcı ölçümü kapalı. Yalnız ücretsiz ölçüm seçimi kullanılabilir.'},{status:403,headers:{'cache-control':'no-store'}});
   if(body.freeOnly===true&&(body.baseline!==undefined||body.repeatRunId!==undefined))return Response.json({error:'Ücretsiz ölçüm yeni ve ayrı bir tur olmalıdır.'},{status:400});
   if(body.freeOnly===true&&!freeMeasurementStatus().ready)return Response.json({error:'Ücretsiz ölçüm bağlantısı hazır değil.',freeMeasurement:freeMeasurementStatus()},{status:503,headers:{'cache-control':'no-store'}});
+  if(body.freeOnly===true){
+   const preflight=await readFreeProviderAccess({env:process.env});
+   if(preflight.state!=='credential-and-price-confirmed'||preflight.credentialAccepted!==true||preflight.modelFree!==true)
+    return Response.json({error:'Ücretsiz sağlayıcı sunucu ön kontrolünden geçmedi; AI çağrısı yapılmadı.',preflightState:preflight.state},{status:503,headers:{'cache-control':'no-store'}});
+  }
   const language=body.language==='en'?'en':'tr';let queries;try{queries=body.repeatRunId!==undefined?[]:evidenceQueries(entity,body.queries??[],language).map(x=>x.query)}catch{return Response.json({error:'En fazla 2 sorgu yazın (8–500 karakter). Otomatik sorgu için sektör ve konum gerekli.'},{status:400})}
   let options={queries,language};
   if(body.baseline===true){try{options=clientBaselineOptions(entity,queries,language,answerProviders())}catch{return Response.json({error:'Başlangıç ölçümü için markayı/alan adını içermeyen tek sorgu ve bağlı sağlayıcı gerekir.'},{status:400})}}
