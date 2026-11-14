@@ -21,6 +21,8 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
   const row=body.entityType==='prospect'?await getProspect(body.entityId):await getClient(body.entityId);if(!row)return Response.json({error:'İşletme bulunamadı.'},{status:404});
   const profile=body.entityType==='client'?await getClientProfile(body.entityId):null,entity={...row,...(profile?{sector:profile.sector,city:profile.city,country:profile.country}:{}),entityType:body.entityType};
   if(body.freeOnly!==undefined&&typeof body.freeOnly!=='boolean')return Response.json({error:'Geçersiz ücretsiz ölçüm seçimi.'},{status:400});
+  // Do not silently use the legacy paid-capable provider path. Explicit review-only opt-in.
+  if(body.freeOnly!==true&&process.env.PAID_ANSWER_EVIDENCE_ENABLED!=='true')return Response.json({error:'Ücretli sağlayıcı ölçümü kapalı. Yalnız ücretsiz ölçüm seçimi kullanılabilir.'},{status:403,headers:{'cache-control':'no-store'}});
   if(body.freeOnly===true&&(body.baseline!==undefined||body.repeatRunId!==undefined))return Response.json({error:'Ücretsiz ölçüm yeni ve ayrı bir tur olmalıdır.'},{status:400});
   if(body.freeOnly===true&&!freeMeasurementStatus().ready)return Response.json({error:'Ücretsiz ölçüm bağlantısı hazır değil.',freeMeasurement:freeMeasurementStatus()},{status:503,headers:{'cache-control':'no-store'}});
   const language=body.language==='en'?'en':'tr';let queries;try{queries=body.repeatRunId!==undefined?[]:evidenceQueries(entity,body.queries??[],language).map(x=>x.query)}catch{return Response.json({error:'En fazla 2 sorgu yazın (8–500 karakter). Otomatik sorgu için sektör ve konum gerekli.'},{status:400})}
