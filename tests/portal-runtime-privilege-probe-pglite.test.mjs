@@ -5,13 +5,13 @@ import {portalReaderRequiredTables,evaluatePortalReaderPrivileges,inspectPortalR
 
 const role='isolated_portal_runtime';
 test('runtime privilege probe fails closed on missing or elevated privileges',()=>{
- const allowed={role,canLogin:true,superuser:false,bypassRls:false,canCreateSchema:false,
+ const allowed={role,canLogin:true,superuser:false,bypassRls:false,canCreateDatabase:false,canCreateRole:false,replication:false,canCreateSchema:false,
   schemaUsage:true,credentialsSelect:false,tables:portalReaderRequiredTables.map(table=>({
    table,select:true,insert:false,update:false,delete:false,truncate:false,references:false,trigger:false
   }))};
  assert.equal(evaluatePortalReaderPrivileges(allowed).ready,true);
  for(const patch of [{canLogin:false},{superuser:true},{bypassRls:true},
-  {canCreateSchema:true},{credentialsSelect:true},{schemaUsage:false},
+  {canCreateSchema:true},{canCreateDatabase:true},{canCreateRole:true},{replication:true},{credentialsSelect:true},{schemaUsage:false},
   {tables:allowed.tables.slice(1)},
   {tables:allowed.tables.map((v,i)=>i===0?{...v,update:true}:v)}]){
   assert.equal(evaluatePortalReaderPrivileges({...allowed,...patch}).ready,false);
@@ -50,7 +50,7 @@ test('portal read privilege inventory covers actual comparison and strict settle
   assert.ok(portalReaderRequiredTables.includes(name),name+' missing from role inventory');
  }
  assert.equal(new Set(portalReaderRequiredTables).size,portalReaderRequiredTables.length);
- const base={role,canLogin:true,superuser:false,bypassRls:false,canCreateSchema:false,
+ const base={role,canLogin:true,superuser:false,bypassRls:false,canCreateDatabase:false,canCreateRole:false,replication:false,canCreateSchema:false,
   schemaUsage:true,credentialsSelect:false,tables:portalReaderRequiredTables.map(table=>({
    table,select:true,insert:false,update:false,delete:false,truncate:false,references:false,trigger:false
   }))};
