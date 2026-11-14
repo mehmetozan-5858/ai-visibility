@@ -77,3 +77,24 @@ test('any provider HTTP failure stops subsequent free requests and avoids cost w
   assert.equal(result.errors[1].providerStatus,undefined);
  }
 });
+
+test('network timeout and failed cost persistence stop second free-provider request',async()=>{
+ for(const behavior of ['timeout','throw','cost-recording-failed']){
+  let calls=0,costs=0;
+  const result=await collectFreeAnswerEvidence(entity,{queries},{env,
+   request:async()=>{
+    calls++;
+    if(behavior==='throw')throw Error('private-network-details');
+    if(behavior==='timeout')return {ok:false,reason:'timeout'};
+    return {ok:true,verifiedZeroPriceAtRequest:true,usage:{cost:0},modelId:env.OPENROUTER_FREE_MODEL,answer:'Complete neutral answer.',complete:true,responseId:'synthetic-valid-response'};
+   },
+   recordCost:async()=>{costs++;throw Error('private-cost-storage-failure')}
+  });
+  assert.equal(calls,1,behavior);
+  assert.equal(costs,behavior==='cost-recording-failed'?1:0);
+  assert.equal(result.observations.length,0);
+  assert.equal(result.errors.length,2);
+  assert.equal(result.errors[1].reason,'skipped-after-provider-block');
+  assert.doesNotMatch(JSON.stringify(result),/private-network-details|private-cost-storage-failure/);
+ }
+});
