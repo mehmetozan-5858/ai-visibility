@@ -63,8 +63,8 @@ test('injected unrecognized limit hints cannot enter the evidence record',async(
  assert.equal(result.errors[0].limitSource,undefined);assert.equal(result.errors[0].retryAfterSeconds,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
 });
 
-test('provider payment-required and unauthorized errors stop subsequent free requests',async()=>{
- for(const status of [402,403,429]){
+test('any provider HTTP failure stops subsequent free requests and avoids cost writes',async()=>{
+ for(const status of [400,401,402,403,404,422,429,500,503]){
   let calls=0,costs=0;
   const result=await collectFreeAnswerEvidence(entity,{queries},{env,
    request:async()=>{calls++;return {ok:false,reason:'provider-request-failed',status}},
