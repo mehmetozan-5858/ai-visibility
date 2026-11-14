@@ -1,19 +1,23 @@
 "use client";
 import {useState} from 'react';
 export default function ApplicantIntakeConsole(){
- const [freeStatus,setFreeStatus]=useState(null),[queries,setQueries]=useState('');
+ const [freeStatus,setFreeStatus]=useState(null),[preflightOk,setPreflightOk]=useState(false),[queries,setQueries]=useState('');
  const [leadId,setLeadId]=useState(''),[business,setBusiness]=useState(null),[challenge,setChallenge]=useState(null),[verified,setVerified]=useState(false),[busy,setBusy]=useState(false),[message,setMessage]=useState('');
  async function run(action){
   setBusy(true);setMessage('');
   try{
    const prepare=action==='prepare';
    if(action==='preflight'){
+    setPreflightOk(false);
     const response=await fetch('/api/admin/free-provider-preflight',{cache:'no-store'}),data=await response.json();
     if(!response.ok)throw Error('Bağlantı kontrolü tamamlanamadı; ölçüm başlatılmadı.');
     const states={'credential-and-price-confirmed':'Anahtar ve modelin sıfır katalog fiyatı doğrulandı. Kota ve gerçek yanıt ayrıca denetlenmelidir.','credential-rejected':'OpenRouter anahtarı kabul etmedi. Production ortamına gerçek OpenRouter API anahtarını Secret olarak kaydedin.','not-configured':'Ücretsiz bağlantı ayarları eksik.','model-not-verified-free':'Model sıfır fiyatlı olarak doğrulanamadı; model çağrılmadı.'};
+    setPreflightOk(data.state==='credential-and-price-confirmed'&&data.credentialAccepted===true&&data.modelFree===true);
     setMessage((states[data.state]||'Sağlayıcı kontrolü tamamlanamadı; ölçüm başlatılmadı.')+(data.providerStatus?' HTTP '+data.providerStatus+'.':'')+' Bu kontrol AI yanıtı üretmez.');return;
    }
    if(action==='measure'){
+    if(!preflightOk)throw Error('Önce ücretsiz bağlantı kontrolünü başarıyla tamamlayın.');
+    setPreflightOk(false); // Require a fresh check for each deliberate measurement.
     const response=await fetch('/api/answer-evidence',{method:'POST',headers:{'content-type':'application/json'},cache:'no-store',body:JSON.stringify({entityType:'prospect',entityId:business.prospectId,freeOnly:true,language:'tr',queries:queries.split('\n').map(x=>x.trim()).filter(Boolean)})});
     const data=await response.json();
     if(!response.ok)throw Error(data.error||(data.run?.skipped?'Ölçüm bekliyor; yeni çağrı yapılmadı.':'Ölçüm tamamlanamadı.'));
@@ -36,7 +40,7 @@ export default function ApplicantIntakeConsole(){
    }
    const response=await fetch(prepare?'/api/admin/applicant-intake':'/api/admin/applicant-domain-proof',{method:'POST',headers:{'content-type':'application/json'},cache:'no-store',body:JSON.stringify(prepare?{leadId,confirm:'prepare-applicant-business'}:{action,leadId,prospectId:business.prospectId})});
    const data=await response.json();if(!response.ok)throw Error(data.error||data.reason||'İşlem tamamlanamadı.');
-   if(prepare){if(!data.prospectId)throw Error('İşletme referansı alınamadı.');setBusiness(data);setFreeStatus(null);setChallenge(null);setVerified(false);setMessage(data.created?'İşletme kaydı oluşturuldu. Sahiplik henüz doğrulanmadı.':'Mevcut işletme kaydı bulundu. Sahiplik ayrıca doğrulanmalıdır.');
+   if(prepare){if(!data.prospectId)throw Error('İşletme referansı alınamadı.');setBusiness(data);setFreeStatus(null);setPreflightOk(false);setChallenge(null);setVerified(false);setMessage(data.created?'İşletme kaydı oluşturuldu. Sahiplik henüz doğrulanmadı.':'Mevcut işletme kaydı bulundu. Sahiplik ayrıca doğrulanmalıdır.');
     try{const statusResponse=await fetch('/api/answer-evidence?entityType=prospect&entityId='+encodeURIComponent(data.prospectId),{cache:'no-store'});const statusData=await statusResponse.json();if(statusResponse.ok)setFreeStatus(statusData.freeMeasurement||null);}catch{setFreeStatus(null)}
    }
    else if(action==='issue'){if(!data.challenge?.record||!data.challenge?.value)throw Error('DNS kaydı alınamadı.');setChallenge(data.challenge);setVerified(false);setMessage('TXT kaydını alan adının DNS yönetimine ekleyin. Kayıt 24 saat geçerlidir.');}
@@ -48,7 +52,7 @@ export default function ApplicantIntakeConsole(){
   <h2>Başvurudan işletme sahipliği doğrulamasına</h2>
   <p>Doğrulanmış başvuruyu işletme kaydıyla eşleştirin, ardından gerçek DNS TXT kanıtını kontrol edin. Bu işlemler e-posta göndermez, müşteri hesabı açmaz veya AI taraması başlatmaz.</p>
   <form className="client-form" onSubmit={event=>{event.preventDefault();run('prepare')}}>
-   <label>Başvuru referansı<input required value={leadId} disabled={busy} onChange={event=>{setLeadId(event.target.value.trim());setBusiness(null);setFreeStatus(null);setQueries('');setChallenge(null);setVerified(false);setMessage('')}} pattern="[0-9a-fA-F-]{36}" style={{fontSize:18,minHeight:48}}/></label>
+   <label>Başvuru referansı<input required value={leadId} disabled={busy} onChange={event=>{setLeadId(event.target.value.trim());setBusiness(null);setFreeStatus(null);setPreflightOk(false);setQueries('');setChallenge(null);setVerified(false);setMessage('')}} pattern="[0-9a-fA-F-]{36}" style={{fontSize:18,minHeight:48}}/></label>
    <button disabled={busy||!leadId} type="submit">İşletme kaydını hazırla</button>
   </form>
   {business&&<div><p>Alan adı: <strong>{business.domain}</strong></p><p>İşletme referansı: {business.prospectId}</p>
@@ -65,7 +69,8 @@ export default function ApplicantIntakeConsole(){
    {!freeStatus?<p>Ücretsiz bağlantı durumu alınamadı; ölçüm kapalı.</p>:<p>{freeStatus.ready?'Bağlantı tanımlı; sıfır fiyat her istekte yeniden kontrol edilecek.':[!freeStatus.enabled&&'Ücretsiz ölçüm etkin değil.',!freeStatus.serverKeyConfigured&&'Sunucu anahtarı tanımlı değil.',!freeStatus.modelConfigured&&'Ücretsiz model seçilmemiş.'].filter(Boolean).join(' ')}</p>}
    <button disabled={busy||!freeStatus?.ready} type="button" onClick={()=>run('preflight')}>Ücretsiz bağlantıyı AI çağrısı yapmadan denetle</button>
    <label>Markasız ölçüm sorguları (her satıra bir sorgu, en fazla iki)<textarea rows={4} maxLength={1001} value={queries} disabled={busy} onChange={event=>setQueries(event.target.value)} placeholder="Sektör ve konumu belirtin; marka veya alan adını yazmayın."/></label>
-   <button disabled={busy||!freeStatus?.ready||!queries.trim()} type="button" onClick={()=>run('measure')}>Yalnız ücretsiz yanıt örneği topla</button>
+   <p>{preflightOk?'Bağlantı ve sıfır katalog fiyatı doğrulandı. Bu onay yalnızca bir ölçüm denemesi içindir; kullanılabilir kota garanti değildir.':'Ölçüm için önce ücretsiz bağlantı kontrolünün başarılı olması gerekir.'}</p>
+   <button disabled={busy||!freeStatus?.ready||!preflightOk||!queries.trim()} type="button" onClick={()=>run('measure')}>Yalnız ücretsiz yanıt örneği topla</button>
    <h3>Ücretsiz sonuç önizlemesi</h3>
    <p>Sunucu mevcut e-posta ve alan adı doğrulamasını yeniden denetler; yalnız bu başvurunun kayıtlı ölçümlerini açar. Veri yetersizse skor gösterilmez; AI çağrısı, ödeme veya e-posta başlatılmaz. Erişim 15 dakika geçerlidir.</p>
    <button disabled={busy} type="button" onClick={()=>run('preview')}>Bu başvurunun sonuç ekranını aç</button>

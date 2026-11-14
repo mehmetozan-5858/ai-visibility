@@ -16,11 +16,11 @@ test('disabled and branded requests never call an inference provider',async()=>{
  await assert.rejects(()=>collectFreeAnswerEvidence(entity,{queries:['Tell me about Acme Precision.']},{...deps,env}),/neutral/);
  assert.equal(calls,0);
 });
-test('two real-shaped answers retain model, response ID, completeness, exact zero cost and one provider identity',async()=>{
+test('only complete real-shaped zero-cost answers retain identity and enter cost/evidence',async()=>{
  const calls=[],costs=[];
  const r=await collectFreeAnswerEvidence(entity,{queries},{env,request:async args=>{calls.push(args);return {ok:true,verifiedZeroPriceAtRequest:true,usage:{cost:0},modelId:env.OPENROUTER_FREE_MODEL,answer:'Other firms.',complete:calls.length===1,responseId:'local-'+calls.length}},recordCost:async c=>{costs.push(c);return {id:'synthetic-cost'}}});
  assert.equal(calls.length,2);assert.ok(calls.every(x=>x.enabled===true&&x.modelId.endsWith(':free')));
- assert.equal(r.summary.successful,2);assert.equal(r.summary.neutralComplete,1);assert.equal(r.observations[1].truncated,true);
+ assert.equal(r.summary.successful,1);assert.equal(r.summary.neutralComplete,1);assert.equal(r.observations.length,1);assert.equal(r.errors.length,1);assert.equal(r.errors[0].reason,'answer-verification-failed');assert.equal(costs.length,1);
  assert.equal(new Set(r.observations.map(x=>x.provider)).size,1);assert.equal(r.observations[0].responseId,'local-1');
  assert.ok(costs.every(x=>x.amount===0&&x.estimated===false));
 });
@@ -47,7 +47,7 @@ test('safe failure categories retain HTTP status without reflecting private prov
 });
 test('missing or failed cost persistence cannot produce accepted evidence',async()=>{
  for(const recordCost of [async()=>null,async()=>{throw Error('private database error')}]){
-  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true}),recordCost});
+  const r=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:true,verifiedZeroPriceAtRequest:true,modelId:env.OPENROUTER_FREE_MODEL,usage:{cost:0},answer:'Neutral recorded response',complete:true,responseId:'synthetic-identified-response'}),recordCost});
   assert.equal(r.observations.length,0);assert.equal(r.errors[0].reason,'cost-recording-failed');assert.doesNotMatch(JSON.stringify(r),/private database/);
  }
 });
@@ -56,9 +56,45 @@ test('first rate limit prevents a second network call and cost write, retaining 
  const result=await collectFreeAnswerEvidence(entity,{queries},{env,request:async()=>{calls++;return {ok:false,reason:'provider-request-failed',status:429,limitSource:'openrouter_free_tier_per_minute',retryAfterSeconds:60,raw:'private-data'}},recordCost:async()=>{costs++}});
  assert.equal(calls,1);assert.equal(costs,0);assert.equal(result.observations.length,0);assert.equal(result.errors.length,2);
  assert.equal(result.errors[0].limitSource,'openrouter_free_tier_per_minute');assert.equal(result.errors[0].retryAfterSeconds,60);
- assert.equal(result.errors[1].reason,'skipped-after-rate-limit');assert.equal(result.errors[1].providerStatus,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
+ assert.equal(result.errors[1].reason,'skipped-after-provider-block');assert.equal(result.errors[1].providerStatus,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
 });
 test('injected unrecognized limit hints cannot enter the evidence record',async()=>{
  const result=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:false,reason:'provider-request-failed',status:429,limitSource:'private-data',retryAfterSeconds:999999}),recordCost:async()=>{throw Error('not called')}});
  assert.equal(result.errors[0].limitSource,undefined);assert.equal(result.errors[0].retryAfterSeconds,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
+});
+
+test('any provider HTTP failure stops subsequent free requests and avoids cost writes',async()=>{
+ for(const status of [400,401,402,403,404,422,429,500,503]){
+  let calls=0,costs=0;
+  const result=await collectFreeAnswerEvidence(entity,{queries},{env,
+   request:async()=>{calls++;return {ok:false,reason:'provider-request-failed',status}},
+   recordCost:async()=>{costs++;return {id:'must-not-be-written'}}});
+  assert.equal(calls,1,'hard provider block must prevent second provider request');
+  assert.equal(costs,0);
+  assert.equal(result.observations.length,0);
+  assert.equal(result.errors[0].providerStatus,status);
+  assert.equal(result.errors[1].reason,'skipped-after-provider-block');
+  assert.equal(result.errors[1].providerStatus,undefined);
+ }
+});
+
+test('network timeout and failed cost persistence stop second free-provider request',async()=>{
+ for(const behavior of ['timeout','throw','cost-recording-failed']){
+  let calls=0,costs=0;
+  const result=await collectFreeAnswerEvidence(entity,{queries},{env,
+   request:async()=>{
+    calls++;
+    if(behavior==='throw')throw Error('private-network-details');
+    if(behavior==='timeout')return {ok:false,reason:'timeout'};
+    return {ok:true,verifiedZeroPriceAtRequest:true,usage:{cost:0},modelId:env.OPENROUTER_FREE_MODEL,answer:'Complete neutral answer.',complete:true,responseId:'synthetic-valid-response'};
+   },
+   recordCost:async()=>{costs++;throw Error('private-cost-storage-failure')}
+  });
+  assert.equal(calls,1,behavior);
+  assert.equal(costs,behavior==='cost-recording-failed'?1:0);
+  assert.equal(result.observations.length,0);
+  assert.equal(result.errors.length,2);
+  assert.equal(result.errors[1].reason,'skipped-after-provider-block');
+  assert.doesNotMatch(JSON.stringify(result),/private-network-details|private-cost-storage-failure/);
+ }
 });

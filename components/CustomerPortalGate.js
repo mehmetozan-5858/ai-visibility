@@ -37,13 +37,13 @@ export default function CustomerPortalGate(){
     return scans[0]||null;
   },[account]);
 
-  const unlocked=useMemo(()=>{
-    return (account?.payments||[]).some(p=>String(p.status||"").toLowerCase()==="paid");
-  },[account]);
+  // The API already checks tenant-specific entitlement. A historical paid label
+  // alone is not an authorization decision and must not unlock the report UI.
+  const unlocked=account?.access?.allowed===true&&account?.access?.kind==="paid";
 
   if(error)return <section style={card}><p className="client-message">{error}</p><Link href="/musteri-giris" style={{display:"inline-block",marginTop:10}}>{lang==="en"?"Sign in to customer portal →":"Müşteri girişine dön →"}</Link></section>;
   if(!account)return <section style={card}><p>{c.loading}</p></section>;
-  if(account?.access?.kind==="pilot"||unlocked)return <CustomerPortal/>;
+  if(account?.access?.allowed===true&&(account?.access?.kind==="pilot"||unlocked))return <CustomerPortal/>;
 
   return <section style={{display:"grid",gap:14}}>
     <article style={card}>

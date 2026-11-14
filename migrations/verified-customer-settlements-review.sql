@@ -2,9 +2,15 @@
 -- Evidence row may be inserted ONLY in the same transaction as a successfully
 -- linked and amount/currency-validated signed Paddle transaction.completed event.
 BEGIN;
+-- PostgreSQL composite FK enforces proof tenant/payment consistency at storage time.
+-- Review-only; create a redundant unique key for the existing payment PK + client.
+CREATE UNIQUE INDEX IF NOT EXISTS payments_id_client_settlement_unique
+  ON public.payments(id,client_id);
 CREATE TABLE IF NOT EXISTS public.verified_customer_settlements (
   payment_id UUID PRIMARY KEY REFERENCES public.payments(id) ON DELETE RESTRICT,
   client_id UUID NOT NULL REFERENCES public.clients(id) ON DELETE RESTRICT,
+  CONSTRAINT verified_settlements_exact_payment_tenant
+    FOREIGN KEY(payment_id,client_id) REFERENCES public.payments(id,client_id) ON DELETE RESTRICT,
   paddle_event_id TEXT NOT NULL UNIQUE,
   transaction_id TEXT NOT NULL UNIQUE,
   verified_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
