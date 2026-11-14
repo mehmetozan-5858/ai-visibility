@@ -19,4 +19,9 @@ CREATE TABLE IF NOT EXISTS public.verified_customer_settlements (
 );
 CREATE INDEX IF NOT EXISTS verified_customer_settlements_client_idx
   ON public.verified_customer_settlements(client_id);
+-- Sensitive signed-provider settlement evidence is server-only; no browser
+-- role or PUBLIC grant. A scoped authenticated server role must be reviewed
+-- separately before any production use. No broad RLS SELECT/WRITE policy.
+REVOKE ALL ON TABLE public.verified_customer_settlements FROM PUBLIC;
+ALTER TABLE public.verified_customer_settlements ENABLE ROW LEVEL SECURITY;
 COMMIT;
