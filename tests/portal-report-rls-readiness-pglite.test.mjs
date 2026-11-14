@@ -38,6 +38,10 @@ test('RLS structural evaluator fails closed on missing and unscoped policy metad
   {table:{enabled:true,forced:false}},
   {policies:[]},
   {policies:[{...good.policies[0],qual:'true'}]},
+  {policies:[{...good.policies[0],qual:"client_id = client_id AND current_setting('app.tenant_id',true) IS NOT NULL"}]},
+  {policies:[{...good.policies[0],qual:"client_id = client_id AND NULLIF(current_setting('app.tenant_id',true),'')::uuid IS NOT NULL"}]},
+  {policies:[{...good.policies[0],qual:"client_id = NULLIF(current_setting('app.tenant_id',true),'')::uuid OR true"}]},
+  {policies:[{...good.policies[0],qual:"client_id = NULLIF(current_setting('app.tenant_id',true),'')::uuid AND true"}]},
   {policies:[{...good.policies[0],qual:"client_id = current_setting('app.tenant_id')::uuid OR true"}]},
   {policies:[{...good.policies[0],policyname:'unexpected_policy'}]}
  ]) assert.equal(evaluateComparisonRlsPolicy({...good,...change}).ready,false);
