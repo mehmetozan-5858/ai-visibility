@@ -1,6 +1,8 @@
 import {readCustomerComparisonReport} from '../../../lib/customer-comparison-report.mjs';
+import {withVerifiedClientTenantRead} from '../../../lib/verified-tenant-transaction-review.mjs';
+import {inspectPortalReaderPrivileges} from '../../../lib/portal-role-readiness.mjs';
 import {databasePool} from '../../../lib/database-runtime';
-import {getDatabaseUrl} from '../../../lib/db';
+import {getDatabaseUrl,getPortalReadDatabaseUrl,portalReadDatabaseEnabled} from '../../../lib/db';
 import {customerAccess} from "../../../lib/pilot-access";
 import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../lib/admin-auth";
@@ -22,10 +24,25 @@ export async function GET(req){
     const access=await customerAccess(account);
     if(!access.allowed)return privateJson({error:en?"Customer access is not active. Contact support if you have a paid account or an active pilot.":"Müşteri erişimi aktif değil. Ödemeniz onaylıysa veya pilot erişiminiz varsa destek ekibiyle iletişime geçin."},403);
     let reportEvidence={available:false,comparisonCount:0};
-    try{
-      const rows=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId);
-      reportEvidence={available:true,comparisonCount:rows.length};
-    }catch{} // Keep the existing portal usable; do not claim evidence is ready on a read failure.
+    if(process.env.PORTAL_TENANT_RLS_ENABLED==='true'){
+      // Optional, fail-closed: never silently downgrade to a broad writer.
+      // Existing default below is unchanged until a separate reviewed rollout.
+      if(!portalReadDatabaseEnabled())
+        return privateJson({error:'Dedicated portal reader is required.'},503);
+      try{
+        const reader=databasePool(getPortalReadDatabaseUrl());
+        const privileges=await inspectPortalReaderPrivileges(reader);
+        if(!privileges.ready)return privateJson({error:'Portal reader privileges are not verified.'},503);
+        const rows=await withVerifiedClientTenantRead(reader,store.get("ai_client")?.value||'',
+          (tx,tenantId)=>readCustomerComparisonReport(tx,tenantId));
+        reportEvidence={available:true,comparisonCount:rows.length};
+      }catch{return privateJson({error:'Verified customer report could not be loaded.'},503)}
+    }else{
+      try{
+        const rows=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId);
+        reportEvidence={available:true,comparisonCount:rows.length};
+      }catch{} // Keep the existing portal usable; do not claim evidence is ready on a read failure.
+    }
     const profile=await getClientProfile(session.clientId).catch(()=>null);
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;
