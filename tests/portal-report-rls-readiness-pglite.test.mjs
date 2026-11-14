@@ -18,7 +18,8 @@ test('opt-in portal refuses report when PostgreSQL RLS is disabled, unforced or 
   assert.equal((await inspectComparisonRlsPolicy(db)).ready,false,'FORCE RLS required');
   await db.exec('ALTER TABLE public.ai_provider_comparisons FORCE ROW LEVEL SECURITY');
   const good=await inspectComparisonRlsPolicy(db);
-  assert.equal(good.ready,true,JSON.stringify(good));
+  assert.equal(good.ready,false,'a forgeable GUC is not sufficient for customer acceptance');
+  assert.equal(good.reason,'comparison-tenant-setting-forgeable');
   // Exercise the actual PostgreSQL catalog path, not just synthetic metadata.
   // A policy that mentions both identifiers without comparing them must fail.
   await db.exec(`DROP POLICY portal_verified_tenant_comparison_select ON public.ai_provider_comparisons;
@@ -31,8 +32,9 @@ test('opt-in portal refuses report when PostgreSQL RLS is disabled, unforced or 
     CREATE POLICY portal_verified_tenant_comparison_select
     ON public.ai_provider_comparisons FOR SELECT TO PUBLIC
     USING (client_id=NULLIF(current_setting('app.tenant_id',true),'')::uuid)`);
-  assert.equal((await inspectComparisonRlsPolicy(db)).ready,true,
-    'canonical reviewed tenant equality must still pass');
+  const canonical=await inspectComparisonRlsPolicy(db);
+  assert.equal(canonical.ready,false,'canonical tenant equality is still forgeable');
+  assert.equal(canonical.reason,'comparison-tenant-setting-forgeable');
 
   await db.exec(`CREATE POLICY overly_broad_select ON public.ai_provider_comparisons
     FOR SELECT TO PUBLIC USING(true)`);
@@ -48,7 +50,9 @@ test('RLS structural evaluator fails closed on missing and unscoped policy metad
   policyname:'portal_verified_tenant_comparison_select',permissive:'PERMISSIVE',
   roles:['public'],cmd:'SELECT',qual:"(client_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)"
  }]};
- assert.equal(evaluateComparisonRlsPolicy(good).ready,true);
+ const evaluated=evaluateComparisonRlsPolicy(good);
+ assert.equal(evaluated.ready,false);
+ assert.equal(evaluated.reason,'comparison-tenant-setting-forgeable');
  for(const change of [
   {table:{enabled:true,forced:false}},
   {policies:[]},
