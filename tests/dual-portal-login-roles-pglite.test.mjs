@@ -35,7 +35,7 @@ test('independent PostgreSQL roles can serve portal and credential reads with mu
 test('credential reader preflight rejects cross-role leakage or writes',()=>{
  const other=portalReaderRequiredTables.map(table=>({table,select:false,insert:false,
   update:false,delete:false,truncate:false,references:false,trigger:false}));
- const permitted={role:roles[1],canLogin:true,superuser:false,bypassRls:false,
+ const permitted={role:roles[1],canLogin:true,superuser:false,bypassRls:false,canCreateDatabase:false,canCreateRole:false,replication:false,
   schemaUsage:true,canCreateSchema:false,
   credentialTable:{table:'client_credentials',select:true,insert:false,update:false,delete:false,truncate:false,references:false,trigger:false},
   otherTables:other};
@@ -44,7 +44,7 @@ test('credential reader preflight rejects cross-role leakage or writes',()=>{
   {credentialTable:{...permitted.credentialTable,update:true}},
   {credentialTable:{...permitted.credentialTable,select:false}},
   {otherTables:other.map(x=>x.table==='payments'?{...x,select:true}:x)},
-  {canCreateSchema:true},{bypassRls:true},{canLogin:false}
+  {canCreateSchema:true},{canCreateDatabase:true},{canCreateRole:true},{replication:true},{bypassRls:true},{canLogin:false}
  ]) assert.equal(evaluateCredentialReaderPrivileges({...permitted,...values}).ready,false);
  assert.equal(evaluateCredentialReaderPrivileges({...permitted,otherTables:other.slice(1)}).ready,false);
 });
