@@ -7,7 +7,7 @@ const id='12345678-1234-4234-8234-123456789012';
 function endpoint(env={},overrides={}){
  const state={writes:0,requests:0};
  const deps={
-  requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:(_req,options)=>{assert.equal(options.bucket,'manual-answer-evidence');assert.equal(options.limit,6);return overrides.limited?Response.json({error:'limited'},{status:429}):null}, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
+  readFreeProviderAccess:async()=>({state:overrides.preflightBlocked?'credential-rejected':'credential-and-price-confirmed',credentialAccepted:!overrides.preflightBlocked,modelFree:!overrides.preflightBlocked}),requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:(_req,options)=>{assert.equal(options.bucket,'manual-answer-evidence');assert.equal(options.limit,6);return overrides.limited?Response.json({error:'limited'},{status:429}):null}, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
   getClient:async()=>null,getClientProfile:async()=>null,freeMeasurementStatus:()=>({ready:true}),
   evidenceQueries:(_e,q)=>q.map(query=>({query})),clientBaselineOptions:()=>{throw Error('not-used')},
   answerProviders:()=>['Perplexity'],getAnswerEvidenceRun:async()=>null,repeatEvidenceOptions:()=>{throw Error('not-used')},
@@ -41,5 +41,13 @@ test('shared admin manual rate limit rejects before body parsing, database and p
  const {POST,state}=endpoint({}, {limited:true});
  const response=await POST(new Request('https://example.invalid/api/answer-evidence',{method:'POST',body:'invalid-json'}));
  assert.equal(response.status,429);
+ assert.equal(state.requests,0);
+});
+
+test('server denies free inference if authenticated provider preflight fails, regardless of UI intent',async()=>{
+ const {POST,state}=endpoint({}, {preflightBlocked:true});
+ const response=await POST(req({freeOnly:true}));
+ assert.equal(response.status,503);
+ assert.equal((await response.json()).preflightState,'credential-rejected');
  assert.equal(state.requests,0);
 });
