@@ -5,11 +5,11 @@ const source=(await readFile(new URL('../app/api/answer-evidence/route.js',impor
  .replace(/^import .*;\s*$/gm,'').replace(/export /g,'');
 const id='12345678-1234-4234-8234-123456789012';
 function endpoint(env={},overrides={}){
- const state={writes:0,requests:0};
+ const state={writes:0,requests:0,preflights:0};
  const deps={
-  readFreeProviderAccess:async()=>({state:overrides.preflightBlocked?'credential-rejected':'credential-and-price-confirmed',credentialAccepted:!overrides.preflightBlocked,modelFree:!overrides.preflightBlocked}),requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:(_req,options)=>{assert.equal(options.bucket,'manual-answer-evidence');assert.equal(options.limit,6);return overrides.limited?Response.json({error:'limited'},{status:429}):null}, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
+  readFreeProviderAccess:async()=>{state.preflights++;return {state:overrides.preflightBlocked?'credential-rejected':'credential-and-price-confirmed',credentialAccepted:!overrides.preflightBlocked,modelFree:!overrides.preflightBlocked}},requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:(_req,options)=>{assert.equal(options.bucket,'manual-answer-evidence');assert.equal(options.limit,6);return overrides.limited?Response.json({error:'limited'},{status:429}):null}, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
   getClient:async()=>null,getClientProfile:async()=>null,freeMeasurementStatus:()=>({ready:true}),
-  evidenceQueries:(_e,q)=>q.map(query=>({query})),clientBaselineOptions:()=>{throw Error('not-used')},
+  evidenceQueries:(_e,q)=>{if(overrides.invalidQuery)throw Error('invalid-neutral-query');return q.map(query=>({query}))},clientBaselineOptions:()=>{throw Error('not-used')},
   answerProviders:()=>['Perplexity'],getAnswerEvidenceRun:async()=>null,repeatEvidenceOptions:()=>{throw Error('not-used')},
   measureAnswerEvidence:async()=>{state.requests++;return {id:'synthetic',result:{summary:{successful:0}}}},
   collectFreeAnswerEvidence:async()=>{},listAnswerEvidence:async()=>[],answerEvidenceStatus:async()=>({}),
@@ -49,5 +49,13 @@ test('server denies free inference if authenticated provider preflight fails, re
  const response=await POST(req({freeOnly:true}));
  assert.equal(response.status,503);
  assert.equal((await response.json()).preflightState,'credential-rejected');
+ assert.equal(state.requests,0);
+});
+
+test('invalid free-only queries reject before any provider preflight network checks',async()=>{
+ const {POST,state}=endpoint({}, {invalidQuery:true});
+ const response=await POST(req({freeOnly:true,queries:['Brand named prompt']}));
+ assert.equal(response.status,400);
+ assert.equal(state.preflights,0);
  assert.equal(state.requests,0);
 });
