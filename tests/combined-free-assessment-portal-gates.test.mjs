@@ -57,3 +57,22 @@ test('customer account read does not trigger schema changes through repository w
  assert.match(method,/\},\{ensureSchema:false\}\)\|\|null/);
  assert.doesNotMatch(method,/\bINSERT\b|\bUPDATE\b|\bCREATE\b|\bALTER\b|\bDELETE\b/i);
 });
+
+test('customer profile reads do not create or alter schema',async()=>{
+ const src=await read('lib/client-profile.js');
+ assert.match(src,/async function withDb\(fn,\{ensureSchema=true\}=\{\}\)/);
+ assert.match(src,/if\(ensureSchema\)\{await pool\.query/);
+ for(const [start,end] of [
+  ['export async function getClientProfile(clientId){','export async function listClientProfiles(){'],
+  ['export async function listClientProfiles(){',null]
+ ]){
+  const a=src.indexOf(start),b=end?src.indexOf(end,a):src.length;
+  assert.ok(a>=0&&b>a);
+  const body=src.slice(a,b);
+  assert.match(body,/ensureSchema:false/);
+  assert.doesNotMatch(body,/\bCREATE\b|\bALTER\b|\bUPDATE\b|\bINSERT\b|\bDELETE\b/i);
+ }
+ const writer=src.slice(src.indexOf('export async function upsertClientProfile('),src.indexOf('export async function getClientProfile('));
+ assert.match(writer,/INSERT INTO client_profiles/);
+ assert.doesNotMatch(writer,/ensureSchema:false/);
+});
