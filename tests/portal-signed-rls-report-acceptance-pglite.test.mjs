@@ -31,8 +31,8 @@ test('signed tenant transaction drives real comparison report SELECT with RLS',a
   await db.exec(`CREATE TABLE public.ai_provider_comparisons
    (client_id UUID,query TEXT,results JSONB,created_at TIMESTAMPTZ DEFAULT NOW());
    INSERT INTO public.ai_provider_comparisons(client_id,query,results) VALUES
-    ('${A}','Synthetic tenant A','[]'::jsonb),
-    ('${B}','Synthetic tenant B','[]'::jsonb);
+    ('${A}','Synthetic tenant A','[{"provider":"gemini","status":"answer-received-unverified","answer":"Synthetic provider answer"}]'::jsonb),
+    ('${B}','Synthetic tenant B','[{"provider":"gemini","status":"answer-received-unverified","answer":"Synthetic provider answer"}]'::jsonb);
    CREATE ROLE synthetic_report_reader LOGIN;
    GRANT USAGE ON SCHEMA public TO synthetic_report_reader;
    GRANT SELECT ON public.ai_provider_comparisons TO synthetic_report_reader;
