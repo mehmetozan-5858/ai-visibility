@@ -7,7 +7,7 @@ const id='12345678-1234-4234-8234-123456789012';
 function endpoint(env={}){
  const state={writes:0,requests:0};
  const deps={
-  requireAdmin:async()=>null,enforceSameOrigin:()=>null, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
+  requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:()=>null, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
   getClient:async()=>null,getClientProfile:async()=>null,freeMeasurementStatus:()=>({ready:true}),
   evidenceQueries:(_e,q)=>q.map(query=>({query})),clientBaselineOptions:()=>{throw Error('not-used')},
   answerProviders:()=>['Perplexity'],getAnswerEvidenceRun:async()=>null,repeatEvidenceOptions:()=>{throw Error('not-used')},
