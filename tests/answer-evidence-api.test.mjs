@@ -13,7 +13,7 @@ test('valid record uses server business context and generated neutral query',asy
 
 test('repeat reads recorded queries and provider set on server; rejects forged identity or query override',async()=>{const f=fixture();assert.equal((await f.api.POST(req({entityType:'prospect',entityId:id,repeatRunId:id}))).status,200);assert.equal(f.calls(),1);assert.equal((await f.api.POST(req({entityType:'client',entityId:id,repeatRunId:id}))).status,409);assert.equal((await f.api.POST(req({entityType:'prospect',entityId:id,repeatRunId:id,queries:['Changed query?']}))).status,400);assert.equal(f.calls(),1)});
 
-test('authenticated read includes scoped automation status without provider spend',async()=>{const f=fixture();const response=await f.api.GET(new Request('https://example.com/api/answer-evidence?entityType=prospect&entityId='+id));assert.equal(response.status,200);assert.equal((await response.json()).status.supported,true);assert.equal(response.headers.get('cache-control'),'no-store');assert.equal(f.calls(),0)});
+test('authenticated read includes scoped automation status without provider spend',async()=>{const f=fixture();const response=await f.api.GET(new Request('https://example.com/api/answer-evidence?entityType=prospect&entityId='+id));assert.equal(response.status,200);assert.equal((await response.json()).status.supported,true);assert.match(response.headers.get('cache-control'),/private.*no-store/);assert.match(response.headers.get('vary'),/Cookie/);assert.equal(f.calls(),0)});
 
 test('monitor failure preserves raw history and reports unknown counts instead of zero',async()=>{const f=fixture({statusFail:true});const response=await f.api.GET(new Request('https://example.com/api/answer-evidence'));assert.equal(response.status,200);const d=await response.json();assert.deepEqual(d.runs,[]);assert.match(d.status.error,/bilinmiyor/);assert.equal(d.status.counts,undefined);assert.equal(f.calls(),0)});
 
@@ -23,4 +23,20 @@ test('free-only writes stay authenticated, fail closed on missing configuration 
  const blocked=fixture();assert.equal((await blocked.api.POST(req(body))).status,503);assert.equal(blocked.calls(),0);
  const ready=fixture({freeReady:true});assert.equal((await ready.api.POST(req(body))).status,200);assert.equal(ready.calls(),1);
  for(const change of [{freeOnly:'true'},{repeatRunId:id},{entityType:'client',baseline:true}]){const f=fixture({freeReady:true});assert.equal((await f.api.POST(req({...body,...change}))).status,400);assert.equal(f.calls(),0)}
+});
+
+test('admin read and write evidence never allow intermediary caching on success or failure',async()=>{
+ const f=fixture({freeReady:true});
+ const samples=[
+  await f.api.GET(new Request('https://example.invalid/api/answer-evidence')),
+  await f.api.GET(new Request('https://example.invalid/api/answer-evidence?entityType=unknown')),
+  await f.api.POST(req({entityType:'prospect',entityId:id,freeOnly:true})),
+  await f.api.POST(req({entityType:'unknown',entityId:id}))
+ ];
+ assert.deepEqual(samples.map(r=>r.status),[200,400,200,400]);
+ for(const response of samples){
+  assert.match(response.headers.get('cache-control')||'',/private.*no-store/);
+  assert.equal(response.headers.get('pragma'),'no-cache');
+  assert.match(response.headers.get('vary')||'',/Cookie/);
+ }
 });
