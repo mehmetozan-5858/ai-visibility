@@ -52,3 +52,47 @@ test('invalid customer session rejects before account or report lookup',async()=
  assert.equal((await GET(new Request('https://example.invalid/api/client-portal'))).status,401);
  assert.equal(accountLoads,0);
 });
+
+test('successful synthetic customer portal session reads only its own tenant and independently approved access',async()=>{
+ const requested=[],reported=[],profileReads=[],clientId='22222222-2222-4222-8222-222222222222';
+ const deps={
+  readCustomerComparisonReport:async(_pool,id)=>{reported.push(id);return [{kind:'synthetic'}]},
+  databasePool:()=>({}),getDatabaseUrl:()=>'synthetic-db',
+  customerAccess:async(account)=>{assert.equal(account.client.id,clientId);return {allowed:true,kind:'pilot',expiresAt:'2099-01-01'}},
+  cookies:async()=>({get:()=>({value:'synthetic-valid-session'})}),
+  verifyClientToken:async token=>{assert.equal(token,'synthetic-valid-session');return {clientId}},
+  getClientAccount:async id=>{requested.push(id);return {client:{id,status:'active'},payments:[],scans:[]}},
+  resolveRequestLanguage:()=> 'tr',getClientProfile:async id=>{profileReads.push(id);return {country:'TR',requestedService:''}},
+  servicePrice:()=>null,formatMoney:()=>'',SERVICE_CODES:[]
+ };
+ const {GET}=new Function(...Object.keys(deps),portalSource+'\nreturn {GET};')(...Object.values(deps));
+ const req=new Request('https://example.invalid/api/client-portal?clientId=44444444-4444-4444-8444-444444444444');
+ const response=await GET(req),json=await response.json();
+ assert.equal(response.status,200);
+ assert.equal(json.account.client.id,clientId);
+ assert.equal(json.account.access.kind,'pilot');
+ assert.deepEqual(requested,[clientId]);
+ assert.deepEqual(reported,[clientId]);
+ assert.deepEqual(profileReads,[clientId]);
+ assert.deepEqual(json.account.reportEvidence,{available:true,comparisonCount:1});
+ assert.match(response.headers.get('cache-control'),/private.*no-store/);
+ assert.match(response.headers.get('vary'),/Cookie/);
+});
+test('report storage errors are not presented as successful report evidence',async()=>{
+ const deps={
+  readCustomerComparisonReport:async()=>{throw Error('sensitive-storage-failure')},
+  databasePool:()=>({}),getDatabaseUrl:()=>'synthetic-db',
+  customerAccess:async()=>({allowed:true,kind:'paid'}),
+  cookies:async()=>({get:()=>({value:'session'})}),
+  verifyClientToken:async()=>({clientId:'22222222-2222-4222-8222-222222222222'}),
+  getClientAccount:async id=>({client:{id,status:'active'},payments:[]}),
+  resolveRequestLanguage:()=> 'tr',getClientProfile:async()=>null,
+  servicePrice:()=>null,formatMoney:()=>'',SERVICE_CODES:[]
+ };
+ const {GET}=new Function(...Object.keys(deps),portalSource+'\nreturn {GET};')(...Object.values(deps));
+ const response=await GET(new Request('https://example.invalid/api/client-portal'));
+ assert.equal(response.status,200);
+ const data=await response.json();
+ assert.deepEqual(data.account.reportEvidence,{available:false,comparisonCount:0});
+ assert.doesNotMatch(JSON.stringify(data),/sensitive-storage-failure/);
+});
