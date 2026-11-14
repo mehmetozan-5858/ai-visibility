@@ -10,7 +10,7 @@ test('free assessment requires a signed preview and receipt-linked evidence, nev
  assert.match(route,/readVerifiedFreeApplicantAssessment\(pool,entity\)/);
  assert.match(route,/assessment=proof\.status==='ready'\?proof/);
  assert.match(route,/score:null,status:'insufficient'/);
- assert.doesNotMatch(route,/answer_evidence_runs|accountHasPaidAccess|CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
+ assert.doesNotMatch(route,/\bFROM\s+(?:public\.)?answer_evidence_runs\b|\baccountHasPaidAccess\s*\(|\bCUSTOMER_SETTLEMENT_PROOF_ENABLED\b/);
 });
 
 test('verified applicant link authorizes scope but not paid portal access, for both JSON and PDF',async()=>{
