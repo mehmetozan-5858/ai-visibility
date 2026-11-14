@@ -43,6 +43,8 @@ test('credential reader preflight rejects cross-role leakage or writes',()=>{
  for(const values of [
   {credentialTable:{...permitted.credentialTable,update:true}},
   {credentialTable:{...permitted.credentialTable,select:false}},
+  {credentialTable:{...permitted.credentialTable,table:'payments'}},
+  {credentialTable:{...permitted.credentialTable,table:undefined}},
   {otherTables:other.map(x=>x.table==='payments'?{...x,select:true}:x)},
   {canCreateSchema:true},{canCreateDatabase:true},{canCreateRole:true},{replication:true},{bypassRls:true},{canLogin:false}
  ]) assert.equal(evaluateCredentialReaderPrivileges({...permitted,...values}).ready,false);
