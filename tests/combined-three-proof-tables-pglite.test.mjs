@@ -68,3 +68,27 @@ test('proof schema cannot silently accept nonzero applicant cost',async()=>{
  assert.match(migration,/brand_prompted BOOLEAN NOT NULL CHECK \(brand_prompted=FALSE\)/);
  assert.match(migration,/verified_zero_price BOOLEAN NOT NULL CHECK \(verified_zero_price = TRUE\)/);
 });
+
+
+test('all three proof tables deny direct access from an unprivileged browser-like SQL role',async()=>{
+ const db=new PGlite();
+ try{
+  await db.exec(`CREATE TABLE public.clients(id UUID PRIMARY KEY);
+    CREATE TABLE public.payments(id UUID PRIMARY KEY,client_id UUID NOT NULL REFERENCES public.clients(id),method TEXT,status TEXT);
+    CREATE ROLE isolated_browser_probe LOGIN;
+    GRANT USAGE ON SCHEMA public TO isolated_browser_probe;`);
+  for(const migration of migrations)await db.exec(await read(migration));
+  const names=['free_applicant_verified_receipts','free_applicant_verified_observations','verified_customer_settlements'];
+  await db.exec('SET ROLE isolated_browser_probe');
+  try{
+   for(const name of names){
+    const grants=(await db.query(`SELECT has_table_privilege(current_user, $1, 'SELECT') AS reading,
+      has_table_privilege(current_user, $1, 'INSERT') AS writing`,['public.'+name])).rows[0];
+    assert.equal(grants.reading,false,name+' unexpectedly readable');
+    assert.equal(grants.writing,false,name+' unexpectedly writable');
+    await assert.rejects(db.query('SELECT COUNT(*) FROM public.'+name),/permission denied/i);
+   }
+   await assert.rejects(db.exec('CREATE TABLE public.forbidden_probe(id INT)'),/permission denied/i);
+  }finally{await db.exec('RESET ROLE')}
+ }finally{await db.close()}
+});
