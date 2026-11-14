@@ -8,9 +8,13 @@ const B='22222222-2222-4222-8222-222222222222';
 const withSyntheticSecret=async fn=>{
  const previous=process.env.AUTH_SECRET;
  process.env.AUTH_SECRET='synthetic-test-only-gateway-hmac-not-production';
+ const previousRole=process.env.PORTAL_REPORT_READER_ROLE;
+ process.env.PORTAL_REPORT_READER_ROLE='portal_gateway_reader_synthetic';
  try{return await fn()}finally{
   if(previous===undefined)delete process.env.AUTH_SECRET;
   else process.env.AUTH_SECRET=previous;
+  if(previousRole===undefined)delete process.env.PORTAL_REPORT_READER_ROLE;
+  else process.env.PORTAL_REPORT_READER_ROLE=previousRole;
  }
 };
 const resultFor=clientId=>({clientId,query:'synthetic query',results:[{
@@ -24,13 +28,20 @@ test('fixed server report query scopes to signed identity and filters unexpected
   const calls=[];
   const pool={query:async(sql,args)=>{
    calls.push({sql,args});
+   if(sql.includes('current_user AS "name"'))return {rows:[{
+    name:'portal_gateway_reader_synthetic',login:true,superuser:false,
+    bypassRls:false,createDb:false,createRole:false,replication:false,
+    schemaUsage:true,schemaCreate:false,comparisonSelect:true,
+    comparisonInsert:false,comparisonUpdate:false,comparisonDelete:false,
+    credentialSelect:false,paymentSelect:false,settlementSelect:false
+   }]};
    return {rows:[resultFor(A),resultFor(B)]};
   }};
   const result=await readTrustedCustomerReportReview(pool,token,true);
-  assert.equal(calls.length,1,'only a single narrow SQL query is permitted');
-  assert.match(calls[0].sql,/WHERE client_id=\$1 ORDER BY created_at DESC LIMIT 20/);
-  assert.ok(!/\bset_config\b|\bcurrent_setting\b|\bCREATE\b|\bUPDATE\b/i.test(calls[0].sql));
-  assert.deepEqual(calls[0].args,[A]);
+  assert.equal(calls.length,2,'exactly one metadata role probe and one fixed report query');
+  assert.match(calls[1].sql,/WHERE client_id=\$1 ORDER BY created_at DESC LIMIT 20/);
+  assert.ok(!/\bset_config\b|\bcurrent_setting\b|\bCREATE\b|\bUPDATE\b/i.test(calls[1].sql));
+  assert.deepEqual(calls[1].args,[A]);
   assert.equal(result.length,1);
   assert.equal(result[0].clientId,A);
  });
