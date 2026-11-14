@@ -14,7 +14,8 @@ test('review-only fixed SQL honors verified tenant A/B with real PostgreSQL quer
  const oldRole=process.env.PORTAL_REPORT_READER_ROLE;
  process.env.PORTAL_REPORT_READER_ROLE='portal_gateway_reader_synthetic';
  const db=new PGlite();
- const pool={query:(sql,args)=>db.query(sql,args)};
+ let acquired=0,released=0;
+ const pool={connect:async()=>{acquired++;return {query:(sql,args)=>db.query(sql,args),release:()=>{released++}}}};
  try{
   await db.exec(`CREATE TABLE public.ai_provider_comparisons(
    id UUID PRIMARY KEY, client_id UUID NOT NULL, query TEXT NOT NULL,
@@ -35,6 +36,7 @@ test('review-only fixed SQL honors verified tenant A/B with real PostgreSQL quer
   const tokenB=await createClientToken(B);
   assert.deepEqual((await readTrustedCustomerReportReview(pool,tokenA,true)).map(x=>x.query),['Synthetic A']);
   assert.deepEqual((await readTrustedCustomerReportReview(pool,tokenB,true)).map(x=>x.query),['Synthetic B']);
+  assert.equal(acquired,2);assert.equal(released,2,'each SQL session returned to pool');
   const stolen=tokenA.slice(0,-3)+'zzz';
   await assert.rejects(readTrustedCustomerReportReview(pool,stolen,true),/verified-customer-session-required/);
   await assert.rejects(readTrustedCustomerReportReview(pool,tokenA,false),/verified-customer-entitlement-required/);
