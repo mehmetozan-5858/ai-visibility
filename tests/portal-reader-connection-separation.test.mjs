@@ -31,21 +31,15 @@ test('reader connection is opt-in, preserves legacy default, and never falls bac
  }
 });
 
-test('all customer portal reads use dedicated connection while login remains independent',async()=>{
+test('new reader selector is review-only, not wired into production routes',async()=>{
  const [route,repo,profile,pilot,settlement,credentials]=await Promise.all([
   read('app/api/client-portal/route.js'),read('lib/repository.js'),
   read('lib/client-profile.js'),read('lib/pilot-access.js'),
   read('lib/customer-settlement-proof.mjs'),read('lib/client-credentials.js')
  ]);
- assert.match(route,/if\(portalReadDatabaseEnabled\(\)\)/);
- assert.match(route,/inspectPortalReaderPrivileges\(databasePool\(getPortalReadDatabaseUrl\(\)\)\)/);
- assert.match(route,/if\(!probe\.ready\)return privateJson\(/);
- assert.match(route,/readCustomerComparisonReport\(databasePool\(getPortalReadDatabaseUrl\(\)\)/);
- assert.match(repo,/portalRead\?getPortalReadDatabaseUrl\(\):getDatabaseUrl\(\)/);
- assert.match(repo.slice(repo.indexOf('export async function getClientAccount'),repo.indexOf('export async function getPaymentByMerchantOid')),/ensureSchema:false,portalRead:true/);
- assert.match(profile,/portalRead\?getPortalReadDatabaseUrl\(\):getDatabaseUrl\(\)/);
- assert.match(profile,/ensureSchema:false,portalRead:true/);
- assert.match(pilot,/pool\(\{ensureSchema:false,portalRead:true\}\)/);
- assert.match(settlement,/const url=getPortalReadDatabaseUrl\(\)/);
- assert.doesNotMatch(credentials,/getPortalReadDatabaseUrl|PORTAL_READ_DB_ENABLED/);
+ for(const code of [route,repo,profile,pilot,settlement,credentials]){
+  assert.doesNotMatch(code,/getPortalReadDatabaseUrl|PORTAL_READ_DB_ENABLED/);
+ }
+ // Explicit future integration requires adapting the authenticated E2E fixtures
+ // and proving role grants and all runtime paths first.
 });
