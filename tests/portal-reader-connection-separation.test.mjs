@@ -37,15 +37,19 @@ test('reader connection is opt-in, preserves legacy default, and never falls bac
  }
 });
 
-test('new reader selector is review-only, not wired into production routes',async()=>{
+test('reader is wired ONLY to opt-in report evidence, not account/login/settlement paths',async()=>{
  const [route,repo,profile,pilot,settlement,credentials]=await Promise.all([
   read('app/api/client-portal/route.js'),read('lib/repository.js'),
   read('lib/client-profile.js'),read('lib/pilot-access.js'),
   read('lib/customer-settlement-proof.mjs'),read('lib/client-credentials.js')
  ]);
- for(const code of [route,repo,profile,pilot,settlement,credentials]){
-  assert.doesNotMatch(code,/getPortalReadDatabaseUrl|PORTAL_READ_DB_ENABLED/);
+ assert.match(route,/process\.env\.PORTAL_TENANT_RLS_ENABLED==='true'/);
+ assert.match(route,/getPortalReadDatabaseUrl/);
+ assert.match(route,/inspectPortalReaderPrivileges/);
+ assert.match(route,/withVerifiedClientTenantRead/);
+ assert.match(route,/readCustomerComparisonReport\(databasePool\(getDatabaseUrl\(\)\),session\.clientId\)/);
+ for(const code of [repo,profile,pilot,settlement,credentials]){
+  assert.doesNotMatch(code,/getPortalReadDatabaseUrl|PORTAL_READ_DB_ENABLED|PORTAL_TENANT_RLS_ENABLED/);
  }
- // Explicit future integration requires adapting the authenticated E2E fixtures
- // and proving role grants and all runtime paths first.
+ // Real role credentials, authenticated customer journeys and deployment remain blocked.
 });
