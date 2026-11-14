@@ -26,7 +26,8 @@ test('fixed server report query scopes to signed identity and filters unexpected
  await withSyntheticSecret(async()=>{
   const token=await createClientToken(A);
   const calls=[];
-  const pool={query:async(sql,args)=>{
+  let acquired=0,released=0;
+  const pool={connect:async()=>{acquired++;return {query:async(sql,args)=>{
    calls.push({sql,args});
    if(sql.includes('current_user AS "name"'))return {rows:[{
     name:'portal_gateway_reader_synthetic',login:true,superuser:false,
@@ -36,12 +37,13 @@ test('fixed server report query scopes to signed identity and filters unexpected
     credentialSelect:false,paymentSelect:false,settlementSelect:false
    }]};
    return {rows:[resultFor(A),resultFor(B)]};
-  }};
+  },release:()=>{released++}}}};
   const result=await readTrustedCustomerReportReview(pool,token,true);
-  assert.equal(calls.length,2,'exactly one metadata role probe and one fixed report query');
-  assert.match(calls[1].sql,/WHERE client_id=\$1 ORDER BY created_at DESC LIMIT 20/);
-  assert.ok(!/\bset_config\b|\bcurrent_setting\b|\bCREATE\b|\bUPDATE\b/i.test(calls[1].sql));
-  assert.deepEqual(calls[1].args,[A]);
+  assert.deepEqual(calls.map(x=>x.sql==='BEGIN READ ONLY'?'begin':x.sql.includes('current_user AS "name"')?'probe':x.sql==='COMMIT'?'commit':'report'),['begin','probe','report','commit']);
+  assert.equal(acquired,1);assert.equal(released,1);
+  assert.match(calls[2].sql,/WHERE client_id=\$1 ORDER BY created_at DESC LIMIT 20/);
+  assert.ok(!/\bset_config\b|\bcurrent_setting\b|\bCREATE\b|\bUPDATE\b/i.test(calls[2].sql));
+  assert.deepEqual(calls[2].args,[A]);
   assert.equal(result.length,1);
   assert.equal(result[0].clientId,A);
  });
@@ -50,7 +52,7 @@ test('fixed server report query scopes to signed identity and filters unexpected
 test('invalid signature, invalid tenant and missing entitlement cause zero SQL',async()=>{
  await withSyntheticSecret(async()=>{
   let called=0;
-  const pool={query:async()=>{called++;throw Error('query-must-not-run')}};
+  const pool={connect:async()=>{called++;throw Error('connect-must-not-run')}};
   const valid=await createClientToken(A);
   const malformedScope=await createClientToken('not-a-uuid');
   await assert.rejects(readTrustedCustomerReportReview(pool,'bad-token',true),/verified-customer-session-required/);
@@ -65,7 +67,7 @@ test('invalid signature, invalid tenant and missing entitlement cause zero SQL',
 test('a broken database reader cannot be interpreted as an empty verified report',async()=>{
  await withSyntheticSecret(async()=>{
   const valid=await createClientToken(A);
-  await assert.rejects(readTrustedCustomerReportReview({query:async()=>({})},valid,true),/trusted-report-reader-role-unverified/);
+  await assert.rejects(readTrustedCustomerReportReview({connect:async()=>({query:async()=>({}),release:()=>{}})},valid,true),/trusted-report-reader-role-unverified/);
   await assert.rejects(readTrustedCustomerReportReview(null,valid,true),/report-reader-unavailable/);
  });
 });
@@ -74,8 +76,10 @@ test('owner or overprivileged reader cannot run a customer report',async()=>{
  await withSyntheticSecret(async()=>{
   const token=await createClientToken(A);
   let calls=0;
-  const pool={query:async sql=>{
+  let released=0;
+  const pool={connect:async()=>({query:async sql=>{
    calls++;
+   if(sql==='BEGIN READ ONLY'||sql==='ROLLBACK')return {rows:[]};
    if(!sql.includes('current_user AS "name"'))throw Error('report-query-was-attempted');
    return {rows:[{
     name:'neondb_owner',login:true,superuser:false,bypassRls:true,
@@ -84,9 +88,10 @@ test('owner or overprivileged reader cannot run a customer report',async()=>{
     comparisonUpdate:true,comparisonDelete:true,credentialSelect:true,
     paymentSelect:true,settlementSelect:true
    }]};
-  }};
+  },release:()=>{released++}})};
   await assert.rejects(readTrustedCustomerReportReview(pool,token,true),
    /trusted-report-reader-role-unverified/);
-  assert.equal(calls,1,'no customer report query after unsafe role attestation');
+  assert.equal(calls,3,'BEGIN, identity attestation and ROLLBACK only');
+  assert.equal(released,1,'failed identity attestation releases connection');
  });
 });
