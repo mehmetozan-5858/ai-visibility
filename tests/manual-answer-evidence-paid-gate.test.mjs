@@ -4,10 +4,10 @@ import {readFile} from 'node:fs/promises';
 const source=(await readFile(new URL('../app/api/answer-evidence/route.js',import.meta.url),'utf8'))
  .replace(/^import .*;\s*$/gm,'').replace(/export /g,'');
 const id='12345678-1234-4234-8234-123456789012';
-function endpoint(env={}){
+function endpoint(env={},overrides={}){
  const state={writes:0,requests:0};
  const deps={
-  requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:()=>null, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
+  requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:(_req,options)=>{assert.equal(options.bucket,'manual-answer-evidence');assert.equal(options.limit,6);return overrides.limited?Response.json({error:'limited'},{status:429}):null}, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
   getClient:async()=>null,getClientProfile:async()=>null,freeMeasurementStatus:()=>({ready:true}),
   evidenceQueries:(_e,q)=>q.map(query=>({query})),clientBaselineOptions:()=>{throw Error('not-used')},
   answerProviders:()=>['Perplexity'],getAnswerEvidenceRun:async()=>null,repeatEvidenceOptions:()=>{throw Error('not-used')},
@@ -35,4 +35,11 @@ test('paid-capable path needs separately explicit review opt-in',async()=>{
  const {POST,state}=endpoint({PAID_ANSWER_EVIDENCE_ENABLED:'true'});
  assert.equal((await POST(req({freeOnly:false}))).status,200);
  assert.equal(state.requests,1);
+});
+
+test('shared admin manual rate limit rejects before body parsing, database and provider access',async()=>{
+ const {POST,state}=endpoint({}, {limited:true});
+ const response=await POST(new Request('https://example.invalid/api/answer-evidence',{method:'POST',body:'invalid-json'}));
+ assert.equal(response.status,429);
+ assert.equal(state.requests,0);
 });
