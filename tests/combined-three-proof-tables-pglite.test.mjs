@@ -26,6 +26,19 @@ test('three reviewed proof tables coexist in isolated PostgreSQL and preserve di
    to_regclass('public.free_applicant_verified_observations') AS observations,
    to_regclass('public.verified_customer_settlements') AS settlements`)).rows[0];
   assert.ok(tables.receipts&&tables.observations&&tables.settlements);
+  // All sensitive proof tables must have RLS enabled, even though the
+  // synthetic fixture writes as a table owner; zero policies deny others.
+  const rls=(await db.query(`SELECT c.relname,c.relrowsecurity,
+    (SELECT COUNT(*)::int FROM pg_policy p WHERE p.polrelid=c.oid) AS policies
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND c.relname IN
+    ('free_applicant_verified_receipts','free_applicant_verified_observations',
+     'verified_customer_settlements') ORDER BY c.relname`)).rows;
+  assert.equal(rls.length,3);
+  for(const item of rls){
+   assert.equal(item.relrowsecurity,true,item.relname+' must enable RLS');
+   assert.equal(item.policies,0,item.relname+' must not create broad policies');
+  }
   const receipt='synthetic-receipt-1',provider='Gemini',model='offline-fixture',response='synthetic-response-1',query='Neutral purchase options?';
   await db.query(`INSERT INTO public.free_applicant_verified_receipts
    (id,tenant_id,domain,provider,model,response_id,query_text,amount,currency,estimated,operation,verified_zero_price,response_complete,verified_model_identity)
