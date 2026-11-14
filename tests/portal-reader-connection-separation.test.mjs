@@ -21,6 +21,12 @@ test('reader connection is opt-in, preserves legacy default, and never falls bac
   assert.throws(()=>getPortalReadDatabaseUrl(),/portal-reader-database-not-configured/);
   process.env.PORTAL_READ_DATABASE_URL='invalid-dsn';
   assert.throws(()=>getPortalReadDatabaseUrl(),/portal-reader-database-invalid/);
+  process.env.PORTAL_READ_DATABASE_URL=process.env.DATABASE_URL;
+  assert.throws(()=>getPortalReadDatabaseUrl(),/portal-reader-database-not-isolated/);
+  process.env.PORTAL_READ_DATABASE_URL='postgresql://writer@db.example.test/readonly';
+  assert.throws(()=>getPortalReadDatabaseUrl(),/portal-reader-database-not-isolated/);
+  process.env.PORTAL_READ_DATABASE_URL='postgresql://writer@other.example.test/readonly';
+  assert.throws(()=>getPortalReadDatabaseUrl(),/portal-reader-database-not-isolated/);
   process.env.PORTAL_READ_DATABASE_URL='postgresql://reader@db.example.test/readonly';
   assert.equal(getPortalReadDatabaseUrl(),'postgresql://reader@db.example.test/readonly');
   assert.notEqual(getPortalReadDatabaseUrl(),getDatabaseUrl());
