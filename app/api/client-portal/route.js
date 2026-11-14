@@ -1,6 +1,7 @@
 import {readCustomerComparisonReport} from '../../../lib/customer-comparison-report.mjs';
 import {withVerifiedClientTenantRead} from '../../../lib/verified-tenant-transaction-review.mjs';
 import {inspectPortalReaderPrivileges} from '../../../lib/portal-role-readiness.mjs';
+import {inspectComparisonRlsPolicy} from '../../../lib/portal-report-rls-readiness.mjs';
 import {databasePool} from '../../../lib/database-runtime';
 import {getDatabaseUrl,getPortalReadDatabaseUrl,portalReadDatabaseEnabled} from '../../../lib/db';
 import {customerAccess} from "../../../lib/pilot-access";
@@ -33,6 +34,8 @@ export async function GET(req){
         const reader=databasePool(getPortalReadDatabaseUrl());
         const privileges=await inspectPortalReaderPrivileges(reader);
         if(!privileges.ready)return privateJson({error:'Portal reader privileges are not verified.'},503);
+        const rls=await inspectComparisonRlsPolicy(reader);
+        if(!rls.ready)return privateJson({error:'Customer report RLS policy is not verified.'},503);
         const rows=await withVerifiedClientTenantRead(reader,store.get("ai_client")?.value||'',
           (tx,tenantId)=>readCustomerComparisonReport(tx,tenantId));
         reportEvidence={available:true,comparisonCount:rows.length};
