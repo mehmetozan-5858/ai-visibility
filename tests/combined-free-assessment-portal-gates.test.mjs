@@ -45,3 +45,15 @@ test('free applicant verified proof read is scoped, recent and non-mutating',asy
  assert.doesNotMatch(source,/pool\.query\(\s*[`'"]\s*(?:INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/i);
  assert.match(source,/catch\s*\{\s*return unavailable;/);
 });
+
+test('customer account read does not trigger schema changes through repository wrapper',async()=>{
+ const repository=await read('lib/repository.js');
+ assert.match(repository,/async function withDb\(fn,\{ensureSchema=true\}=\{\}\)/);
+ assert.match(repository,/if\(ensureSchema\)\{await initializeSchema\(pool,"repository",ensure\);await ensureWorkEvidence\(pool\)\}/);
+ const start=repository.indexOf('export async function getClientAccount(clientId){');
+ const end=repository.indexOf('export async function getPaymentByMerchantOid(',start);
+ assert.ok(start>=0&&end>start);
+ const method=repository.slice(start,end);
+ assert.match(method,/\},\{ensureSchema:false\}\)\|\|null/);
+ assert.doesNotMatch(method,/\bINSERT\b|\bUPDATE\b|\bCREATE\b|\bALTER\b|\bDELETE\b/i);
+});
