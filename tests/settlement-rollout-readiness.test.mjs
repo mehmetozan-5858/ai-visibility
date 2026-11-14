@@ -13,7 +13,7 @@ test('strict settlement switch requires independent legacy bank continuity and l
  }
 });
 test('unknown, invalid or contradictory counts fail closed rather than assume customer continuity',()=>{
- for(const counts of [{},{legacyBankPaidClients:1,legacyClientsWithIndependentContinuity:2},{legacyBankPaidClients:-1,legacyClientsWithIndependentContinuity:0}]){
+ for(const counts of [{legacyBankPaidClients:undefined,legacyClientsWithIndependentContinuity:undefined},{legacyBankPaidClients:1,legacyClientsWithIndependentContinuity:2},{legacyBankPaidClients:-1,legacyClientsWithIndependentContinuity:0}]){
   const result=assessSettlementRollout({...all,...counts});
   assert.equal(result.ready,false);
   assert.deepEqual(result.blockers,['invalid-audit-counts']);
