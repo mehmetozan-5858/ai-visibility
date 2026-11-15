@@ -92,3 +92,33 @@ test('missing model proof, billed responses, truncation and provider outages fai
  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env:enabled,fetcher:async()=>{throw Error('secret '+key)}}),
   /openrouter-free-catalog-unavailable/);
 });
+
+test('pinned catalog-zero free model rejects response routed to another free identity',async()=>{
+ const direct={...enabled,OPENROUTER_FREE_MODEL:'example/verified:free'};
+ const directCatalog={data:[{id:'example/verified:free',
+  pricing:{prompt:'0',completion:'0',request:'0'}}]};
+ for(const actual of ['example/other:free','openrouter/free']){
+  let posts=0;
+  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{
+   env:direct,fetcher:async url=>{
+    if(url.endsWith('/models'))return {ok:true,json:async()=>directCatalog};
+    posts++;
+    return {ok:true,json:async()=>({
+     id:'synthetic-route-mismatch',model:actual,usage:{cost:0},
+     choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]
+    })};
+   }
+  }),/openrouter-free-model-not-proven/);
+  assert.equal(posts,1);
+ }
+ const good=await runOpenRouterFreeReview('Synthetic prompt',{
+  env:direct,fetcher:async url=>url.endsWith('/models')
+   ?{ok:true,json:async()=>directCatalog}
+   :{ok:true,json:async()=>({
+    id:'synthetic-pinned-receipt',model:'example/verified:free',usage:{cost:0},
+    choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]
+   })}
+ });
+ assert.equal(good.model,'example/verified:free');
+ assert.equal(good.costVerified,true);
+});
