@@ -41,3 +41,14 @@ export async function markCardPaymentFailedByMerchantOid(){}`;
  assert.equal(result.ready,false,'source-only checks must not claim all writers verified');
  assert.equal(result.findings.length,0);
 });
+
+test('card payment activation must be atomic as well as tenant-lock-coordinated',async()=>{
+ const repositorySource=await read('lib/repository.js');
+ const pilotSource=await read('lib/pilot-access.js');
+ const reviewSource=await read('lib/portal-pilot-writes-review.mjs');
+ const audit=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
+ assert.ok(audit.findings.some(f=>f.code==='card-activation-not-atomic'&&
+  f.method==='confirmCardPaymentByMerchantOid'),
+  'payment and customer activation cannot commit as separate pool queries');
+ assert.equal(audit.ready,false);
+});
