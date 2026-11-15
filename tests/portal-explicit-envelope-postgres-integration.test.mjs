@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {createHmac,randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {Pool} from 'pg';
+import {createClientToken} from '../lib/admin-auth.js';
+import {createEnvelopeGatewayReview} from '../lib/portal-envelope-gateway-review.mjs';
+import {createReviewReportEntitlementAuthority} from '../lib/one-time-report-authority-review.mjs';
 import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 import {decodeAuthorizedReportEnvelopeReview} from '../lib/portal-explicit-report-envelope-review.mjs';
 
@@ -17,7 +20,7 @@ if(source){
   throw Error('disposable-ci-postgres-only');
 }
 const dbName='ci_portal_envelope_review';
-const roleName='ci_portal_envelope_reader';
+const roleName='portal_gateway_reader_ci_envelope';
 const A='11111111-1111-4111-8111-111111111111';
 const B='22222222-2222-4222-8222-222222222222';
 const SECRET='fixture-synthetic-report-secret-not-for-live-use';
@@ -45,7 +48,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query(migration);
   // Role is synthetic and cluster-scoped to this disposable CI PostgreSQL.
   // Grant EXECUTE only; no direct SELECT on report or private claim ledger.
-  await admin.query('CREATE ROLE '+roleName+' NOLOGIN');roleCreated=true;
+  await admin.query('CREATE ROLE '+roleName+' LOGIN');roleCreated=true;
   await db.query('GRANT USAGE ON SCHEMA public TO '+roleName);
   await db.query('GRANT EXECUTE ON FUNCTION public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text) TO '+roleName);
   const limited=await db.connect();
@@ -94,6 +97,39 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   }finally{
    await restricted.query('ROLLBACK').catch(()=>{});
    restricted.release();
+  }
+  // Full synthetic signed session -> trusted authority preflight -> restricted
+  // reader role -> real SQL SECURITY DEFINER RPC -> envelope acceptance.
+  // Entire path is review-only; no HTTP route and no live Neon credentials.
+  const keys=['AUTH_SECRET','PORTAL_REPORT_CLAIM_SECRET','PORTAL_REPORT_READER_ROLE'];
+  const original=Object.fromEntries(keys.map(k=>[k,process.env[k]]));
+  try{
+   process.env.AUTH_SECRET='synthetic-http-session-ci-only-secret';
+   process.env.PORTAL_REPORT_CLAIM_SECRET=SECRET;
+   process.env.PORTAL_REPORT_READER_ROLE=roleName;
+   const readerPool={connect:async()=>{
+    const connection=await db.connect();
+    return {query:async(sql,args)=>{
+     const result=await connection.query(sql,args);
+     if(sql==='BEGIN ISOLATION LEVEL READ COMMITTED')
+      await connection.query('SET LOCAL ROLE '+roleName);
+     return result;
+    },release:()=>connection.release()};
+   }};
+   const gateway=createEnvelopeGatewayReview({
+    reportPool:readerPool,
+    entitlementAuthority:createReviewReportEntitlementAuthority(db)
+   });
+   assert.deepEqual(await gateway(await createClientToken(A)),[],
+    'actual limited-role SQL must return an authorized empty report');
+   await assert.rejects(gateway(await createClientToken(B)),
+    /review-envelope-entitlement-denied/,
+    'expired synthetic tenant must be denied before report connection');
+  }finally{
+   for(const key of keys){
+    if(original[key]===undefined)delete process.env[key];
+    else process.env[key]=original[key];
+   }
   }
   const empty=await call(A);
   assert.deepEqual(decodeAuthorizedReportEnvelopeReview(empty,A),{authorized:true,reports:[]});
