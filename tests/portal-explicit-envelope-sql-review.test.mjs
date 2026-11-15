@@ -60,6 +60,9 @@ test('migration refuses missing private HMAC placement before changing schema',a
  const ownerCheck=s.indexOf("rolname='portal_report_fn_owner'");
  assert.ok(ownerCheck>0&&hmacCheck>ownerCheck&&hmacCheck<firstDdl);
  assert.match(s,/RAISE EXCEPTION 'review-report-hmac-placement-unverified'/);
+ assert.match(s,/e\.extname='pgcrypto'/);
+ assert.match(s,/has_schema_privilege\(r\.oid,'portal_authz','USAGE'\)/);
+ assert.match(s,/has_function_privilege\(r\.oid,p\.oid,'EXECUTE'\)/);
  assert.doesNotMatch(s,/^\s*CREATE\s+EXTENSION|^\s*ALTER\s+EXTENSION/mi);
  assert.doesNotMatch(s,/to_regprocedure\('portal_authz_trial\.hmac/,
   'trial-only HMAC cannot masquerade as proposed private function placement');
