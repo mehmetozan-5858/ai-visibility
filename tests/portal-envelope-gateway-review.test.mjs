@@ -211,3 +211,13 @@ test('plausible historical provider URLs never become independently verified AI 
   assert.equal(m.queries.at(-1).sql,'COMMIT');
  });
 });
+
+
+test('missing signed envelope function and private schema are explicit fail-closed role flags',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const src=await readFile(new URL('../lib/portal-envelope-gateway-review.mjs',import.meta.url),'utf8');
+ assert.match(src,/COALESCE\(has_function_privilege\(current_user,\s*to_regprocedure\('public\.portal_verified_one_time_envelope_review\(uuid,bigint,uuid,text\)'\),\s*'EXECUTE'\),false\) AS "envelopeExecute"/);
+ assert.match(src,/COALESCE\(has_schema_privilege\(current_user,to_regnamespace\('portal_authz'\),'USAGE'\),false\) AS "privateSchemaUsage"/);
+ assert.doesNotMatch(src,/portal_verified_one_time_envelope_review\(uuid,bigint,uuid,text\)'::regprocedure/);
+ assert.equal(isEnvelopeReaderRoleReview({...role,envelopeExecute:false},ROLE),false);
+});
