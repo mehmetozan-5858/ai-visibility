@@ -18,6 +18,8 @@ test('locked pilot writers remove two bypasses but account activations remain NO
   'account-activation-not-coordinated:confirmCardPaymentByMerchantOid'
  ])assert.ok(names.includes(path),'must expose active bypass: '+path);
  assert.equal(names.some(x=>x.startsWith('legacy-pilot-write-unlocked:')),false);
+ assert.ok(names.includes('legacy-paid-label-entitlement-unverified:customerAccess'),
+  'historical paid status cannot be silently accepted as verified settlement');
  assert.ok(audit.unresolvedExternal.includes('direct-admin-sql'));
  assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'));
 });
