@@ -4,7 +4,10 @@ import {
  signedEnvelopeReadinessSql,
  signedEnvelopeRequiredChecks,
  evaluateSignedEnvelopeReadiness,
- inspectSignedEnvelopeReadiness
+ inspectSignedEnvelopeReadiness,
+ signedEnvelopePreinstallChecks,
+ signedEnvelopePostinstallChecks,
+ evaluateSignedEnvelopeStage
 } from '../lib/portal-neon-envelope-readiness-review.mjs';
 
 const complete=()=>Object.fromEntries(signedEnvelopeRequiredChecks.map(k=>[k,true]));
@@ -57,4 +60,29 @@ test('single-row metadata result produces blocked fields; errors fail closed',as
   throw Error('not provisioned');
  }})).reason,'read-only-inspection-failed');
  assert.equal((await inspectSignedEnvelopeReadiness()).ready,false);
+});
+
+test('preinstall stage is independent of migration-created tables and RPC',()=>{
+ const row=complete();
+ for(const key of signedEnvelopePostinstallChecks)row[key]=false;
+ const pre=evaluateSignedEnvelopeStage(row,'preinstall');
+ assert.deepEqual(pre,{ready:true,stage:'preinstall',blocked:[],
+  reason:'metadata-only-stage-present'});
+ const post=evaluateSignedEnvelopeStage(row,'postinstall');
+ assert.deepEqual(post.blocked,[...signedEnvelopePostinstallChecks]);
+ assert.equal(post.ready,false);
+ assert.equal(evaluateSignedEnvelopeReadiness(row).ready,false);
+});
+
+test('preinstall gate requires each owner and extension prerequisite; never relaxes',()=>{
+ assert.equal(signedEnvelopePreinstallChecks.length,13);
+ assert.equal(signedEnvelopePostinstallChecks.length,4);
+ assert.equal(new Set([...signedEnvelopePreinstallChecks,...signedEnvelopePostinstallChecks]).size,
+  signedEnvelopeRequiredChecks.length);
+ for(const key of signedEnvelopePreinstallChecks){
+  const row=complete();
+  row[key]=false;
+  assert.deepEqual(evaluateSignedEnvelopeStage(row,'preinstall').blocked,[key],key);
+ }
+ assert.equal(evaluateSignedEnvelopeStage(complete(),'unknown').ready,false);
 });
