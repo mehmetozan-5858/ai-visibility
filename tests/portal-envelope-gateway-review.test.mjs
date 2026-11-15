@@ -13,7 +13,7 @@ const role={name:ROLE,login:true,superuser:false,bypassRls:false,
  createDb:false,createRole:false,replication:false,schemaUsage:true,
  schemaCreate:false,databaseCreate:false,envelopeExecute:true,
  legacyReportExecute:false,legacyOneTimeExecute:false,
- oldSignedReportExecute:false,oldAdvisoryReportExecute:false,rawSelect:false,credentialSelect:false,paymentSelect:false,settlementSelect:false,privateSchemaUsage:false};
+ oldSignedReportExecute:false,oldAdvisoryReportExecute:false,otherDefinerExecute:false,rawSelect:false,credentialSelect:false,paymentSelect:false,settlementSelect:false,privateSchemaUsage:false};
 const proof=tenant=>async id=>({active:true,source:'verified-pilot',
  tenantId:tenant,checkedAt:Date.now()});
 async function env(fn){
@@ -99,7 +99,8 @@ test('reader can only execute envelope RPC and cannot be owner or raw-table read
  assert.equal(isEnvelopeReaderRoleReview(role,ROLE),true);
  for(const patch of [{envelopeExecute:false},{databaseCreate:true},
   {legacyReportExecute:true},{legacyOneTimeExecute:true},
-  {oldSignedReportExecute:true},{oldAdvisoryReportExecute:true},{rawSelect:true},
+  {oldSignedReportExecute:true},{oldAdvisoryReportExecute:true},
+  {otherDefinerExecute:true},{rawSelect:true},
   {credentialSelect:true},{paymentSelect:true},{settlementSelect:true},{privateSchemaUsage:true},
   {bypassRls:true},{name:'neondb_owner'}])
   assert.equal(isEnvelopeReaderRoleReview({...role,...patch},ROLE),false);
