@@ -86,3 +86,13 @@ test('preinstall gate requires each owner and extension prerequisite; never rela
  }
  assert.equal(evaluateSignedEnvelopeStage(complete(),'unknown').ready,false);
 });
+
+test('postinstall cannot pass if preinstall owner or HMAC disappears',()=>{
+ const row=complete();
+ row.ownerExists=false;
+ row.approvedHmac=false;
+ assert.equal(evaluateSignedEnvelopeStage(row,'preinstall').ready,false);
+ const post=evaluateSignedEnvelopeStage(row,'postinstall');
+ assert.equal(post.ready,false);
+ assert.deepEqual(post.blocked,['ownerExists','approvedHmac']);
+});
