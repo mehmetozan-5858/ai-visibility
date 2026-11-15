@@ -196,3 +196,20 @@ test('unsafe claimed provider evidence is downgraded at signed HTTP boundary',as
   assert.equal(f.calls.at(-1),'COMMIT');
  });
 });
+
+test('malformed nonempty SQL report fails closed and rolls back one-time claim',async()=>{
+ await withSyntheticEnv(async()=>{
+  // A DB envelope may be cryptographically authorized yet contain a row
+  // with no displayable provider answer. Never commit and label this an
+  // authorized empty customer report; keep the nonce transaction rollback.
+  const f=fixture({reports:[{clientId:A,query:'empty provider response',
+   results:[{provider:'gemini',status:'error',answer:''}],
+   createdAt:'2026-11-15T00:00:00Z'}]});
+  const response=await f.http(await createClientToken(A));
+  assert.equal(response.status,503);
+  assert.deepEqual(await response.json(),{error:'verified-report-unavailable'});
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
+  assert.equal(f.calls.at(-1),'ROLLBACK','invalid provider rows must roll back claim');
+  assert.equal(f.releases,1);
+ });
+});
