@@ -81,6 +81,9 @@ export default function ZeraCustomerDetail(){
        ].map(([name,count])=><li key={name}>{name}: <b>{Number.isInteger(count)?count:'doğrulanamadı'}</b></li>)}
        <li>E-posta doğrulama gönderimi: <b>{audit.data.settings?.emailVerificationSenderConfigured===true?'Yapılandırılmış (teslimat doğrulanmadı)':'Hazır değil / doğrulanamadı'}</b></li>
        <li>Güvenli davet imzası: <b>{audit.data.settings?.invitationSigningConfigured===true?'Yapılandırılmış':'Hazır değil / doğrulanamadı'}</b></li>
+       <li>Uygulamanın gerçek DB rolü: <b>{audit.data.runtimeRole?.inspected===true?
+        audit.data.runtimeRole.hasElevatedPrivileges===false?'Minimum yetki kontrolleri uygun (RLS ayrıca sınanmalı)':'Geniş yetki riski — kabul HOLD':
+        'Doğrulanamadı — kabul HOLD'}</b></li>
        <li>AI görevleri: {(audit.data.tasks||[]).map(t=>t.taskId+' '+t.status).join(', ')||'doğrulanamadı'}</li>
       </ul>}
      <p>Buradaki sayılar canlı müşteri girişi, sağlayıcı sonucu veya tahsilat kanıtı değildir. Eksik bağlantılar için otomatik işlem başlatılmaz.</p>
