@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {hashPassword,verifyHash} from '../lib/client-password-verifier.mjs';
 import {createClientToken} from '../lib/admin-auth.js';
+import {issueExistingPasswordSessionReview} from '../lib/portal-existing-password-session-review.mjs';
 import {createEnvelopeGatewayReview} from '../lib/portal-envelope-gateway-review.mjs';
 import {createPortalReportHttpReview} from '../lib/portal-report-http-review.mjs';
 
@@ -60,8 +61,27 @@ test('unchanged existing password yields a private authorized tenant report',asy
   assert.equal(verifyHash(password,stored),true);
   assert.equal(verifyHash(password+'wrong',stored),false);
   assert.equal(verifyHash(password,stored),true);
-  const token=await createClientToken(A);
+  // The real review gateway must not be reached by a failed credential.
+  // No reset, credential insert, or replacement is called.
+  let verifierCalls=0;
+  const verifyExisting=async(email,input)=>{
+   verifierCalls++;
+   return email==='owner@example.com'&&verifyHash(input,stored)
+    ?{clientId:A,email:'owner@example.com'}:null;
+  };
   const f=fixture({reports:[{clientId:A,query:'synthetic query',results:{},createdAt:'2026-11-15T00:00:00Z'}]});
+  for(const input of ['incorrect-password',password+'-changed']){
+   const invalid=await issueExistingPasswordSessionReview({
+    email:'OWNER@example.com',password:input,verifyExisting
+   });
+   assert.equal(invalid,null);
+   assert.equal((await f.http(invalid||'')).status,401);
+  }
+  assert.equal(f.connections,0,'wrong password never opens the reader connection');
+  const token=await issueExistingPasswordSessionReview({
+   email:'OWNER@example.com',password,verifyExisting
+  });
+  assert.equal(verifierCalls,3);
   const response=await f.http(token);
   assert.equal(response.status,200);
   assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
