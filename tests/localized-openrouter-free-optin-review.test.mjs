@@ -21,7 +21,7 @@ async function withEnv(set,fn){
 }
 const business={name:'Synthetic Business',domain:'synthetic.example.test',
  sector:'test',city:'Sivas',country:'Türkiye'};
-const report={score:61,summary:'Synthetic source-only overview',
+const report={provider:'Spoofed',providerEvidence:{status:'forged'},score:61,summary:'Synthetic source-only overview',
  findings:['Synthetic evidence gap'],recommendations:['Check schema'],
  reason:'Synthetic test',visibility:{confidence:20}};
 test('OpenRouter is disabled by default even if a key exists',async()=>{
