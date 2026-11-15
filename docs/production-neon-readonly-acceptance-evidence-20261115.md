@@ -84,3 +84,14 @@ A new set of **catalog-only** queries on isolated branch `br-plain-poetry-b2u7f7
 `public.ai_provider_comparisons` has FORCE RLS and two permissive SELECT policies, including `portal_fn_owner_read_synthetic` with `USING (true)`. This broad *function-owner* read permits the definer to fetch rows across tenants. Cross-tenant isolation therefore depends critically on verified claim binding and explicit `WHERE client_id=p_tenant` inside the audited SECURITY DEFINER function, **not on that policy alone**.
 
 **Install/acceptance decision: BLOCKED.** The proposed migration expressly says never auto-apply and does not grant the dedicated reader any EXECUTE permission. Provisioning, extension placement, NOLOGIN owner, exclusive RPC grant/revocation of trial RPC, all entitlement-writer lock coordination, signed request/replay/revocation tests and an authenticated restricted connection require a separate reviewed *isolated-only* change. A schema/object existence check is not a license to provision production secrets, impersonate a customer or migrate the default branch. Preserve Production HOLD.
+
+## Follow-up: SQL ACL check of all SECURITY DEFINER entry points (2026-11-15)
+
+Direct read-only `pg_proc` + `aclexplode(COALESCE(proacl,acldefault(...)))` audit on isolated branch `br-plain-poetry-b2u7f7a6` confirms **exact function ACL** (not a role-name approximation):
+
+| SECURITY DEFINER function | Owner | Trial reader EXECUTE | PUBLIC EXECUTE |
+| --- | --- | --- | --- |
+| `public.portal_trial_one_time_report(uuid,bigint,uuid,text)` | `portal_report_fn_owner_trial_20261115` | true | false |
+| `public.portal_trial_verified_report(uuid,bigint,text)` | `neondb_owner` | false | false |
+
+The catalog returned exactly these two `public` SECURITY DEFINER functions, with no other callable entry point for the restricted reader. This is **current isolated-branch ACL evidence only**. The existing trial RPC still lacks authoritative pilot revocation/shared advisory lock and explicit authorized-empty envelope. The new reviewed RPC, its private `portal_authz` objects, authentic restricted-reader login and coordinated entitlement writers have not been accepted. Production HOLD.
