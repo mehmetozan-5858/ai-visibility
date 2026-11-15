@@ -54,6 +54,15 @@ test('failure in revocation rolls back account suspension',async()=>{
  const {pool,calls}=fixture({failRevoke:true});
  await assert.rejects(suspendAndRevokeClientWithLockReview(pool,tenant),/synthetic-revoke-failure/);
  assert.ok(calls.some(x=>x.sql==='ROLLBACK'));
+ assert.equal(calls.some(x=>x.sql==='COMMIT'),false,
+  'failed revocation must never commit the prior account suspension');
+ const commands=calls.map(x=>x.sql);
+ const lock=commands.findIndex(x=>x.includes('pg_advisory_xact_lock'));
+ const suspend=commands.findIndex(x=>x.includes('UPDATE public.clients'));
+ const revoke=commands.findIndex(x=>x.includes('UPDATE public.client_pilot_access'));
+ const rollback=commands.indexOf('ROLLBACK');
+ assert.ok(lock>=0&&lock<suspend&&suspend<revoke&&revoke<rollback,
+  'tenant lock, suspension, failed revocation and rollback must be ordered');
  assert.equal(calls.at(-1).sql,'RELEASE');
 });
 test('invalid tenant cannot open connection',async()=>{
