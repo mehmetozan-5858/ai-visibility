@@ -71,6 +71,15 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query('GRANT SELECT ON public.clients,public.client_pilot_access,public.ai_provider_comparisons TO '+ownerName);
   // signing_keys/consumed_claims tables are made by the migration below;
   // grant their minimum required privileges only after it has completed.
+  // Even with a safe NOLOGIN owner, a missing sensitive fixture relation
+  // must reject the migration before it creates any SECURITY DEFINER RPC.
+  await db.query('DROP TABLE public.payments');
+  await assert.rejects(db.query(migration),error=>
+   error.message.includes('review-report-function-owner-unverified'));
+  assert.equal((await db.query(
+   "SELECT to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
+  )).rows[0].rpc_exists,false,'missing payments must not install report RPC');
+  await db.query('CREATE TABLE public.payments(id uuid PRIMARY KEY)');
 
   await db.query(migration);
   await db.query(`GRANT SELECT ON TABLE portal_authz.signing_keys TO ${ownerName}`);
