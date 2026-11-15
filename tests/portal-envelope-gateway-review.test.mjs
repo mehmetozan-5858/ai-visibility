@@ -99,3 +99,46 @@ test('reader can only execute envelope RPC and cannot be owner or raw-table read
   {bypassRls:true},{name:'neondb_owner'}])
   assert.equal(isEnvelopeReaderRoleReview({...role,...patch},ROLE),false);
 });
+
+test('stale authority result and missing independent signing secret block before SQL acquisition',async()=>{
+ await env(async()=>{
+  const token=await createClientToken(A);
+  const m=mock();
+  const stale=async tenant=>({tenantId:tenant,active:true,
+   source:'verified-pilot',checkedAt:Date.now()-10000});
+  const gateway=createEnvelopeGatewayReview({
+   reportPool:m.pool,entitlementAuthority:stale
+  });
+  await assert.rejects(gateway(token),/review-envelope-entitlement-denied/);
+  const valid=createEnvelopeGatewayReview({
+   reportPool:m.pool,entitlementAuthority:proof(A)
+  });
+  process.env.PORTAL_REPORT_CLAIM_SECRET=process.env.AUTH_SECRET;
+  await assert.rejects(valid(token),/review-envelope-signing-unavailable/);
+  delete process.env.PORTAL_REPORT_CLAIM_SECRET;
+  await assert.rejects(valid(token),/review-envelope-signing-unavailable/);
+  assert.equal(m.connected,0,'unsafe preflight or secret cannot open report pool');
+ });
+});
+
+test('reader with forged role identity, overbroad credentials or missing RPC permission must roll back',async()=>{
+ await env(async()=>{
+  const token=await createClientToken(A);
+  for(const roleOverride of [
+   {...role,name:'neondb_owner'},
+   {...role,bypassRls:true},
+   {...role,credentialSelect:true},
+   {...role,paymentSelect:true},
+   {...role,envelopeExecute:false}
+  ]){
+   const m=mock({roleOverride});
+   const gateway=createEnvelopeGatewayReview({
+    reportPool:m.pool,entitlementAuthority:proof(A)
+   });
+   await assert.rejects(gateway(token),/review-envelope-role-unverified/);
+   assert.equal(m.queries.at(-1).sql,'ROLLBACK');
+   assert.equal(m.queries.some(c=>c.sql.includes('FROM public.portal_verified_one_time_envelope_review(')),false);
+   assert.equal(m.released,1);
+  }
+ });
+});
