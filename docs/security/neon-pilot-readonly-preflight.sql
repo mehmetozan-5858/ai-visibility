@@ -118,3 +118,27 @@ FROM pg_class c
 WHERE c.oid='public.ai_provider_comparisons'::regclass;
 -- A true safe_for_release is only a necessary condition; execution tests,
 -- exact tenant authorization and complete role/policy audit remain required.
+
+-- CALLER AND LEGACY SURFACE AUDIT (READ ONLY): owner may bypass RLS even if
+-- gateway lacks EXECUTE. This is a separate release gate, not a grant proposal.
+-- Record the exact legacy call sites and migration/retirement path before merge.
+SELECT p.proname AS function_name,
+       pg_get_function_identity_arguments(p.oid) AS identity_args,
+       pg_get_userbyid(p.proowner) AS function_owner,
+       r.rolbypassrls AS owner_bypasses_rls,
+       p.prosecdef AS security_definer,
+       has_function_privilege('portal_gateway_reader_trial_20261114',
+                              p.oid,'EXECUTE') AS gateway_can_execute,
+       has_function_privilege('public',p.oid,'EXECUTE') AS public_can_execute,
+       p.proacl::text AS explicit_acl
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid=p.pronamespace
+JOIN pg_roles r ON r.oid=p.proowner
+WHERE n.nspname='public'
+  AND p.proname IN ('portal_trial_one_time_report','portal_trial_verified_report')
+ORDER BY p.proname;
+
+-- Any production release requires exact-head tests and the gateway's actual
+-- login session; has_function_privilege metadata cannot replace that evidence.
+-- Privileged legacy owner with BYPASSRLS remains a REVIEW BLOCKER until every
+-- reachable legacy entrypoint and privileged maintenance path is audited.
