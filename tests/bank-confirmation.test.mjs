@@ -29,7 +29,9 @@ const repository=await readFile(new URL('../lib/repository.js',import.meta.url),
 const confirmSource=repository.slice(repository.indexOf('export async function confirmPayment('),repository.indexOf('export async function upsertSalesOpportunity')).replace('export ','');
 function fixture(auditFailure=false){
  const state={paid:false,active:false,committed:false,rolledBack:false};
- const tx={release(){},query:async(sql)=>{
+ const tx={release(){},query:async(sql,args)=>{
+  if(sql.startsWith('SELECT client_id FROM payments WHERE id=$1'))return {rows:[{client_id:invoice.clientId}]};
+  if(sql.includes('pg_advisory_xact_lock')){assert.deepEqual(args,[invoice.clientId]);return {rows:[{}]}};
   if(sql.includes('UPDATE payments')){state.paid=true;return {rows:[invoice]}}
   if(sql.includes('INSERT INTO bank_confirmations'))return {rows:[{id:'confirmation'}]};
   if(sql.includes('INSERT INTO client_activity')&&auditFailure)throw Error('audit-failed');
