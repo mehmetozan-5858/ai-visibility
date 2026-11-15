@@ -190,8 +190,11 @@ test('reverse order: committed card activation releases lock before revocation',
   if(pendingRevoke)await pendingRevoke.catch(()=>{});
   if(revokerOpen)await revoker.query('ROLLBACK').catch(()=>{});
   observer?.release();revoker?.release();
-  if(db)await db.end().catch(()=>{});
-  if(created)await admin.query('DROP DATABASE IF EXISTS "'+name+'" WITH (FORCE)').catch(()=>{});
+  // Close every tracked connection before dropping the disposable DB.
+  // FORCE can asynchronously terminate a still-running client and emit
+  // uncaught PostgreSQL 57P01 in this or another concurrently running test.
+  if(db)await db.end();
+  if(created)await admin.query('DROP DATABASE IF EXISTS "'+name+'"');
   await admin.end();
  }
 });
