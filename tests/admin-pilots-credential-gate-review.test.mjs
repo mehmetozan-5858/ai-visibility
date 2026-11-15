@@ -8,7 +8,7 @@ const source=(await readFile(new URL('../app/api/admin-pilots/route.js',import.m
  .replace(/^import .*;$/gm,'')
  .replace(/export async function /g,'async function ');
 const clientId='11111111-1111-4111-8111-111111111111';
-function scenario({credential=null,account={client:{id:clientId,name:'ZERA Clothing',plan:'Pilot',status:'active'}},action='grant',email='pilot@example.test',confirmZeraPilotBootstrap=false,priorPilot=null,emailSenderConfigured=true}={}){
+function scenario({credential=null,account={client:{id:clientId,name:'ZERA Clothing',plan:'Pilot',status:'active'}},action='grant',email='pilot@example.test',confirmZeraPilotBootstrap=false,priorPilot=null,emailSenderConfigured=true,signingConfigured=true}={}){
  const calls=[];
  const route=new Function('requireAdmin','enforceSameOrigin','getClientAccount','listClients',
   'getPilotAccess','grantPilot','revokePilot','getClientCredential','createPaymentAccessToken','process',
@@ -16,7 +16,7 @@ function scenario({credential=null,account={client:{id:clientId,name:'ZERA Cloth
   async()=>null,()=>null,async()=>account,async()=>[],
   async()=>priorPilot,async()=>{calls.push('grant')},async()=>{calls.push('revoke')},
   async()=>credential,async()=>{calls.push('payment-token');return 'SYNTHETIC_TOKEN'},
-  {env:emailSenderConfigured?{RESEND_API_KEY:'synthetic-test-key',EMAIL_FROM:'test@example.invalid'}:{}});
+  {env:{...(emailSenderConfigured?{RESEND_API_KEY:'synthetic-test-key',EMAIL_FROM:'test@example.invalid'}:{}),...(signingConfigured?{AUTH_SECRET:'SYNTHETIC_SIGNING_SECRET'}:{})}});
  const req=new Request('https://test.example/api/admin-pilots',{
   method:'POST',headers:{'Content-Type':'application/json'},
   body:JSON.stringify({clientId,action,email,days:7,reason:'Synthetic customer pilot acceptance',confirmZeraPilotBootstrap})
@@ -87,4 +87,14 @@ test('ZERA first-account bootstrap denies invitation if email sender is unconfig
  assert.equal(result.status,503);
  assert.deepEqual(calls,[],'must not grant entitlement or create link');
  assert.match((await result.json()).error,/E-posta doğrulama/);
+});
+
+test('no invitation signing key means zero pilot writes or payment tokens',async()=>{
+ for(const action of ['bootstrap','grant']){
+  const {calls,invoke}=scenario({action,confirmZeraPilotBootstrap:true,
+   credential:action==='grant'?{email:'pilot@example.test'}:null,signingConfigured:false});
+  const result=await invoke();
+  assert.equal(result.status,503);
+  assert.deepEqual(calls,[]);
+ }
 });
