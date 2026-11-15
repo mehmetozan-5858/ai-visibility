@@ -49,7 +49,15 @@ BEGIN
   );
   IF p_mac <> v_expected THEN RETURN; END IF;
 
-  -- Basic fail-closed guard only. Concurrent revocation ordering is NOT solved.
+  -- Coordinate with pilot grant/revoke and approved account-suspension writers.
+  -- Lock is transaction scoped; every relevant writer MUST acquire the same
+  -- advisory lock BEFORE row DML, on the same transaction/connection.
+  -- Does NOT protect uncoordinated owner/DDL/bulk write paths; HOLD until audited.
+  PERFORM pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('portal-pilot-v1:' || p_tenant::text, 0)
+  );
+
+  -- Recheck authoritative state AFTER obtaining the per-tenant lock.
   -- Fail closed on account suspension AND pilot-access revocation/expiry.
   IF NOT EXISTS (
     SELECT 1 FROM public.clients c
@@ -95,7 +103,9 @@ $function$;
 -- with the already-signed claim: it must return zero rows.
 --
 -- IMPORTANT: Strict concurrency-safe revocation remains an OPEN BLOCKER.
--- PostgreSQL FOR SHARE requires UPDATE privilege; do not grant broader UPDATE
--- rights as a shortcut. A separately reviewed coordinated lock/revocation
--- design and two-session test are required before any production deployment.
+-- This read-side lock must be paired with audited grant/revoke, suspension and
+-- ALL other writers including admin/direct SQL; advisory locks are cooperative.
+-- Never grant broad UPDATE or assume this design passed two-session tests.
+-- Validate READ COMMITTED snapshot behavior, transaction boundaries, timeout
+-- and rollback, claim replay, paid-access bypass and older report entrypoints.
 -- Token issuance and session cache invalidation remain separate acceptance gates.
