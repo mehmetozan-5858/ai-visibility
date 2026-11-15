@@ -112,6 +112,7 @@ test('revoked, expired, stale, cross-tenant or missing authority proof blocks be
    async()=>({tenantId:A,active:true,source:'verified-pilot',checkedAt:Date.now()-10000}),
    async()=>({tenantId:A,active:true,source:'verified-pilot',checkedAt:Date.now()+10000}),
    async()=>({tenantId:A,active:true,source:'legacy-paid-label',checkedAt:Date.now()}),
+   async()=>({tenantId:A,active:true,source:'signed-paddle-settlement',checkedAt:Date.now()}),
    async()=>{throw Error('private authority unavailable')}
   ];
   for(const verifier of deny)
