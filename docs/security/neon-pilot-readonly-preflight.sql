@@ -202,3 +202,25 @@ ORDER BY granted_role,member_role;
 -- Raw readers can set their own GUC; they are not equivalent to the
 -- authenticated one-time-report RPC. HOLD if any customer-reachable login
 -- can use raw SELECT or inherit it; keep RLS owner TRUE policy blocked.
+
+-- GATEWAY ROLE MEMBERSHIP NON-ESCALATION (READ ONLY).
+-- Observed on isolated branch: gateway has no raw comparison SELECT, is not a
+-- member of isolated reader or report owner, and legacy RPC EXECUTE is denied.
+-- These metadata checks are necessary, not an actual gateway session test.
+SELECT NOT has_table_privilege('portal_gateway_reader_trial_20261114',
+             'public.ai_provider_comparisons','SELECT') AS gateway_raw_comparisons_denied,
+       NOT pg_has_role('portal_gateway_reader_trial_20261114'::regrole,
+             'portal_reader_isolated_20261114'::regrole,'MEMBER')
+             AS gateway_not_reader_member,
+       NOT pg_has_role('portal_gateway_reader_trial_20261114'::regrole,
+             'portal_report_fn_owner_trial_20261115'::regrole,'MEMBER')
+             AS gateway_not_function_owner_member,
+       has_function_privilege('portal_gateway_reader_trial_20261114',
+             'public.portal_trial_one_time_report(uuid,bigint,uuid,text)','EXECUTE')
+             AS gateway_new_rpc_granted,
+       NOT has_function_privilege('portal_gateway_reader_trial_20261114',
+             'public.portal_trial_verified_report(uuid,bigint,text)','EXECUTE')
+             AS gateway_legacy_rpc_denied;
+
+-- Independently authenticate as gateway on the isolated Neon endpoint before
+-- asserting any end-to-end HMAC/claim/revocation acceptance.
