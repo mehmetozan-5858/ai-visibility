@@ -23,7 +23,11 @@ export async function GET(req){
   if(!account)return privateJson({error:"Müşteri bulunamadı."},404);
   const access=await customerAccess(account);
   if(!access.allowed)return privateJson({error:"Aktif ücretli hesap veya onaylı pilot erişimi gerekli."},403);
-  const scans=account.scans.filter(s=>s.status==="completed"&&s.score!=null&&Number.isFinite(Number(s.score)));
+  // Legacy account scans come from the general repository pool, not from
+  // the reviewed tenant reader/RLS path. In strict mode do not attach them to
+  // a PDF until independently scoped scan authorization is accepted.
+  const strictMode=process.env.PORTAL_TENANT_RLS_ENABLED==='true';
+  const scans=strictMode?[]:account.scans.filter(s=>s.status==="completed"&&s.score!=null&&Number.isFinite(Number(s.score)));
   let comparisons=[],comparisonEvidenceUnavailable=false;
   if(process.env.PORTAL_TENANT_RLS_ENABLED==='true'){
    // PDF uses the same signed-tenant, narrow-reader and RLS gates as the
