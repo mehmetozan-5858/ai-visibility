@@ -25,8 +25,8 @@ test('pilot read holds tenant row locks across nonce consumption',async()=>{
  const nonceWrite=fn.indexOf("INSERT INTO portal_authz.consumed_claims");
  assert.ok(clientLock>=0&&pilotLock>clientLock&&nonceWrite>pilotLock,
   'client then pilot locks must precede nonce write');
- assert.match(fn,/c\\.status='active' FOR SHARE/);
- assert.match(fn,/pilot\\.expires_at>clock_timestamp\\(\\) FOR SHARE/);
+ assert.match(fn,/c\.status='active' FOR SHARE/);
+ assert.match(fn,/pilot\.expires_at>clock_timestamp\(\) FOR SHARE/);
  assert.match(fn,/IF NOT FOUND THEN RETURN; END IF;/);
  assert.ok(fn.indexOf("pilot.revoked_at IS NULL")<nonceWrite);
  assert.match(fn,/Recheck expiration after any lock wait/);
