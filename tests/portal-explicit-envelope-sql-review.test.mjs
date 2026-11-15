@@ -46,8 +46,10 @@ test('SECURITY DEFINER migration cannot commit under privileged migration runner
  assert.match(s,/NOT EXISTS \(SELECT 1 FROM pg_catalog\.pg_auth_members m WHERE m\.member=r\.oid\)/);
  assert.match(s,/NOT has_database_privilege\(r\.oid,current_database\(\),'CREATE'\)/);
  assert.match(s,/NOT has_schema_privilege\(r\.oid,'public','CREATE'\)/);
- assert.match(s,/NOT has_table_privilege\(r\.oid,'public\.client_credentials','SELECT'\)/);
- assert.match(s,/NOT has_table_privilege\(r\.oid,'public\.payments','SELECT'\)/);
+ assert.match(s,/to_regclass\('public\.client_credentials'\) IS NOT NULL/);
+ assert.match(s,/NOT has_table_privilege\(r\.oid,to_regclass\('public\.client_credentials'\),'SELECT'\)/);
+ assert.match(s,/to_regclass\('public\.payments'\) IS NOT NULL/);
+ assert.match(s,/NOT has_table_privilege\(r\.oid,to_regclass\('public\.payments'\),'SELECT'\)/);
  assert.match(s,/RAISE EXCEPTION 'review-report-function-owner-unverified'/);
  assert.match(s,/ALTER FUNCTION public\.portal_verified_one_time_envelope_review\(UUID,BIGINT,UUID,TEXT\)/);
  assert.doesNotMatch(s,/^\s*(?:CREATE|ALTER)\s+ROLE\s+portal_report_fn_owner/mi);
