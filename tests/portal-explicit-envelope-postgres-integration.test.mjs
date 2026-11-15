@@ -59,7 +59,6 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   assert.deepEqual(beforeAnyDdl,{schema_exists:false,rpc_exists:false},
    'missing owner must leave no schema and no SECURITY DEFINER function');
   await db.query('CREATE SCHEMA portal_authz');
-  await db.query('CREATE EXTENSION pgcrypto WITH SCHEMA portal_authz');
   await db.query('CREATE TABLE public.clients(id uuid PRIMARY KEY,status text NOT NULL)');
   await db.query('CREATE TABLE public.client_credentials(client_id uuid PRIMARY KEY)');
   await db.query('CREATE TABLE public.payments(id uuid PRIMARY KEY)');
@@ -72,6 +71,19 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   ownerCreated=true;
   await db.query('GRANT USAGE ON SCHEMA public,portal_authz TO '+ownerName);
   await db.query('GRANT SELECT ON public.clients,public.client_pilot_access,public.ai_provider_comparisons TO '+ownerName);
+  // Once the role and sensitive-table checks pass, a missing private pgcrypto
+  // HMAC must still fail BEFORE creating any signing/nonce tables or RPC.
+  await assert.rejects(db.query(migration),error=>
+   error.message.includes('review-report-hmac-placement-unverified'));
+  await db.query('ROLLBACK');
+  const absentCryptoObjects=(await db.query(
+   "SELECT to_regclass('portal_authz.signing_keys') IS NOT NULL AS keys_exist, "+
+   "to_regclass('portal_authz.consumed_claims') IS NOT NULL AS claims_exist, "+
+   "to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
+  )).rows[0];
+  assert.deepEqual(absentCryptoObjects,{keys_exist:false,claims_exist:false,rpc_exists:false},
+   'missing private HMAC cannot leave any signed-envelope artifacts');
+  await db.query('CREATE EXTENSION pgcrypto WITH SCHEMA portal_authz');
   // signing_keys/consumed_claims tables are made by the migration below;
   // grant their minimum required privileges only after it has completed.
 
