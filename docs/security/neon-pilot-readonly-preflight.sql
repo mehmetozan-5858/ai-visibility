@@ -169,3 +169,36 @@ SELECT current_user AS inspected_as,
 -- SELECT count(*) FROM public.portal_trial_one_time_report(
 --   '00000000-0000-0000-0000-000000000001'::uuid, 0,
 --   '00000000-0000-0000-0000-000000000002'::uuid, 'invalid');
+
+-- RAW COMPARISON READER ROLE REACHABILITY (READ ONLY).
+-- Isolated inspection found direct SELECT granted to portal_reader_isolated,
+-- a NOLOGIN role. Role memberships must be audited separately: NOLOGIN does
+-- not mean that its privileges cannot be inherited by a login role.
+-- Database-owner/admin roles are privileged maintenance exceptions and not
+-- proof of a least-privilege customer gateway connection.
+SELECT r.rolname AS inspected_role, r.rolcanlogin, r.rolbypassrls,
+       has_table_privilege(r.oid,'public.ai_provider_comparisons','SELECT')
+         AS comparison_select,
+       pg_has_role(r.oid,'portal_reader_isolated_20261114'::regrole,'MEMBER')
+         AS isolated_reader_member,
+       pg_has_role(r.oid,'portal_report_fn_owner_trial_20261115'::regrole,'MEMBER')
+         AS report_owner_member
+FROM pg_roles r
+WHERE r.rolname IN ('neondb_owner','cloud_admin',
+                    'portal_gateway_reader_trial_20261114',
+                    'portal_reader_isolated_20261114',
+                    'portal_report_fn_owner_trial_20261115')
+ORDER BY r.rolname;
+
+SELECT roleid::regrole::text AS granted_role,
+       member::regrole::text AS member_role,
+       admin_option,inherit_option,set_option
+FROM pg_auth_members
+WHERE roleid IN ('portal_reader_isolated_20261114'::regrole,
+                 'portal_report_fn_owner_trial_20261115'::regrole)
+ORDER BY granted_role,member_role;
+
+-- A mutable custom app.tenant_id GUC is not an authentication boundary.
+-- Raw readers can set their own GUC; they are not equivalent to the
+-- authenticated one-time-report RPC. HOLD if any customer-reachable login
+-- can use raw SELECT or inherit it; keep RLS owner TRUE policy blocked.
