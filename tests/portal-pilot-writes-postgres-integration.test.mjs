@@ -60,7 +60,7 @@ test('review-only locked grant/revoke maintain atomic SQL and real two-backend c
 
   // Force an audit failure in the same transaction: pilot mutation must roll back.
   await monitor.query(`ALTER TABLE public.client_activity
-     ADD CONSTRAINT ci_review_reject_grants CHECK (event_type <> 'pilot-granted')`);
+     ADD CONSTRAINT ci_review_reject_grants CHECK (event_type <> 'pilot-granted') NOT VALID`);
   await assert.rejects(grantPilotWithLockReview(pool,B,'b@example.test',7,'Synthetic integration reason'),
    e=>e.code==='23514');
   assert.equal((await monitor.query('SELECT count(*)::int AS n FROM public.client_pilot_access WHERE client_id=$1',[B])).rows[0].n,0,
