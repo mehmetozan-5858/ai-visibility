@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Pool} from 'pg';
 import {confirmCardPaymentLockedReview} from '../lib/portal-card-activation-transaction-review.mjs';
+import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 
 // REVIEW ONLY: self-contained disposable PostgreSQL CI database.
 // Never connect to Neon, staging or production. No card gateway calls.
@@ -90,6 +91,24 @@ test('real PostgreSQL rolls back card paid state if account activation fails',{
   assert.equal((await db.query('SELECT status FROM public.clients WHERE id=$1',[B])).rows[0].status,
    'payment-review');
   await db.query('UPDATE public.payments SET client_id=$2 WHERE id=$1',[P,A]);
+
+  // Genuine two-connection contention: an unrelated writer holds the same
+  // tenant advisory lock. Card confirmation must time out, roll back, and
+  // leave the connection pool reusable rather than bypassing the lock.
+  const holder=await db.connect();
+  try{
+   await holder.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+   await holder.query(PILOT_LOCK_SQL,[A]);
+   await assert.rejects(confirmCardPaymentLockedReview(db,OID),
+    error=>error?.code==='55P03','blocked card confirmation must fail closed');
+   assert.equal((await db.query('SELECT status FROM public.clients WHERE id=$1',[A])).rows[0].status,
+    'active','lock timeout must not alter account');
+  }finally{
+   await holder.query('ROLLBACK').catch(()=>{});
+   holder.release();
+  }
+  assert.equal((await db.query('SELECT 1 AS n')).rows[0].n,1,
+   'pool must remain reusable after lock timeout');
 
   // Duplicate merchant IDs across tenants must deny without cross-tenant writes.
   const P2='44444444-4444-4444-8444-444444444444';
