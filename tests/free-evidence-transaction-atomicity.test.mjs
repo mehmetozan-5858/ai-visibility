@@ -27,3 +27,21 @@ test('real PostgreSQL rollback removes both cost receipt and answer evidence',as
   }
  }finally{await db.close()}
 });
+
+test('failed final evidence INSERT cannot commit an orphaned zero-cost receipt',async()=>{
+ const db=new PGlite();
+ const fixed='11111111-1111-4111-8111-111111111111';
+ try{
+  await db.exec(`CREATE TABLE cost_ledger (id UUID PRIMARY KEY,cost_type TEXT NOT NULL,provider TEXT NOT NULL,operation TEXT NOT NULL,market_key TEXT NOT NULL,prospect_id UUID,amount NUMERIC NOT NULL,currency TEXT NOT NULL,estimated BOOLEAN NOT NULL,metadata JSONB NOT NULL);
+  CREATE TABLE answer_evidence_runs(id UUID PRIMARY KEY,result JSONB NOT NULL);`);
+  // An existing measurement row forces the subsequent INSERT to fail.
+  await db.query("INSERT INTO answer_evidence_runs(id,result) VALUES($1,'{}'::jsonb)",[fixed]);
+  await db.exec('BEGIN');
+  const cost=await recordFreeEvidenceCostTx(db,receipt);
+  await assert.rejects(()=>db.query("INSERT INTO answer_evidence_runs(id,result) VALUES($1,'{}'::jsonb)",[fixed]),/duplicate key|unique constraint/i);
+  await db.exec('ROLLBACK');
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM cost_ledger')).rows[0].n,0);
+  assert.equal((await db.query('SELECT COUNT(*)::int AS n FROM answer_evidence_runs')).rows[0].n,1);
+  assert.ok(cost.id);
+ }finally{await db.close()}
+});
