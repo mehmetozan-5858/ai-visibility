@@ -21,3 +21,13 @@ test('read-only Neon preflight reports unsafe unrestricted definer policy',async
  assert.match(sql,/safe_for_release/);
  assert.match(sql,/c\.relforcerowsecurity/);
 });
+
+test('preflight inventories legacy SECURITY DEFINER owner RLS bypass and execute exposure',async()=>{
+ const sql=await readFile(new URL('../docs/security/neon-pilot-readonly-preflight.sql',import.meta.url),'utf8');
+ assert.match(sql,/portal_trial_verified_report/);
+ assert.match(sql,/portal_trial_one_time_report/);
+ assert.match(sql,/owner_bypasses_rls/);
+ assert.match(sql,/gateway_can_execute/);
+ assert.match(sql,/public_can_execute/);
+ assert.match(sql,/explicit_acl/);
+});
