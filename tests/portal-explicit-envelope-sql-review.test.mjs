@@ -30,3 +30,19 @@ test('envelope remains uninstalled, no public EXECUTE or broad role grant',async
  assert.doesNotMatch(s,/^\s*GRANT\s+EXECUTE/mi);
  assert.doesNotMatch(s,/^\s*CREATE\s+ROLE|^\s*ALTER\s+ROLE|^\s*CREATE\s+EXTENSION/mi);
 });
+
+test('SECURITY DEFINER migration cannot commit under privileged migration runner',async()=>{
+ const s=await load();
+ const create=s.indexOf('CREATE OR REPLACE FUNCTION public.portal_verified_one_time_envelope_review');
+ const roleGate=s.indexOf("rolname='portal_report_fn_owner'");
+ const alter=s.indexOf('OWNER TO portal_report_fn_owner;');
+ const commit=s.lastIndexOf('COMMIT;');
+ assert.ok(create>=0&&roleGate>create&&alter>roleGate&&commit>alter,
+  'narrow owner preflight and ownership transfer must precede COMMIT');
+ for(const flag of ['rolcanlogin=false','rolsuper=false','rolbypassrls=false',
+  'rolcreatedb=false','rolcreaterole=false','rolreplication=false'])
+  assert.ok(s.includes(flag),'owner privilege guard missing: '+flag);
+ assert.match(s,/RAISE EXCEPTION 'review-report-function-owner-unverified'/);
+ assert.match(s,/ALTER FUNCTION public\.portal_verified_one_time_envelope_review\(UUID,BIGINT,UUID,TEXT\)/);
+ assert.doesNotMatch(s,/^\s*(?:CREATE|ALTER)\s+ROLE\s+portal_report_fn_owner/mi);
+});
