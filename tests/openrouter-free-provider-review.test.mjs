@@ -4,6 +4,7 @@ import {openRouterFreeConfig,runOpenRouterFreeReview} from '../lib/openrouter-fr
 const key='synthetic-only-openrouter-key-1234567890';
 const enabled={OPENROUTER_FREE_ENABLED:'true',OPENROUTER_API_KEY:key,
  OPENROUTER_FREE_MODEL:'openrouter/free'};
+const catalog={data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}}]};
 test('opt-in mandatory and any paid/ambiguous model fails before network',async()=>{
  let called=0;const fetcher=async()=>{called++;throw Error('unexpected')};
  for(const env of [
@@ -20,7 +21,12 @@ test('opt-in mandatory and any paid/ambiguous model fails before network',async(
 test('free-only exact request and provider receipt parsing are synthetic',async()=>{
  let calls=0;
  const result=await runOpenRouterFreeReview('Synthetic analysis',{env:enabled,fetcher:async(url,opts)=>{
-  calls++;assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');
+  calls++;
+  if(url==='https://openrouter.ai/api/v1/models'){
+   assert.equal(opts.method,'GET');assert.equal(opts.body,undefined);
+   return {ok:true,json:async()=>catalog};
+  }
+  assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');
   assert.equal(opts.method,'POST');assert.equal(opts.headers.authorization,'Bearer '+key);
   assert.equal(opts.cache,'no-store');assert.equal(opts.redirect,'error');
   const body=JSON.parse(opts.body);
@@ -32,13 +38,33 @@ test('free-only exact request and provider receipt parsing are synthetic',async(
    model:'example/free-model:free',usage:{cost:0},
    choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]})};
  }});
- assert.equal(calls,1);assert.equal(result.costVerified,true);
+ assert.equal(calls,2);assert.equal(result.costVerified,true);
  assert.equal(result.receiptId,'synthetic-generation-id');
  assert.equal(result.content,'{"score":48}');
  assert.ok(!JSON.stringify(result).includes(key));
 });
+test('missing, nonzero or mismatched catalog pricing prevents POST inference',async()=>{
+ for(const listing of [
+  {data:[]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0.1',completion:'0'}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0'}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0.00001'}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:0,completion:0}}]}
+ ]){
+  let inference=0;
+  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{
+   env:enabled,fetcher:async url=>{
+    if(url.endsWith('/models'))return {ok:true,json:async()=>listing};
+    inference++;throw Error('unexpected completion');
+   }
+  }),/openrouter-free-catalog-zero-price-unverified/);
+  assert.equal(inference,0,'catalog denial must not call completion API');
+ }
+});
+
 test('missing model proof, billed responses, truncation and provider outages fail closed',async()=>{
- const reply=(payload,ok=true)=>async()=>({ok,json:async()=>payload});
+ const reply=(payload,ok=true)=>async(url)=>
+  url.endsWith('/models')?{ok:true,json:async()=>catalog}:{ok,json:async()=>payload};
  const base={model:'example/model:free',usage:{cost:0},
   choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]};
  for(const payload of [
