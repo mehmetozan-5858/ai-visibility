@@ -28,13 +28,13 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
  skip:!source?'requires disposable local PostgreSQL service':false,
  timeout:35000
 },async()=>{
- const admin=new Pool({connectionString:source,max:1,connectionTimeoutMillis:2500});
+ const admin=new Pool({connectionString:source,max:1,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000});
  const target=new URL(source);target.pathname='/'+dbName;
  let db;
  let created=false;
  try{
   await admin.query('CREATE DATABASE '+dbName);created=true;
-  db=new Pool({connectionString:target.toString(),max:4,connectionTimeoutMillis:2500});
+  db=new Pool({connectionString:target.toString(),max:4,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000,idle_in_transaction_session_timeout:12000});
   await db.query('CREATE SCHEMA portal_authz');
   await db.query('CREATE EXTENSION pgcrypto WITH SCHEMA portal_authz');
   await db.query('CREATE TABLE public.clients(id uuid PRIMARY KEY,status text NOT NULL)');
