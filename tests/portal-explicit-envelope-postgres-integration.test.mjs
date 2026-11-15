@@ -56,13 +56,17 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     has_function_privilege(current_user,
       'public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)','EXECUTE') AS can_execute,
     has_table_privilege(current_user,'public.ai_provider_comparisons','SELECT') AS raw_select,
-    has_schema_privilege(current_user,'portal_authz','USAGE') AS private_usage,
-    has_table_privilege(current_user,'portal_authz.signing_keys','SELECT') AS key_select,
-    has_table_privilege(current_user,'portal_authz.consumed_claims','SELECT') AS nonce_select`)).rows[0];
+    has_schema_privilege(current_user,'portal_authz','USAGE') AS private_usage`)).rows[0];
    assert.equal(rights.who,roleName);
    assert.equal(rights.can_execute,true);
-   for(const field of ['raw_select','private_usage','key_select','nonce_select'])
+   for(const field of ['raw_select','private_usage'])
     assert.equal(rights[field],false,'unexpected privilege: '+field);
+   // A hidden schema cannot even be name-resolved for has_table_privilege.
+   // Probe actual SELECT within a savepoint and require permission rejection.
+   await limited.query('SAVEPOINT denied_private_select');
+   await assert.rejects(limited.query('SELECT secret FROM portal_authz.signing_keys LIMIT 1'),
+    err=>err.code==='42501');
+   await limited.query('ROLLBACK TO SAVEPOINT denied_private_select');
    await limited.query('COMMIT');
   }finally{
    await limited.query('ROLLBACK').catch(()=>{});
