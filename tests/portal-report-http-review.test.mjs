@@ -9,10 +9,13 @@ test('review HTTP adapter returns private authorized empty or populated report',
  assert.equal(ok.headers.get('Cache-Control'),'private, no-store, max-age=0');
  assert.equal(ok.headers.get('Pragma'),'no-cache');
  assert.equal(ok.headers.get('Vary'),'Cookie, Accept-Language');
- assert.deepEqual(await ok.json(),{authorized:true,reports:[]});
+ assert.deepEqual(await ok.json(),{authorized:true,evidenceClass:'historical',verifiedProviderEvidence:false,reports:[]});
  const report=await createPortalReportHttpReview(async()=>[{clientId:'synthetic-tenant'}])('synthetic');
  assert.equal(report.status,200);
- assert.equal((await report.json()).reports.length,1);
+ const payload=await report.json();
+ assert.equal(payload.reports.length,1);
+ assert.equal(payload.evidenceClass,'historical');
+ assert.equal(payload.verifiedProviderEvidence,false);
 });
 test('missing, invalid session and revoked preflight cannot return reports',async()=>{
  const missing=await createPortalReportHttpReview(async()=>{throw Error('must-not-call')})('');
