@@ -33,7 +33,11 @@ permissions:
 
 jobs:
   web-mobile-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # Playwright 1.55.1 does not support the ubuntu26.04 host detected in CI.
+    # Pin the official Playwright Noble image with matching browser binaries.
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.1-noble
     timeout-minutes: 20
     env:
       ADMIN_PASSWORD: ci-only-local-password-fixture
@@ -48,14 +52,16 @@ jobs:
         run: npm ci
       - name: Install Playwright test runner
         run: npm install --no-save --no-package-lock @playwright/test@1.55.1
-      - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Verify pinned Playwright browser installation
+        run: |
+          npx playwright --version
+          test -d /ms-playwright || (echo "Pinned Playwright browsers missing" && exit 1)
       - name: Build exact commit
         run: npm run build
       - name: Start exact commit
         run: |
           npm start > /tmp/aiv-smoke.log 2>&1 &
-          for i in {1..30}; do
+          for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:3000/ >/dev/null; then exit 0; fi
             sleep 1
           done
