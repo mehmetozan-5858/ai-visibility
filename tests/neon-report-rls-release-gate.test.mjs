@@ -51,3 +51,15 @@ test('preflight audits raw reader role membership and mutable tenant context',as
  assert.match(sql,/isolated_reader_member/);
  assert.match(sql,/customer-reachable login/);
 });
+
+test('preflight keeps gateway membership escalation and legacy RPC access closed',async()=>{
+ const sql=await readFile(new URL('../docs/security/neon-pilot-readonly-preflight.sql',import.meta.url),'utf8');
+ for(const marker of [
+  'gateway_raw_comparisons_denied',
+  'gateway_not_reader_member',
+  'gateway_not_function_owner_member',
+  'gateway_new_rpc_granted',
+  'gateway_legacy_rpc_denied'
+ ])assert.ok(sql.includes(marker),marker);
+ assert.match(sql,/pg_has_role\('portal_gateway_reader_trial_20261114'::regrole/);
+});
