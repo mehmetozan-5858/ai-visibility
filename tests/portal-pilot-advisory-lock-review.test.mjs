@@ -30,13 +30,16 @@ test('advisory lock helper binds only validated, normalized tenant UUIDs',async(
  await assert.rejects(acquirePilotAdvisoryLockReview(null,A),/pilot-lock-unavailable/);
 });
 
-test('advisory-lock alternate design is explicitly unwired until every writer is audited',async()=>{
+test('pilot writers are connected but the report and account writers are not yet live-ready',async()=>{
  const migration=await readFile(new URL('../migrations/portal-one-time-signed-report-review.sql',import.meta.url),'utf8');
+ const alt=await readFile(new URL('../migrations/portal-one-time-advisory-report-review.sql',import.meta.url),'utf8');
  const pilot=await readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8');
  assert.match(migration,/FOR SHARE/);
- assert.doesNotMatch(pilot,/acquirePilotAdvisoryLockReview/);
- // Keeping the original draft and grant/revoke code unchanged here is deliberate:
- // an advisory lock on only one side creates false confidence and is NOT safe.
+ assert.match(alt,/pg_advisory_xact_lock/);
+ assert.match(pilot,/grantPilotWithLockReview\(await pool\(\),clientId,email,days,reason\)/);
+ assert.match(pilot,/revokePilotWithLockReview\(await pool\(\),clientId\)/);
+ // Pilot writes alone cannot protect an old live report reader or
+ // legacy account status/payment/admin writers. Release is still HOLD.
 });
 
 test('pilot writer locks the verified tenant before mutation and commits on success',async()=>{
