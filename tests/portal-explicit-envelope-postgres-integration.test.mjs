@@ -5,6 +5,7 @@ import {readFile} from 'node:fs/promises';
 import {Pool} from 'pg';
 import {createClientToken} from '../lib/admin-auth.js';
 import {createEnvelopeGatewayReview} from '../lib/portal-envelope-gateway-review.mjs';
+import {createPortalReportHttpReview} from '../lib/portal-report-http-review.mjs';
 import {createReviewReportEntitlementAuthority} from '../lib/one-time-report-authority-review.mjs';
 import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 import {decodeAuthorizedReportEnvelopeReview} from '../lib/portal-explicit-report-envelope-review.mjs';
@@ -145,6 +146,18 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     });
     assert.deepEqual(await gateway(await createClientToken(A)),[],
      'real LOGIN role must execute signed empty-report RPC without raw SELECT');
+    // HTTP adapter + signed cookie + live disposable DB role/RPC:
+    // a valid empty report must be 200, never cached, and clearly authorized.
+    const http=createPortalReportHttpReview(gateway);
+    const authorizedResponse=await http(await createClientToken(A));
+    assert.equal(authorizedResponse.status,200);
+    assert.equal(authorizedResponse.headers.get('Cache-Control'),
+     'private, no-store, max-age=0');
+    assert.deepEqual(await authorizedResponse.json(),{authorized:true,reports:[]});
+    const invalidResponse=await http('invalid-signed-customer-session');
+    assert.equal(invalidResponse.status,401);
+    assert.deepEqual(await invalidResponse.json(),{error:'customer-session-required'});
+
     await assert.rejects(gateway(await createClientToken(B)),
      /review-envelope-entitlement-denied/,
      'expired synthetic tenant must be denied before report connection');
@@ -160,6 +173,10 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     await assert.rejects(staleGateway(await createClientToken(A)),
      /report-envelope-authorization-unproven/,
      'committed revoke MUST override even a passing preflight');
+    const revokedResponse=await createPortalReportHttpReview(staleGateway)(
+     await createClientToken(A));
+    assert.equal(revokedResponse.status,503);
+    assert.deepEqual(await revokedResponse.json(),{error:'verified-report-unavailable'});
     const claimsAfter=(await db.query('SELECT count(*)::int AS n FROM portal_authz.consumed_claims')).rows[0].n;
     assert.equal(claimsAfter,claimsBefore,
      'denied stale-preflight request cannot consume a one-use claim');
