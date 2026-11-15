@@ -12,7 +12,7 @@ const reportFn=migration.slice(migration.indexOf('CREATE OR REPLACE FUNCTION pub
 test('report and writer use identical advisory lock namespace and hash seed',()=>{
  assert.ok(PILOT_LOCK_SQL.includes(writerKey));
  assert.ok(REPORT_LOCK_SQL.includes(writerKey));
- assert.ok(reportFn.includes(REPORT_LOCK_SQL.trim()),
+ assert.ok(reportFn.replace(/\s+/g,' ').includes(REPORT_LOCK_SQL.trim().replace(/\s+/g,' ')),
   'real review report RPC must take same tenant advisory lock');
  assert.match(PILOT_LOCK_SQL,/hashtextextended\([\s\S]*?,0\)/);
  assert.match(REPORT_LOCK_SQL,/hashtextextended\([\s\S]*?,0\)/);
