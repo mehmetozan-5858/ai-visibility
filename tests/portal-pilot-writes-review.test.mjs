@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {grantPilotWithLockReview,revokePilotWithLockReview}
+import {grantPilotWithLockReview,revokePilotWithLockReview,changePilotExpiryWithLockReview}
  from '../lib/portal-pilot-writes-review.mjs';
 import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 
@@ -70,4 +70,29 @@ test('invalid grant/revoke input never opens a database connection',async()=>{
  await assert.rejects(grantPilotWithLockReview(pool,TENANT,'invalid',7,'Synthetic review pilot'),/review-pilot-grant-invalid/);
  await assert.rejects(grantPilotWithLockReview(pool,TENANT,'user@example.com',31,'Synthetic review pilot'),/review-pilot-grant-invalid/);
  assert.equal(opens,0);
+});
+
+
+test('pilot expiry change is locked and can only shorten an unrevoked entitlement',async()=>{
+ for(const changed of [true,false]){
+  const m=mockPool({returnRevokeRow:changed});
+  assert.deepEqual(await changePilotExpiryWithLockReview(
+   m.pool,TENANT,'2027-01-01T00:00:00.000Z'),{changed});
+  assert.deepEqual(m.calls.slice(0,4).map(c=>c.sql),start);
+  const update=m.calls[4];
+  assert.match(update.sql,/SET expires_at=\$2::timestamptz/);
+  assert.match(update.sql,/revoked_at IS NULL/);
+  assert.match(update.sql,/expires_at >= \$2::timestamptz/,
+   'expiry update must refuse extensions and revoked pilots');
+  assert.deepEqual(update.args,[TENANT,'2027-01-01T00:00:00.000Z']);
+  assert.equal(m.calls.at(-1).sql,'COMMIT');
+ }
+});
+
+test('invalid pilot expiry change rejects without opening database connection',async()=>{
+ let opened=false;const pool={connect:async()=>{opened=true;throw Error('unexpected connection')}};
+ for(const expiry of ['not-a-date','2030-01-01','2030-01-01T00:00:00Z']){
+  await assert.rejects(changePilotExpiryWithLockReview(pool,TENANT,expiry),/review-pilot-expiry-invalid/);
+ }
+ assert.equal(opened,false);
 });
