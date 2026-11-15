@@ -1,0 +1,52 @@
+# AI Visibility Works — actual Neon acceptance evidence (read-only)
+
+Date: 2026-11-15. Scope: **Neon PostgreSQL catalog only**, no customer rows, passwords, credential values, changes to roles/schema, migrations, payments or deployment.
+
+## Production source
+
+Neon project `ancient-water-34496424`, default branch `br-cool-cherry-b2r912on` (main, Vercel production branch). Catalog query executed using existing connector credentials; the connected identity was `neondb_owner`. The following are **verified existence checks**, not evidence that the application can access them:
+
+| Production catalog object | Observed |
+| --- | --- |
+| `public.client_credentials` | exists |
+| `public.ai_provider_comparisons` | exists |
+| `public.verified_customer_settlements` | absent |
+| `public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)` | absent |
+| `public.portal_verified_one_time_report(uuid,bigint,uuid,text)` | absent |
+| any role matching `portal_gateway_reader_%` | absent |
+| any role matching `portal_report_fn_owner_%` | absent |
+
+**Conclusion: production strict signed-envelope acceptance BLOCKED.** No generic or owner connection can substitute for a dedicated role privilege proof. Catalog object presence does not prove existing-password login, real AI response, or authorized customer report retrieval.
+
+## Isolated trial source
+
+Same project, nonproduction branch `br-plain-poetry-b2u7f7a6`:
+
+| Trial observation | Observed |
+| --- | --- |
+| `public.verified_customer_settlements` | exists |
+| `public.portal_trial_one_time_report(uuid,bigint,uuid,text)` | exists |
+| proposed `portal_verified_one_time_envelope_review` RPC | absent |
+| trial reader `portal_gateway_reader_trial_20261114` | exists |
+| function owner `portal_report_fn_owner_trial_20261115` | exists |
+| function owner LOGIN / BYPASSRLS | false / false |
+| reader EXECUTE on trial function | true |
+| reader direct SELECT on `ai_provider_comparisons` | false |
+| reader direct SELECT on `client_credentials` | false |
+
+**Important:** trial function and proposed envelope RPC are different contracts. These catalog checks do not demonstrate current runtime success under the restricted function owner, one-time nonce/locking behavior, real customer session, settled payment or production readiness.
+
+## Smallest safe next verification
+
+1. Keep production HOLD. Complete reviewed trial-branch E2E using the real nonproduction reader and synthetic identities with fresh signed claim, including successful authorized result, denied cross-tenant/replay/suspension and transaction lock handling. Verify exact function-owner grants and SQL behavior; do not migrate or promote until proven.
+2. Separately verify existing-password login against the current production auth path without changing any password or reading credential hashes into reports; use authorized customer-controlled login and redacted request status only.
+3. Review a controlled migration and least-privilege rollout **only after** all required acceptance evidence and explicit deployment decision. OpenRouter's authenticated GET is not AI completion/zero-cost receipt evidence.
+
+## Evidence classification
+
+- **recent-evidence:** catalog existence/permission metadata observed directly through Neon connector on 2026-11-15
+- **blocked:** production signed report, settlement and isolated reader dependencies
+- **unknown:** production customer password acceptance, scoped real report, real OpenRouter completion and actual committed nonce/revocation acceptance
+- **historical:** previously successful synthetic CI and earlier isolated trials; not substituted for live acceptance
+
+No production or trial database mutations were made in this inspection.
