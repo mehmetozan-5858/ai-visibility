@@ -13,6 +13,22 @@
 -- This migration must be compared against the isolated Neon trial BEFORE use.
 BEGIN;
 
+-- Fail closed if the separately reviewed NOLOGIN function-owner role is absent.
+-- NEVER let SECURITY DEFINER retain the migration runner's broad privileges.
+-- This role is NOT auto-created or granted privileges by this review script.
+DO $owner_gate$
+BEGIN
+ IF NOT EXISTS (
+   SELECT 1 FROM pg_catalog.pg_roles
+   WHERE rolname='portal_report_fn_owner'
+     AND rolcanlogin=false AND rolsuper=false AND rolbypassrls=false
+     AND rolcreatedb=false AND rolcreaterole=false AND rolreplication=false
+ ) THEN
+   RAISE EXCEPTION 'review-report-function-owner-unverified';
+ END IF;
+END;
+$owner_gate$;
+
 -- pgcrypto availability and extension placement must be independently approved.
 -- Do not silently install or relocate extensions in a live database.
 CREATE SCHEMA IF NOT EXISTS portal_authz;
@@ -88,22 +104,6 @@ BEGIN
       WHERE client_id=p_tenant ORDER BY created_at DESC LIMIT 20) c
   ),'[]'::jsonb);
 END; $$;
-
--- Fail closed if the separately reviewed NOLOGIN function-owner role is absent.
--- NEVER let SECURITY DEFINER retain the migration runner's broad privileges.
--- This role is NOT auto-created or granted privileges by this review script.
-DO $owner_gate$
-BEGIN
- IF NOT EXISTS (
-   SELECT 1 FROM pg_catalog.pg_roles
-   WHERE rolname='portal_report_fn_owner'
-     AND rolcanlogin=false AND rolsuper=false AND rolbypassrls=false
-     AND rolcreatedb=false AND rolcreaterole=false AND rolreplication=false
- ) THEN
-   RAISE EXCEPTION 'review-report-function-owner-unverified';
- END IF;
-END;
-$owner_gate$;
 
 ALTER FUNCTION public.portal_verified_one_time_envelope_review(UUID,BIGINT,UUID,TEXT)
   OWNER TO portal_report_fn_owner;
