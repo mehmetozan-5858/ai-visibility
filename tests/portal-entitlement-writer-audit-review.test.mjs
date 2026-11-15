@@ -62,3 +62,22 @@ test('writer audit loads as executable JavaScript and detects split card transac
  assert.ok(report.findings.some(f=>f.code==='card-activation-not-atomic'));
  assert.equal(report.ready,false);
 });
+
+test('review card transaction must not be mistaken for independently verified settlement',async()=>{
+ const candidate=await read('lib/portal-card-activation-transaction-review.mjs');
+ const live=await read('lib/repository.js');
+ const verified=await read('lib/portal-verified-account-activation-review.mjs');
+ assert.match(candidate,/withPilotWriteLockReview/);
+ assert.doesNotMatch(candidate,/VERIFIED_PADDLE_SETTLEMENT_SQL|activateVerifiedPaddleAccountReview/);
+ assert.match(verified,/VERIFIED_PADDLE_SETTLEMENT_SQL/);
+ assert.doesNotMatch(live,/portal-card-activation-transaction-review/);
+ assert.doesNotMatch(live,/activateVerifiedPaddleAccountReview/);
+ // Stronger than a green unit test: production acceptance is still withheld.
+ const audit=auditPortalEntitlementWriterCoverage({
+  pilotSource:await read('lib/pilot-access.js'),
+  repositorySource:live,
+  reviewSource:await read('lib/portal-pilot-writes-review.mjs')
+ });
+ assert.equal(audit.ready,false);
+ assert.ok(audit.findings.some(f=>f.code==='account-activation-not-coordinated'));
+});
