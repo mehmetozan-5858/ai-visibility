@@ -52,3 +52,13 @@ test('card payment activation must be atomic as well as tenant-lock-coordinated'
   'payment and customer activation cannot commit as separate pool queries');
  assert.equal(audit.ready,false);
 });
+
+test('writer audit loads as executable JavaScript and detects split card transaction',async()=>{
+ const {auditPortalEntitlementWriterCoverage:check}=await import('../lib/portal-entitlement-writer-audit-review.mjs');
+ const repositorySource=await read('lib/repository.js');
+ const pilotSource=await read('lib/pilot-access.js');
+ const reviewSource=await read('lib/portal-pilot-writes-review.mjs');
+ const report=check({pilotSource,repositorySource,reviewSource});
+ assert.ok(report.findings.some(f=>f.code==='card-activation-not-atomic'));
+ assert.equal(report.ready,false);
+});
