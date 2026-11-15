@@ -89,6 +89,38 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   const call=async(tenant,{nonce=randomUUID(),mac,expires=Math.floor(Date.now()/1000)+60}={})=>
    (await db.query(rpc,[tenant,expires,nonce,mac??sign(tenant,expires,nonce)])).rows;
 
+  // PUBLIC execute must really be revoked: a separate LOGIN role without
+  // the explicit RPC grant must be denied even with a valid signed claim.
+  // Uses SET LOCAL ROLE inside this disposable PostgreSQL fixture only.
+  const noExecuteRole='portal_gateway_reader_ci_noexecute';
+  await admin.query('CREATE ROLE '+noExecuteRole+' LOGIN');
+  try{
+   const restrictedNoGrant=await db.connect();
+   try{
+    await restrictedNoGrant.query('BEGIN');
+    await restrictedNoGrant.query('SET LOCAL ROLE '+noExecuteRole);
+    const right=(await restrictedNoGrant.query(`SELECT has_function_privilege(
+      current_user,'public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)',
+      'EXECUTE') AS can_execute`)).rows[0];
+    assert.equal(right.can_execute,false,'PUBLIC may not execute signed report RPC');
+    await restrictedNoGrant.query('SAVEPOINT denied_rpc_execute');
+    const deniedNonce=randomUUID(),deniedExpires=Math.floor(Date.now()/1000)+60;
+    await assert.rejects(restrictedNoGrant.query(rpc,
+      [A,deniedExpires,deniedNonce,sign(A,deniedExpires,deniedNonce)]),
+      error=>error.code==='42501');
+    await restrictedNoGrant.query('ROLLBACK TO SAVEPOINT denied_rpc_execute');
+    await restrictedNoGrant.query('COMMIT');
+    assert.equal((await db.query(
+      'SELECT count(*)::int AS n FROM portal_authz.consumed_claims WHERE claim_id=$1',
+      [deniedNonce])).rows[0].n,0,'unauthorized reader cannot consume a claim');
+   }finally{
+    await restrictedNoGrant.query('ROLLBACK').catch(()=>{});
+    restrictedNoGrant.release();
+   }
+  }finally{
+   await admin.query('DROP ROLE '+noExecuteRole);
+  }
+
   // Execute the actual SECURITY DEFINER RPC as the narrowly privileged role.
   // This is more than a metadata check: the role cannot SELECT raw report rows.
   const restricted=await db.connect();
