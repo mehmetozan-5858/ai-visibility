@@ -23,9 +23,9 @@ test('isolated locked-report HTTP adapter is not wired to production portal',asy
 
 test('production portal report errors cannot silently assert fresh report availability',async()=>{
  const portal=await read('app/api/client-portal/route.js');
- assert.match(portal,/let reportEvidence=\{available:false,comparisonCount:0,\s*evidenceClass:'unknown',verifiedProviderEvidence:false\}/);
+ assert.match(portal,/let reportEvidence=\\{available:false,comparisonCount:0,\\s*evidenceClass:'unknown',verifiedProviderEvidence:false\\}/);
  assert.match(portal,/evidenceClass:'historical',verifiedProviderEvidence:false/);
- assert.match(portal,/reportPreview=null/);
+ assert.match(portal,/let reportPreview=null/);
  assert.match(portal,/reportPreview=\{evidenceClass:'historical',verifiedProviderEvidence:false,reports:rows\}/);
  assert.match(portal,/catch\{\} \/\/ Keep the existing portal usable; do not claim evidence is ready on a read failure/);
  assert.match(portal,/if\(!portalReadDatabaseEnabled\(\)\)/);
