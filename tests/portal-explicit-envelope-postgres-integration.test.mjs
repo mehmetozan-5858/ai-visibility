@@ -17,6 +17,7 @@ if(source){
   throw Error('disposable-ci-postgres-only');
 }
 const dbName='ci_portal_envelope_review';
+const roleName='ci_portal_envelope_reader';
 const A='11111111-1111-4111-8111-111111111111';
 const B='22222222-2222-4222-8222-222222222222';
 const SECRET='fixture-synthetic-report-secret-not-for-live-use';
@@ -31,7 +32,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
  const admin=new Pool({connectionString:source,max:1,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000});
  const target=new URL(source);target.pathname='/'+dbName;
  let db;
- let created=false;
+ let created=false,roleCreated=false;
  try{
   await admin.query('CREATE DATABASE '+dbName);created=true;
   db=new Pool({connectionString:target.toString(),max:4,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000,idle_in_transaction_session_timeout:12000});
@@ -42,6 +43,31 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query('CREATE TABLE public.ai_provider_comparisons(client_id uuid NOT NULL,query text NOT NULL,results jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp())');
   const migration=await readFile(new URL('../migrations/portal-one-time-explicit-envelope-review.sql',import.meta.url),'utf8');
   await db.query(migration);
+  // Role is synthetic and cluster-scoped to this disposable CI PostgreSQL.
+  // Grant EXECUTE only; no direct SELECT on report or private claim ledger.
+  await admin.query('CREATE ROLE '+roleName+' NOLOGIN');roleCreated=true;
+  await db.query('GRANT USAGE ON SCHEMA public TO '+roleName);
+  await db.query('GRANT EXECUTE ON FUNCTION public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text) TO '+roleName);
+  const limited=await db.connect();
+  try{
+   await limited.query('BEGIN');
+   await limited.query('SET LOCAL ROLE '+roleName);
+   const rights=(await limited.query(`SELECT current_user AS who,
+    has_function_privilege(current_user,
+      'public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)','EXECUTE') AS can_execute,
+    has_table_privilege(current_user,'public.ai_provider_comparisons','SELECT') AS raw_select,
+    has_schema_privilege(current_user,'portal_authz','USAGE') AS private_usage,
+    has_table_privilege(current_user,'portal_authz.signing_keys','SELECT') AS key_select,
+    has_table_privilege(current_user,'portal_authz.consumed_claims','SELECT') AS nonce_select`)).rows[0];
+   assert.equal(rights.who,roleName);
+   assert.equal(rights.can_execute,true);
+   for(const field of ['raw_select','private_usage','key_select','nonce_select'])
+    assert.equal(rights[field],false,'unexpected privilege: '+field);
+   await limited.query('COMMIT');
+  }finally{
+   await limited.query('ROLLBACK').catch(()=>{});
+   limited.release();
+  }
   await db.query("INSERT INTO portal_authz.signing_keys(key_id,secret) VALUES('review-v1',$1)",[SECRET]);
   await db.query("INSERT INTO public.clients(id,status) VALUES($1,'active'),($2,'active')",[A,B]);
   await db.query("INSERT INTO public.client_pilot_access(client_id,expires_at) VALUES($1,clock_timestamp()+interval '1 hour'),($2,clock_timestamp()-interval '1 second')",[A,B]);
@@ -101,6 +127,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
  }finally{
   if(db)await db.end().catch(()=>{});
   if(created)await admin.query('DROP DATABASE '+dbName+' WITH (FORCE)').catch(()=>{});
+  if(roleCreated)await admin.query('DROP ROLE IF EXISTS '+roleName).catch(()=>{});
   await admin.end();
  }
 });
