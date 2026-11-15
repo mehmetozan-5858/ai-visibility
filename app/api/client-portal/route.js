@@ -29,6 +29,9 @@ export async function GET(req){
     // Reading comparisons is not proof of a live provider response or receipt.
     let reportEvidence={available:false,comparisonCount:0,
       evidenceClass:'unknown',verifiedProviderEvidence:false};
+    // Strict reader path only: expose bounded, tenant-filtered historical rows.
+    // Never return legacy broad-reader rows or call this verified live AI proof.
+    let reportPreview=null;
     if(process.env.PORTAL_TENANT_RLS_ENABLED==='true'){
       // Refuse legacy paid labels in secure mode; customerAccess() verifies
       // independent settlement only when the strict launch flag is enabled.
@@ -48,6 +51,7 @@ export async function GET(req){
           (tx,tenantId)=>readCustomerComparisonReport(tx,tenantId));
         reportEvidence={available:true,comparisonCount:rows.length,
           evidenceClass:'historical',verifiedProviderEvidence:false};
+        reportPreview={evidenceClass:'historical',verifiedProviderEvidence:false,reports:rows};
       }catch{return privateJson({error:'Verified customer report could not be loaded.'},503)}
     }else{
       try{
@@ -60,6 +64,6 @@ export async function GET(req){
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;
     const locale=language==="en"?"en-US":"tr-TR";
-    return privateJson({account:{...account,access,profile,reportEvidence,service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
+    return privateJson({account:{...account,access,profile,reportEvidence,service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},reportPreview,language});
   }catch{return privateJson({error:en?"The customer portal could not be loaded.":"Müşteri paneli yüklenemedi."},500)}
 }
