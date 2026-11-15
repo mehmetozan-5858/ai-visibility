@@ -104,12 +104,20 @@ BEGIN
   RETURNING claim_id INTO v_consumed;
   IF v_consumed IS NULL THEN RETURN; END IF;
 
+  -- RLS is tenant-constrained only if the permissive TRUE owner policy is
+  -- removed in the SAME approved isolated migration. This GUC is mutable and
+  -- is not authentication: use only the MAC-verified, authorized p_tenant.
+  -- Keep gateway direct SELECT revoked and the owner NOLOGIN.
+  PERFORM pg_catalog.set_config('app.tenant_id', p_tenant::text, true);
   RETURN QUERY
     SELECT c.client_id, c.query, c.results, c.created_at
     FROM public.ai_provider_comparisons c
     WHERE c.client_id = p_tenant
     ORDER BY c.created_at DESC
     LIMIT 20;
+  -- Do not leave the tenant setting available to later queries in a pooled
+  -- transaction. An exception aborts the transaction; validate with sessions.
+  PERFORM pg_catalog.set_config('app.tenant_id', '', true);
 END;
 $function$;
 
