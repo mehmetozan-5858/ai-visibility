@@ -95,3 +95,100 @@ test('actual PostgreSQL card activation waits behind committed tenant pilot revo
   await admin.end();
  }
 });
+
+test('reverse order: committed card activation releases lock before revocation',{
+ skip:!url?'requires disposable CI PostgreSQL service':false,timeout:30000
+},async()=>{
+ const admin=new Pool({connectionString:url,max:2,connectionTimeoutMillis:2500});
+ const name='ci_card_'+randomUUID().replaceAll('-','');
+ let created=false,db=null,revoker=null,observer=null,revokerOpen=false;
+ let releaseCard;
+ const cardBarrier=new Promise(resolve=>{releaseCard=resolve;});
+ let cardStarted;
+ const cardAtUpdate=new Promise(resolve=>{cardStarted=resolve;});
+ let pendingCard=null,pendingRevoke=null;
+ try{
+  await admin.query('CREATE DATABASE "'+name+'"');created=true;
+  const target=new URL(url);target.pathname='/'+name;
+  db=new Pool({connectionString:target.toString(),max:4,connectionTimeoutMillis:2500});
+  const tenant=randomUUID(),paymentId=randomUUID(),oid='cardreverse98765';
+  await db.query("CREATE TABLE public.clients(id uuid PRIMARY KEY,status text NOT NULL,plan text)");
+  await db.query(`CREATE TABLE public.payments(
+    id uuid PRIMARY KEY,client_id uuid NOT NULL REFERENCES public.clients(id),
+    reference_code text NOT NULL,status text NOT NULL,method text NOT NULL,
+    paid_at timestamptz,plan text,currency text,setup_amount numeric,
+    monthly_amount numeric,created_at timestamptz DEFAULT now(),
+    reported_at timestamptz)`);
+  await db.query(`CREATE TABLE public.client_pilot_access(
+    client_id uuid PRIMARY KEY REFERENCES public.clients(id),
+    revoked_at timestamptz,expires_at timestamptz)`);
+  await db.query("INSERT INTO public.clients(id,status,plan) VALUES($1,'payment-review','none')",[tenant]);
+  await db.query(`INSERT INTO public.payments
+    (id,client_id,reference_code,status,method,plan,currency,setup_amount,monthly_amount)
+    VALUES($1,$2,$3,'pending','card','Starter','EUR',10,0)`,[paymentId,tenant,oid]);
+  await db.query("INSERT INTO public.client_pilot_access(client_id,expires_at) VALUES($1,now()+interval '7 days')",[tenant]);
+
+  let cardPid;
+  const pool={
+   query:(...args)=>db.query(...args),
+   async connect(){
+    const actual=await db.connect();
+    cardPid=(await actual.query('SELECT pg_backend_pid() pid')).rows[0].pid;
+    return {
+     release:()=>actual.release(),
+     async query(sql,args){
+      // The card transaction holds its advisory lock until released here.
+      if(sql.includes('UPDATE public.payments')){
+       cardStarted();
+       await cardBarrier;
+      }
+      return actual.query(sql,args);
+     }
+    };
+   }
+  };
+  pendingCard=confirmCardPaymentLockedReview(pool,oid)
+   .then(value=>({ok:true,value}),error=>({ok:false,error}));
+  // Bounded wait to avoid hanging on a broken precondition.
+  await Promise.race([cardAtUpdate,new Promise((_,reject)=>setTimeout(
+   ()=>reject(Error('card-did-not-reach-locked-update')),4500))]);
+  revoker=await db.connect();observer=await db.connect();
+  const revokerPid=(await revoker.query('SELECT pg_backend_pid() pid')).rows[0].pid;
+  assert.notEqual(revokerPid,cardPid);
+  await revoker.query('BEGIN ISOLATION LEVEL READ COMMITTED');revokerOpen=true;
+  await revoker.query("SET LOCAL lock_timeout = '5000ms'");
+  pendingRevoke=(async()=>{
+   await revoker.query(PILOT_LOCK_SQL,[tenant]);
+   await revoker.query('UPDATE public.client_pilot_access SET revoked_at=clock_timestamp() WHERE client_id=$1',[tenant]);
+   await revoker.query('COMMIT');revokerOpen=false;
+  })().then(()=>({ok:true}),error=>({ok:false,error}));
+  let observed=false;
+  for(let i=0;i<160;i++){
+   const rows=(await observer.query(
+    'SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',[revokerPid])).rows;
+   if(rows[0]?.wait_event_type==='Lock'){observed=true;break;}
+   await pause(25);
+  }
+  releaseCard();
+  const cardResult=await pendingCard;pendingCard=null;
+  if(!cardResult.ok)throw cardResult.error;
+  const revokeResult=await pendingRevoke;pendingRevoke=null;
+  if(!revokeResult.ok)throw revokeResult.error;
+  assert.equal(observed,true,'revoker must wait for card-held tenant lock');
+  assert.equal(cardResult.value.status,'paid');
+  const final=(await observer.query(`SELECT
+    (SELECT revoked_at IS NOT NULL FROM public.client_pilot_access WHERE client_id=$1) AS revoked,
+    (SELECT status FROM public.clients WHERE id=$1) AS account_status`,[tenant])).rows[0];
+  assert.equal(final.revoked,true);
+  assert.equal(final.account_status,'active');
+ }finally{
+  releaseCard();
+  if(pendingCard)await pendingCard.catch(()=>{});
+  if(pendingRevoke)await pendingRevoke.catch(()=>{});
+  if(revokerOpen)await revoker.query('ROLLBACK').catch(()=>{});
+  observer?.release();revoker?.release();
+  if(db)await db.end().catch(()=>{});
+  if(created)await admin.query('DROP DATABASE IF EXISTS "'+name+'" WITH (FORCE)').catch(()=>{});
+  await admin.end();
+ }
+});
