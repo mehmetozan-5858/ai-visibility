@@ -39,7 +39,16 @@ $owner_gate$;
 -- The existing trial-only portal_authz_trial.hmac is NOT interchangeable.
 DO $crypto_gate$
 BEGIN
- IF to_regprocedure('portal_authz.hmac(bytea,bytea,text)') IS NULL THEN
+ IF NOT EXISTS (
+   SELECT 1 FROM pg_catalog.pg_proc p
+   JOIN pg_catalog.pg_depend d ON d.classid='pg_catalog.pg_proc'::regclass
+     AND d.objid=p.oid AND d.deptype='e'
+   JOIN pg_catalog.pg_extension e ON e.oid=d.refobjid AND e.extname='pgcrypto'
+   JOIN pg_catalog.pg_roles r ON r.rolname='portal_report_fn_owner'
+   WHERE p.oid=to_regprocedure('portal_authz.hmac(bytea,bytea,text)')
+     AND has_schema_privilege(r.oid,'portal_authz','USAGE')
+     AND has_function_privilege(r.oid,p.oid,'EXECUTE')
+ ) THEN
    RAISE EXCEPTION 'review-report-hmac-placement-unverified';
  END IF;
 END;
