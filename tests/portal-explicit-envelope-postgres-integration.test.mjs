@@ -177,6 +177,16 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
        'privileged report reader unexpectedly accessed forbidden table');
       await auditConn.query('ROLLBACK TO SAVEPOINT forbidden_reader_probe');
      }
+     // Even if the login sets an arbitrary tenant GUC, it cannot SELECT
+     // another tenant's raw rows. The only permitted report surface is
+     // the signed, one-time SECURITY DEFINER RPC with a verified identity.
+     await auditConn.query('SAVEPOINT forged_tenant_guc_probe');
+     await auditConn.query("SELECT set_config('app.tenant_id',$1,true)",[B]);
+     await assert.rejects(
+      auditConn.query('SELECT client_id,query FROM public.ai_provider_comparisons WHERE client_id=$1',[B]),
+      error=>error.code==='42501',
+      'forged tenant GUC cannot expose raw reports');
+     await auditConn.query('ROLLBACK TO SAVEPOINT forged_tenant_guc_probe');
      await auditConn.query('COMMIT');
     }finally{
      await auditConn.query('ROLLBACK').catch(()=>{});
