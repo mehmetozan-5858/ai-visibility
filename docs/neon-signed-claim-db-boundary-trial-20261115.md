@@ -84,6 +84,12 @@ Created `tests/portal-pilot-writes-real-postgres.test.mjs` (commit `05f5b0a1496e
 
 CI for commit `05f5b0a1` was pending at observation; its Browser workflow was cancelled by new review activity. Corrected-branch exact-head CI and all release gates remain required. No production migration, privilege GRANT, key, payment, deployment, merge or budget change.
 
+## 2026-11-15 follow-up: settlement activation CI failure and proof-revocation race
+
+Exact head `a165a7e7fe4e1dd5c65284aa7014cea4d771a79f`: CI run `43691823440` **FAILED** three `portal-verified-account-activation-review` tests because that commit's UUID regex accidentally omitted the third and fourth bytes of the UUID variant group, so an otherwise valid tenant failed before the transaction. Browser `43691823455` and Web/Mobile `43691823434` succeeded independently; they are not proof of the activation test. The corrected source on the current review branch has the full `[89ab][0-9a-f]{3}` UUID variant group; commit `7c1a956bb7b27f60159f094b4282a10c85a4a350` adds an explicit positive valid-UUID-to-settlement-query and negative malformed-UUID assertion. Require fresh exact-head CI before marking fixed.
+
+**Unresolved release-critical race:** The isolated review account activation takes a per-tenant advisory lock, then uses a SELECT to validate a settlement and a separate UPDATE to activate the account. If Paddle refund/reversal or entitlement revocation writers do not acquire the **same** tenant lock, a cancellation can race between proof SELECT and client UPDATE. Even with a clean test, this is **not accepted** until every signed Paddle completion/reversal/subscription transition and admin account writer is audited and participates in the lock, or the design gains a stronger DB-enforced atomic authorization boundary. Historical `payments.status='paid'` cannot substitute for signed, durable settlement evidence. No production or trial Neon mutation was attempted.
+
 ## Mandatory blockers before anything can go live
 
 1. Review an auditable DB-verification function migration for production; avoid PUBLIC EXECUTE and exposed private schemas. Confirm the owner can read only the required data and no broader SECURITY DEFINER capabilities escape. Validate lock and rollback.
