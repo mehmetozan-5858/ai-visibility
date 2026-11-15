@@ -9,6 +9,7 @@ const B='22222222-2222-4222-8222-222222222222';
 const CLAIM='33333333-3333-4333-8333-333333333333';
 const SECRET='synthetic-one-time-db-hmac-do-not-use-in-production';
 const ROLE='portal_gateway_reader_trial_20261114';
+const verified=tenantId=>async id=>({tenantId,active:true,source:'verified-pilot',checkedAt:Date.now()});
 const safeRole={name:ROLE,login:true,superuser:false,bypassRls:false,
  createDb:false,createRole:false,replication:false,schemaUsage:true,schemaCreate:false,
  rawSelect:false,credentialSelect:false,paymentSelect:false,settlementSelect:false,
@@ -72,8 +73,8 @@ test('verified customer A and B produce separate claims on one SQL connection ea
    },release:()=>{released++}
   }}};
   const a=await createClientToken(A),b=await createClientToken(B);
-  assert.deepEqual((await readOneTimeDbReportReview(reader,a,true)).map(x=>x.query),['Synthetic A']);
-  assert.deepEqual((await readOneTimeDbReportReview(reader,b,true)).map(x=>x.query),['Synthetic B']);
+  assert.deepEqual((await readOneTimeDbReportReview(reader,a,verified(A))).map(x=>x.query),['Synthetic A']);
+  assert.deepEqual((await readOneTimeDbReportReview(reader,b,verified(B))).map(x=>x.query),['Synthetic B']);
   assert.equal(acquired,2);assert.equal(released,2);
   assert.equal(calls.filter(x=>x.sql==='BEGIN').length,2);
   assert.equal(calls.filter(x=>x.sql==='COMMIT').length,2);
@@ -86,16 +87,37 @@ test('invalid session, missing entitlement, missing distinct secret never open S
   let acquisitions=0;
   const reader={connect:async()=>{acquisitions++;throw Error('must-not-connect')}};
   const valid=await createClientToken(A);
-  await assert.rejects(readOneTimeDbReportReview(reader,'invalid',true),
+  await assert.rejects(readOneTimeDbReportReview(reader,'invalid',verified(A)),
    /verified-customer-session-required/);
-  await assert.rejects(readOneTimeDbReportReview(reader,valid.slice(0,-2)+'xx',true),
+  await assert.rejects(readOneTimeDbReportReview(reader,valid.slice(0,-2)+'xx',verified(A)),
    /verified-customer-session-required/);
   await assert.rejects(readOneTimeDbReportReview(reader,valid,false),
    /verified-customer-entitlement-required/);
   process.env.PORTAL_REPORT_CLAIM_SECRET=process.env.AUTH_SECRET;
-  await assert.rejects(readOneTimeDbReportReview(reader,valid,true),
+  await assert.rejects(readOneTimeDbReportReview(reader,valid,verified(A)),
    /one-time-signing-not-configured/);
   assert.equal(acquisitions,0);
+ });
+});
+
+test('revoked, expired, stale, cross-tenant or missing authority proof blocks before SQL',async()=>{
+ await withSyntheticEnv(async()=>{
+  const token=await createClientToken(A);
+  let dbCalls=0;
+  const pool={connect:async()=>{dbCalls++;throw Error('SQL must not be reached')}};
+  const deny=[
+   async()=>null,
+   async()=>({tenantId:A,active:false,source:'verified-pilot',checkedAt:Date.now()}),
+   async()=>({tenantId:B,active:true,source:'verified-pilot',checkedAt:Date.now()}),
+   async()=>({tenantId:A,active:true,source:'verified-pilot',checkedAt:Date.now()-10000}),
+   async()=>({tenantId:A,active:true,source:'verified-pilot',checkedAt:Date.now()+10000}),
+   async()=>({tenantId:A,active:true,source:'legacy-paid-label',checkedAt:Date.now()}),
+   async()=>{throw Error('private authority unavailable')}
+  ];
+  for(const verifier of deny)
+   await assert.rejects(readOneTimeDbReportReview(pool,token,verifier),
+    /verified-customer-entitlement-required/);
+  assert.equal(dbCalls,0);
  });
 });
 
@@ -109,7 +131,7 @@ test('unsafe SQL role rolls back without RPC and always releases connection',asy
    if(sql.includes('current_user AS "name"'))return {rows:[{...safeRole,legacyReplayExecute:true}]};
    throw Error('unexpected-report-call');
   },release:()=>{released++}})};
-  await assert.rejects(readOneTimeDbReportReview(pool,token,true),/one-time-reader-role-unverified/);
+  await assert.rejects(readOneTimeDbReportReview(pool,token,verified(A)),/one-time-reader-role-unverified/);
   assert.equal(calls.length,3);assert.equal(calls[2],'ROLLBACK');assert.equal(released,1);
  });
 });
