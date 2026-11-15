@@ -30,7 +30,7 @@ test('retirement uses single tenant lock and transaction for suspension plus rev
  assert.ok(find('BEGIN ISOLATION LEVEL READ COMMITTED')<find('pg_advisory_xact_lock'));
  assert.ok(find('pg_advisory_xact_lock')<find('UPDATE public.clients'));
  assert.ok(find('UPDATE public.clients')<find('UPDATE public.client_pilot_access'));
- assert.ok(find('UPDATE public.client_pilot_access')<find('COMMIT'));
+ assert.ok(find('UPDATE public.client_pilot_access')<statements.indexOf('COMMIT'));
  assert.deepEqual(calls[find('UPDATE public.clients')].args,[tenant]);
  assert.deepEqual(calls[find('UPDATE public.client_pilot_access')].args,[tenant]);
  assert.equal(statements.at(-1),'RELEASE');
