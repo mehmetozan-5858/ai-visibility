@@ -31,3 +31,17 @@ Use a per-tenant **transaction-scoped PostgreSQL advisory lock**, acquired under
 
 ## Exit requirements
 A reviewed read/revoke/grant coordination patch; independent-session evidence (not only static SQL); gateway role proof; authenticated real-customer session and report; CI exact-head; Paddle/provider live-evidence acceptance. Until then: **PRODUCTION HOLD**.
+
+## RLS owner-policy redesign gate (15 Nov 2026, review only)
+
+**Observed on the isolated branch:** `public.ai_provider_comparisons` has RLS and FORCE RLS enabled, but `portal_fn_owner_read_synthetic` is a permissive SELECT policy for `portal_report_fn_owner_trial_20261115` with `USING (true)`. Another permissive SELECT policy for PUBLIC reads `app.tenant_id`. Permissive policies combine by OR, so the owner TRUE policy defeats row-level tenant isolation for that role. This remains a **BLOCKER**, not evidence of accepted read isolation.
+
+**Proposed bounded design, NOT EXECUTED:**
+1. Audit all roles/memberships and table grants, including functions with SECURITY DEFINER, before changes. Deny gateway direct SELECT on comparisons, claims, signing keys and pilot grants.
+2. Under a dedicated reversible isolated-branch migration, remove the unrestricted owner SELECT policy **only after** ensuring a scoped replacement is in place; never deploy a temporary permissive TRUE fallback. Prefer an explicitly tenant-constrained owner policy. Evaluate whether a restrictive policy is appropriate for all role memberships and all other policies; remember permissive policies OR and restrictive policies AND.
+3. In the signed-report SECURITY DEFINER RPC, verify MAC and TTL, take the common tenant transaction advisory lock, re-check TTL and current active pilot, then set a trusted transaction-local `app.tenant_id` from the **MAC-verified tenant**, before querying comparisons. Never trust a caller-set GUC or HTTP tenant alone; use a bound tenant identity verified by authorization.
+4. Treat `current_setting('app.tenant_id',true)` as a mutable custom GUC, **not independent authentication**. Prove tenant binding in the report function and audit any other roles granted SELECT. Check malformed/absent tenant settings fail closed rather than error-leaking or returning all rows.
+5. With synthetic tenants A/B, test as the actual restricted gateway connection: valid claim A -> only A; claim for B -> only B; invalid or replayed claim -> none; no grant/revoked/expired/suspended -> none; direct raw SELECT -> permission denied; two backend sessions -> revocation serializes; no claim consumed on denial.
+6. Preserve `SECURITY DEFINER` owner, forced RLS, restricted search_path, and existing least-privilege grants; validate rollback/restore. In particular, changing a policy does not prove the reader/write lock ordering or invalidate old customer sessions.
+
+**Release rule:** The RLS fail-closed preflight must stay red while the permissive TRUE policy exists. Never bypass it for a green CI. Approve no production migration until a tenant-safe policy, actual authenticated gateway execution, and independent-session evidence are all verified on an isolated synthetic fixture.
