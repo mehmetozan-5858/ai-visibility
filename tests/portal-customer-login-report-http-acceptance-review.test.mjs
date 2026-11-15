@@ -173,3 +173,26 @@ test('missing or reused report signing secret fails closed without SQL connectio
   }finally{process.env.PORTAL_REPORT_CLAIM_SECRET=original}
  });
 });
+
+test('unsafe claimed provider evidence is downgraded at signed HTTP boundary',async()=>{
+ await withSyntheticEnv(async()=>{
+  const f=fixture({reports:[{clientId:A,query:'synthetic evidence',createdAt:'2026-11-15T00:00:00Z',
+   results:[{provider:'gemini',status:'source-supported-answer',verified:true,
+    answer:'A synthetic answer with an alleged source',
+    evidence:{sourceUrl:'javascript:alert(1)',observation:'alleged source'}}]}]});
+  const response=await f.http(await createClientToken(A));
+  assert.equal(response.status,200);
+  const payload=await response.json();
+  assert.equal(payload.authorized,true);
+  assert.equal(payload.reports.length,1);
+  const result=payload.reports[0].results[0];
+  assert.equal(result.provider,'gemini');
+  assert.equal(result.verified,false);
+  assert.equal(result.supported,false);
+  assert.equal(result.status,'answer-received-unverified');
+  assert.equal(result.sourceUrl,null);
+  assert.equal(result.evidence,null);
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
+  assert.equal(f.calls.at(-1),'COMMIT');
+ });
+});
