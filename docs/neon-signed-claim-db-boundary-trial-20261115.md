@@ -46,6 +46,12 @@ A separate negative test exposed that the first version of `portal_trial_one_tim
 
 The first review helper CI failed at `npm test` because its UUID validation regex omitted the complete fourth UUID segment, rejecting even valid signed A/B sessions. Fixed in review commit `e43998b72629a98fb258268fe0091a5c635e5477`; acceptance requires a **new completed CI**, not the previously failed run.
 
+## 2026-11-15 follow-up: SQL client concurrency observations and CI correction
+
+A further race experiment on the isolated branch submitted two claims with the exact same nonce/MAC in parallel via connected tools, including a first transaction that held its commit open with a four-second `pg_sleep`. Results still were **1 and 0**, but PostgreSQL server timestamps established the second transaction's report statement started **after** the first committed (first started 06:10:47.991Z, first end 06:10:51.996Z, second started 06:10:56.845Z). **No true overlapping transaction contention was demonstrated.** The connector/tool execution may serialize operations. The unique index provides atomic duplicate arbitration in PostgreSQL, but a separate two-connection controlled harness must test blocking, rollback and commit races before launch. Test customer, report and claim ledger rows were deleted and counts verified zero.
+
+The `3f1cab76` GitHub commit CI ended **FAILURE** (778 of 779 passed): test `tests/one-time-db-report-review.test.mjs` counted four text mentions of the RPC, including two privilege-inspection queries, rather than two actual report SELECTs. In review commit `012b0333c6ba1956f9e8d917210fc2a9c6896ccd`, assertion was scoped to the actual `SELECT "clientId",query,results,"createdAt" FROM public.portal_trial_one_time_report(...)` call. The resulting CI is a new verification gate; do not claim pass while it is pending.
+
 ## Mandatory blockers before anything can go live
 
 1. Review an auditable DB-verification function migration for production; avoid PUBLIC EXECUTE and exposed private schemas. Confirm the owner can read only the required data and no broader SECURITY DEFINER capabilities escape. Validate lock and rollback.
