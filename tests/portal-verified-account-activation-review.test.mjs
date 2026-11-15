@@ -87,3 +87,18 @@ test('valid v4 UUID reaches locked settlement query, invalid variant fails befor
  }
  assert.equal(f.calls.length,n);
 });
+
+test('already-active account cannot be counted as a fresh settlement activation',async()=>{
+ const f=fixture({proof:true,changed:false});
+ assert.deepEqual(await activateVerifiedPaddleAccountReview(f.pool,A),{activated:false});
+ assert.equal(f.calls.at(-1).sql,'COMMIT');
+ assert.equal(f.calls.filter(x=>x.sql===LOCKED_ACCOUNT_ACTIVATION_SQL).length,1);
+ assert.equal(f.released,1);
+});
+
+test('settlement evidence must not be a historical paid label or bank transfer',()=>{
+ assert.match(VERIFIED_PADDLE_SETTLEMENT_SQL,/JOIN public\.payments p ON p\.id=s\.payment_id AND p\.client_id=s\.client_id/);
+ assert.match(VERIFIED_PADDLE_SETTLEMENT_SQL,/s\.client_id=\$1::uuid/);
+ assert.match(VERIFIED_PADDLE_SETTLEMENT_SQL,/p\.status='paid' AND p\.method='paddle'/);
+ assert.doesNotMatch(VERIFIED_PADDLE_SETTLEMENT_SQL,/bank|card|customer-reported|bank-transfer/i);
+});
