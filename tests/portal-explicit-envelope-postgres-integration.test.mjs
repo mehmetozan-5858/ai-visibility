@@ -164,6 +164,17 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     assert.equal(claimsAfter,claimsBefore,
      'denied stale-preflight request cannot consume a one-use claim');
     await db.query("UPDATE public.client_pilot_access SET revoked_at=NULL WHERE client_id=$1",[A]);
+    // A stale preflight must also fail when the account is suspended AFTER
+    // authorization but BEFORE the SQL RPC evaluates current account state.
+    await db.query("UPDATE public.clients SET status='payment-review' WHERE id=$1",[A]);
+    const beforeSuspend=(await db.query('SELECT count(*)::int AS n FROM portal_authz.consumed_claims')).rows[0].n;
+    await assert.rejects(staleGateway(await createClientToken(A)),
+     /report-envelope-authorization-unproven/,
+     'committed account suspension MUST override stale pilot preflight');
+    const afterSuspend=(await db.query('SELECT count(*)::int AS n FROM portal_authz.consumed_claims')).rows[0].n;
+    assert.equal(afterSuspend,beforeSuspend,
+     'denied suspended account cannot consume a one-use claim');
+    await db.query("UPDATE public.clients SET status='active' WHERE id=$1",[A]);
    }finally{
     await readerPool.end();
    }
