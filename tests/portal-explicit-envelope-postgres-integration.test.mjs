@@ -292,6 +292,21 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   assert.equal(decodeAuthorizedReportEnvelopeReview(populated,A).reports.length,1);
   assert.equal(populated[0].reports[0].query,'Synthetic report A');
 
+  // A valid signed claim is bound to exactly its signed tenant, even when
+  // the target tenant is otherwise active and has report entitlement.
+  // A copied A signature with B's UUID cannot authorize B or spend its nonce.
+  await db.query("UPDATE public.client_pilot_access SET expires_at=clock_timestamp()+interval '1 hour' WHERE client_id=$1",[B]);
+  const stolenNonce=randomUUID(),stolenExpires=Math.floor(Date.now()/1000)+60;
+  const stolenMac=sign(A,stolenExpires,stolenNonce);
+  assert.deepEqual((await db.query(rpc,[B,stolenExpires,stolenNonce,stolenMac])).rows,[],
+   'cross-tenant signed MAC must not authorize a second active tenant');
+  assert.equal((await db.query(
+   'SELECT count(*)::int AS n FROM portal_authz.consumed_claims WHERE claim_id=$1',
+   [stolenNonce])).rows[0].n,0,'cross-tenant forgery cannot consume a nonce');
+  assert.equal((await db.query(rpc,[A,stolenExpires,stolenNonce,stolenMac])).rows.length,1,
+   'the original tenant still owns the unconsumed signed claim');
+  await db.query("UPDATE public.client_pilot_access SET expires_at=clock_timestamp()-interval '1 second' WHERE client_id=$1",[B]);
+
   assert.deepEqual(await call(B),[],'expired pilot must not produce an authorized envelope');
   assert.deepEqual(await call(A,{mac:'0'.repeat(64)}),[],'bad HMAC must deny');
   const nonce=randomUUID();
