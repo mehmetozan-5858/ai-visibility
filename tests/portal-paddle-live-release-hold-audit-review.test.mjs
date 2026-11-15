@@ -15,7 +15,8 @@ const within=(start,end)=>{const i=live.indexOf(start);return i<0?'':live.slice(
 test('Paddle real route authenticates raw bytes and never claims review helper is wired',()=>{
  assert.match(route,/verifyPaddleLiveSignature\(raw,req\.headers\.get\('paddle-signature'\),secret\)/);
  assert.doesNotMatch(route,/withPaddleEntitlementWriterLockReview/);
- assert.doesNotMatch(live,/acquirePilotAdvisoryLockReview|withPaddleEntitlementWriterLockReview/);
+ assert.match(live,/acquirePilotAdvisoryLockReview\(tx,item\.clientId\)/);
+ assert.doesNotMatch(live,/withPaddleEntitlementWriterLockReview/);
  assert.match(review,/acquirePilotAdvisoryLockReview/);
 });
 
@@ -24,7 +25,9 @@ test('release HOLD: event claim precedes tenant row lock and must not be confuse
  const eventInsert=record.indexOf('INSERT INTO paddle_live_events');
  const process=record.indexOf('applyTransaction(tx,item)');
  assert.ok(eventInsert>=0&&process>eventInsert,'real event-id insert precedes payment row-locking flow');
- assert.doesNotMatch(record.slice(0,process),/pg_advisory_xact_lock|acquirePilotAdvisoryLockReview/);
+ const lockAt=record.indexOf('await acquirePilotAdvisoryLockReview(tx,item.clientId)');
+ assert.ok(lockAt>=0&&lockAt<eventInsert,
+  'reviewed tenant advisory lock must precede event claim and payment row lock');
  const transaction=within('async function applyTransaction','async function applySubscriptionAccess');
  const subscription=within('async function applySubscriptionAccess','export async function recordPaddleLiveEvent');
  assert.match(transaction,/FROM payments WHERE id=\$1 AND client_id=\$2 FOR UPDATE/);
