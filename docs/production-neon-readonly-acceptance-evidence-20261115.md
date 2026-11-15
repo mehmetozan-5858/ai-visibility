@@ -63,3 +63,24 @@ Additional **read-only catalog queries** on `br-plain-poetry-b2u7f7a6` confirmed
 - `client_credentials` and `payments`: RLS disabled, but these **two trial roles** have no direct SELECT. This catalog check is not a complete production privilege or policy audit.
 
 **Still blocked:** no current E2E SQL RPC execution under the restricted owner is established by these queries; neither claims/replay nor revocation was exercised. Proposed production envelope RPC is distinct and absent in production. Do not infer readiness, change grants, migrate, merge, or deploy.
+
+## Follow-up: exact signed-envelope install preflight (2026-11-15)
+
+A new set of **catalog-only** queries on isolated branch `br-plain-poetry-b2u7f7a6` compared the real trial schema to `migrations/portal-one-time-explicit-envelope-review.sql` without invoking signed claims or reading any secrets/customer rows:
+
+| Proposed object / access | Observed in isolated branch |
+| --- | --- |
+| `portal_authz` schema | **absent** |
+| `portal_authz.hmac(bytea,bytea,text)` | **absent** |
+| `portal_authz.signing_keys` | **absent** |
+| `portal_authz.consumed_claims` | **absent** |
+| `public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)` | **absent** |
+| Existing `portal_authz_trial` schema and `portal_authz_trial.hmac(...)` | present; **not interchangeable** with proposed names |
+| Current trial reader EXECUTE on legacy `portal_trial_one_time_report` | **true**; conflicts with proposed exclusive-RPC reader contract |
+| Trial NOLOGIN function owner SELECT on `public.client_pilot_access` | **true**, after separately documented narrow trial-branch grant |
+| Reader and function owner role memberships | zero for each |
+| Database CREATE and public-schema CREATE | **false** for both |
+
+`public.ai_provider_comparisons` has FORCE RLS and two permissive SELECT policies, including `portal_fn_owner_read_synthetic` with `USING (true)`. This broad *function-owner* read permits the definer to fetch rows across tenants. Cross-tenant isolation therefore depends critically on verified claim binding and explicit `WHERE client_id=p_tenant` inside the audited SECURITY DEFINER function, **not on that policy alone**.
+
+**Install/acceptance decision: BLOCKED.** The proposed migration expressly says never auto-apply and does not grant the dedicated reader any EXECUTE permission. Provisioning, extension placement, NOLOGIN owner, exclusive RPC grant/revocation of trial RPC, all entitlement-writer lock coordination, signed request/replay/revocation tests and an authenticated restricted connection require a separate reviewed *isolated-only* change. A schema/object existence check is not a license to provision production secrets, impersonate a customer or migrate the default branch. Preserve Production HOLD.
