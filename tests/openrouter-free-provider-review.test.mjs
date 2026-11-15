@@ -65,11 +65,15 @@ test('missing, nonzero or mismatched catalog pricing prevents POST inference',as
 test('missing model proof, billed responses, truncation and provider outages fail closed',async()=>{
  const reply=(payload,ok=true)=>async(url)=>
   url.endsWith('/models')?{ok:true,json:async()=>catalog}:{ok,json:async()=>payload};
- const base={model:'example/model:free',usage:{cost:0},
+ const base={id:'synthetic-generation-id',model:'example/model:free',usage:{cost:0},
   choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]};
  for(const payload of [
   {...base,model:'example/paid-model'},
   {...base,usage:{cost:0.01}},
+  {...base,usage:{}},
+  {...base,usage:{cost:'0'}},
+  {...base,id:''},
+  {...base,id:null},
   {...base,choices:[{finish_reason:'length',message:{content:'{"score":48}'}}]},
   {...base,choices:[{finish_reason:'stop',message:{content:''}}]},
   {...base,error:{message:'synthetic error'}}
