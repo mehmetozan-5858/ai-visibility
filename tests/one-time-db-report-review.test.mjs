@@ -174,3 +174,24 @@ test('lock timeout in the RPC rolls back and never returns verified report',asyn
   assert.equal(releases,1);
  });
 });
+
+test('ambiguous zero-row RPC rejects, rolls back, and never certifies report access',async()=>{
+ await withSyntheticEnv(async()=>{
+  const token=await createClientToken(A);
+  const calls=[];let releases=0;
+  const pool={connect:async()=>({
+   query:async(sql)=>{
+    calls.push(sql);
+    if(sql.includes('current_user AS "name"'))return {rows:[safeRole]};
+    if(sql.startsWith('SELECT "clientId",query,results,"createdAt" FROM public.portal_trial_one_time_report('))
+     return {rows:[]};
+    return {rows:[]};
+   },release:()=>{releases++}
+  })};
+  await assert.rejects(readOneTimeDbReportReview(pool,token,verified(A)),
+   /one-time-report-authorization-unproven/);
+  assert.equal(calls.at(-1),'ROLLBACK');
+  assert.equal(calls.includes('COMMIT'),false);
+  assert.equal(releases,1);
+ });
+});
