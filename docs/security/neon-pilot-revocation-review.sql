@@ -57,6 +57,12 @@ BEGIN
     pg_catalog.hashtextextended('portal-pilot-lock-v1:' || p_tenant::text, 0)
   );
 
+  -- A valid claim may expire while waiting for the tenant lock. Recheck
+  -- against real wall-clock time before reading authority or consuming nonce.
+  -- Timeouts/errors must fail closed; never consume an expired claim.
+  v_now := floor(extract(epoch FROM clock_timestamp()))::bigint;
+  IF p_expires < v_now OR p_expires > v_now + 300 THEN RETURN; END IF;
+
   -- Recheck authoritative state AFTER obtaining the per-tenant lock.
   -- Fail closed on account suspension AND pilot-access revocation/expiry.
   IF NOT EXISTS (
