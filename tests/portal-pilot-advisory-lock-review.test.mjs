@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PILOT_LOCK_SQL,REPORT_LOCK_SQL,acquirePilotAdvisoryLockReview} from '../lib/portal-pilot-advisory-lock-review.mjs';
+import {PILOT_LOCK_SQL,REPORT_LOCK_SQL,acquirePilotAdvisoryLockReview,withPilotWriteLockReview} from '../lib/portal-pilot-advisory-lock-review.mjs';
 import {readFile} from 'node:fs/promises';
 
 const A='11111111-1111-4111-8111-111111111111';
@@ -37,4 +37,55 @@ test('advisory-lock alternate design is explicitly unwired until every writer is
  assert.doesNotMatch(pilot,/acquirePilotAdvisoryLockReview/);
  // Keeping the original draft and grant/revoke code unchanged here is deliberate:
  // an advisory lock on only one side creates false confidence and is NOT safe.
+});
+
+test('pilot writer locks the verified tenant before mutation and commits on success',async()=>{
+ const calls=[];let releases=0;
+ const tx={query:async(sql,args)=>{calls.push({sql,args});return {rows:[]}},release:()=>{releases++}};
+ const result=await withPilotWriteLockReview({connect:async()=>tx},A,async(conn,tenant)=>{
+  assert.equal(conn,tx);
+  assert.equal(tenant,A);
+  assert.equal(calls[3].sql,PILOT_LOCK_SQL);
+  await conn.query('UPDATE public.client_pilot_access SET revoked_at=clock_timestamp() WHERE client_id=$1',[tenant]);
+  return 'review-ok';
+ });
+ assert.equal(result,'review-ok');
+ assert.deepEqual(calls.map(x=>x.sql),[
+  'BEGIN ISOLATION LEVEL READ COMMITTED',
+  "SET LOCAL lock_timeout = '2500ms'",
+  "SET LOCAL statement_timeout = '10000ms'",
+  PILOT_LOCK_SQL,
+  'UPDATE public.client_pilot_access SET revoked_at=clock_timestamp() WHERE client_id=$1',
+  'COMMIT'
+ ]);
+ assert.deepEqual(calls[3].args,[A]);
+ assert.equal(releases,1);
+});
+
+test('pilot writer lock errors and write errors roll back without COMMIT or leaked connection',async()=>{
+ for(const stage of ['lock','write']){
+  const calls=[];let releases=0;
+  const tx={query:async(sql,args)=>{
+   calls.push(sql);
+   if(stage==='lock'&&sql===PILOT_LOCK_SQL)throw Object.assign(Error('lock timeout'),{code:'55P03'});
+   return {rows:[]};
+  },release:()=>{releases++}};
+  await assert.rejects(
+   withPilotWriteLockReview({connect:async()=>tx},A,async()=>{
+    if(stage==='write')throw Error('audit transaction failed');
+    throw Error('unexpected callback');
+   }),stage==='lock'?/lock timeout/:/audit transaction failed/
+  );
+  assert.equal(calls.at(-1),'ROLLBACK');
+  assert.equal(calls.includes('COMMIT'),false);
+  assert.equal(releases,1);
+ }
+});
+
+test('invalid identity or writer cannot acquire or mutate SQL connections',async()=>{
+ let acquired=0;
+ const pool={connect:async()=>{acquired++;throw Error('unexpected SQL')}};
+ await assert.rejects(withPilotWriteLockReview(pool,'not-a-uuid',async()=>{}),/pilot-writer-tenant-invalid/);
+ await assert.rejects(withPilotWriteLockReview(pool,A,null),/pilot-writer-transaction-unavailable/);
+ assert.equal(acquired,0);
 });
