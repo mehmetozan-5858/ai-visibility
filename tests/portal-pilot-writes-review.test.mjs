@@ -91,7 +91,7 @@ test('pilot expiry change is locked and can only shorten an unrevoked entitlemen
 
 test('invalid pilot expiry change rejects without opening database connection',async()=>{
  let opened=false;const pool={connect:async()=>{opened=true;throw Error('unexpected connection')}};
- for(const expiry of ['not-a-date','2030-01-01','2030-01-01T00:00:00Z']){
+ for(const expiry of ['not-a-date','2030-01-01','2030-01-01T00:00:00Z','2026-02-30T00:00:00.000Z','2026-13-01T00:00:00.000Z']){
   await assert.rejects(changePilotExpiryWithLockReview(pool,TENANT,expiry),/review-pilot-expiry-invalid/);
  }
  assert.equal(opened,false);
