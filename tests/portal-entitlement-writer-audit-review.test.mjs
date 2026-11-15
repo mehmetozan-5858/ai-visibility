@@ -33,7 +33,8 @@ export async function revokePilot(){return revokePilotWithLockReview(x)}`;
  const repositorySource=`export async function confirmPayment(){return withPilotWriteLockReview(x)}
 export async function upsertSalesOpportunity(){}
 export async function confirmCardPaymentByMerchantOid(){return withPilotWriteLockReview(x)}
-export async function markCardPaymentFailedByMerchantOid(){}`;
+export async function markCardPaymentFailedByMerchantOid(){return withPilotWriteLockReview(x)}
+export async function addClientActivity(){}`;
  const reviewSource='withPilotWriteLockReview';
  const result=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
  assert.equal(result.ready,false,'source-only checks must not claim all writers verified');
@@ -119,4 +120,28 @@ test('reintroducing an unlocked payment activation writer is rejected without li
   assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'),
    'known writer coverage must never certify unrelated external payment writers');
  }
+});
+
+test('card failure transition must join report tenant lock before changing payment state',async()=>{
+ const [pilotSource,repositorySource,reviewSource]=await Promise.all([
+  read('lib/pilot-access.js'),read('lib/repository.js'),
+  read('lib/portal-pilot-writes-review.mjs')
+ ]);
+ const start=repositorySource.indexOf('export async function markCardPaymentFailedByMerchantOid(');
+ const end=repositorySource.indexOf('export async function addClientActivity(',start);
+ assert.ok(start>=0&&end>start);
+ const body=repositorySource.slice(start,end);
+ assert.match(body,/BEGIN ISOLATION LEVEL READ COMMITTED/);
+ assert.match(body,/acquirePilotAdvisoryLockReview\(tx,bound\.clientId\)/);
+ assert.match(body,/UPDATE payments SET status='failed'/);
+ const modified=body.replace('await acquirePilotAdvisoryLockReview(tx,bound.clientId)',
+  '/* regression: card failure loses report lock */');
+ assert.notEqual(body,modified);
+ const candidate=repositorySource.slice(0,start)+modified+repositorySource.slice(end);
+ const audit=auditPortalEntitlementWriterCoverage({pilotSource,
+  repositorySource:candidate,reviewSource});
+ assert.equal(audit.ready,false);
+ assert.ok(audit.findings.some(f=>f.code==='account-activation-not-coordinated'&&
+  f.method==='markCardPaymentFailedByMerchantOid'),
+  'removing failed-card tenant lock must block acceptance');
 });
