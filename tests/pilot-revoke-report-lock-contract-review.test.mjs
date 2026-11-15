@@ -18,10 +18,11 @@ test('review report locks exactly the same pilot row that revokePilot updates',a
  assert.match(query,/pilot\.revoked_at IS NULL/);
  assert.match(query,/pilot\.expires_at>clock_timestamp\(\) FOR SHARE/);
  assert.match(query,/IF NOT FOUND THEN RETURN; END IF;/);
- assert.match(pilot,/UPDATE client_pilot_access SET revoked_at=NOW\(\) WHERE client_id=\$1 AND revoked_at IS NULL RETURNING expires_at/);
- assert.match(pilot,/await tx\.query\('BEGIN'\)/);
- assert.match(pilot,/await tx\.query\('COMMIT'\)/);
- assert.match(pilot,/await tx\.query\('ROLLBACK'\)/);
+ // FOR SHARE is an alternative uninstalled draft. The current pilot writer
+ // uses advisory locks; the two designs must not be considered compatible
+ // or production ready until a matching report function is installed.
+ assert.match(pilot,/grantPilotWithLockReview\(await pool\(\),clientId,email,days,reason\)/);
+ assert.match(pilot,/revokePilotWithLockReview\(await pool\(\),clientId\)/);
  assert.match(reader,/BEGIN ISOLATION LEVEL READ COMMITTED/);
  assert.match(reader,/SET LOCAL lock_timeout = '2500ms'/);
  assert.match(reader,/SET LOCAL statement_timeout = '10000ms'/);
