@@ -52,6 +52,14 @@ A further race experiment on the isolated branch submitted two claims with the e
 
 The `3f1cab76` GitHub commit CI ended **FAILURE** (778 of 779 passed): test `tests/one-time-db-report-review.test.mjs` counted four text mentions of the RPC, including two privilege-inspection queries, rather than two actual report SELECTs. In review commit `012b0333c6ba1956f9e8d917210fc2a9c6896ccd`, assertion was scoped to the actual `SELECT "clientId",query,results,"createdAt" FROM public.portal_trial_one_time_report(...)` call. The resulting CI is a new verification gate; do not claim pass while it is pending.
 
+## 2026-11-15 review: SECURITY DEFINER owner isolation trial (not accepted yet)
+
+On the **isolated nonproduction Neon test branch only**, the one-time report function owner was changed from the broad `neondb_owner` (BYPASSRLS) to new `portal_report_fn_owner_trial_20261115`, a `NOLOGIN NOBYPASSRLS` role. The role has no SUPERUSER, CREATEDB, CREATEROLE, permanent public-schema CREATE, credential SELECT or payment SELECT. It was granted narrowly required SELECT on client identity, comparison reports and private test signing keys, INSERT on the private spent-claim ledger, and a specific RLS SELECT policy on comparisons for **only the NOLOGIN function owner**. Required temporary CREATE on public during ownership transfer was revoked within the same transaction. The application-facing reader is **not a member** of the function-owner role.
+
+The first post-transfer synthetic invocation failed with PostgreSQL `42501` on `portal_authz_trial.consumed_claims`: INSERT with `ON CONFLICT ... RETURNING claim_id` additionally needs SELECT on the returned column. A column-scoped `SELECT(claim_id)` grant was subsequently made **to the NOLOGIN function owner only**, not to the SQL reader. Read-only catalog recheck confirms the function-owner role has NOLOGIN, no BYPASSRLS, no SUPERUSER, no public-schema CREATE, and no payment SELECT.
+
+**Critical acceptance remains BLOCKED:** The follow-up end-to-end synthetic call after that column grant was rejected by the execution environment's safety control, so there is **no verified PASS** for post-transfer function execution. Do not call the new owner design production-ready or infer that existing replay/status tests still pass under this new owner. The previous successful replay and suspended-account tests were run when function owner still had BYPASSRLS. Reverify privilege details and code in a separately approved test harness before any promotion. No production changes.
+
 ## Mandatory blockers before anything can go live
 
 1. Review an auditable DB-verification function migration for production; avoid PUBLIC EXECUTE and exposed private schemas. Confirm the owner can read only the required data and no broader SECURITY DEFINER capabilities escape. Validate lock and rollback.
