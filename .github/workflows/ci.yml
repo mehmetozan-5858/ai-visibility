@@ -28,8 +28,14 @@ jobs:
         with:
           node-version: "24"
       - run: npm install
+      - name: Isolated signed-report PostgreSQL RPC acceptance (fail fast)
+        timeout-minutes: 3
+        run: timeout --signal=TERM --kill-after=5s 120s node --test tests/portal-explicit-envelope-postgres-integration.test.mjs
+        env:
+          PORTAL_LOCK_RACE_DATABASE_URL: postgresql://fixture:fixture_ci_only_password@localhost:5432/fixture
       - name: Test including isolated two-backend PostgreSQL lock races
-        run: npm test
+        timeout-minutes: 12
+        run: timeout --signal=TERM --kill-after=5s 600s npm test
         env:
           PORTAL_LOCK_RACE_DATABASE_URL: postgresql://fixture:fixture_ci_only_password@localhost:5432/fixture
       - run: npm run build
