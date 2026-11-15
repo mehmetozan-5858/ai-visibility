@@ -4,7 +4,7 @@ import {confirmCardPaymentLockedReview} from '../lib/portal-card-activation-tran
 const TENANT='11111111-1111-4111-8111-111111111111';
 const PAYMENT='22222222-2222-4222-8222-222222222222';
 const OID='cardtest001';
-function fixture({failClient=false,missing=false,duplicate=false,changed=false,alreadyPaid=false}={}){
+function fixture({failClient=false,clientMissing=false,missing=false,duplicate=false,changed=false,alreadyPaid=false}={}){
  const calls=[];
  let commit=false,rollback=false,paid=alreadyPaid,clientActive=false;
  const tx={release(){calls.push('RELEASE')},async query(sql,args){
@@ -19,6 +19,7 @@ function fixture({failClient=false,missing=false,duplicate=false,changed=false,a
   }
   if(sql.includes('UPDATE public.clients')){
    if(failClient)throw Error('synthetic-client-write-failure');
+   if(clientMissing)return {rows:[]};
    clientActive=true;return {rows:[{id:TENANT}]};
   }
   if(sql.includes('FROM public.payments WHERE id=')){
@@ -96,4 +97,34 @@ test('malformed merchant ID rejects before database query',async()=>{
  const f=fixture();
  await assert.rejects(confirmCardPaymentLockedReview(f.pool,'not-valid!'),/review-card-confirmation-invalid/);
  assert.deepEqual(f.calls,[]);
+});
+
+// An UPDATE can succeed as SQL but affect zero client rows; it must still
+// roll back the payment write, never returning an apparent activation.
+test('zero-row client activation rolls back paid status in same transaction',async()=>{
+ const f=fixture({clientMissing:true});
+ await assert.rejects(confirmCardPaymentLockedReview(f.pool,OID),/review-card-client-unavailable/);
+ assert.deepEqual(f.state,{commit:false,rollback:true,paid:false,clientActive:false});
+ assert.equal(f.calls.at(-1),'RELEASE');
+});
+
+test('changed tenant or payment identity inside the lock refuses activation',async()=>{
+ const f=fixture();
+ const original=f.pool.connect;
+ f.pool.connect=async()=>{
+  const tx=await original();
+  const query=tx.query;
+  tx.query=async(sql,args)=>{
+   if(sql.includes('UPDATE public.payments')){
+    assert.deepEqual(args,[PAYMENT,TENANT,OID]);
+    return {rows:[]};
+   }
+   if(sql.includes('FROM public.payments WHERE id='))return {rows:[]};
+   return query(sql,args);
+  };
+  return tx;
+ };
+ await assert.rejects(confirmCardPaymentLockedReview(f.pool,OID),/review-card-payment-changed/);
+ assert.deepEqual(f.state,{commit:false,rollback:true,paid:false,clientActive:false});
+ assert.equal(f.calls.at(-1),'RELEASE');
 });
