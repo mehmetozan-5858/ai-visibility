@@ -11,15 +11,24 @@ before(async()=>{
  await db.exec(`CREATE TABLE clients(id UUID PRIMARY KEY,name TEXT,plan TEXT);
  CREATE TABLE ai_provider_comparisons(id UUID,client_id UUID,query TEXT,results JSONB,created_at TIMESTAMPTZ DEFAULT NOW());
  CREATE TABLE zera_ai_task_attempts(client_id UUID,task_id TEXT,status TEXT);
+ CREATE TABLE client_credentials(client_id UUID,email TEXT,password_hash TEXT);
+ CREATE TABLE client_pilot_access(client_id UUID,revoked_at TIMESTAMPTZ,expires_at TIMESTAMPTZ);
+ CREATE TABLE payments(client_id UUID,status TEXT);
  INSERT INTO clients VALUES('${client}','ZERA Clothing','Pilot'),('${other}','Other fixture','Pilot');
  INSERT INTO ai_provider_comparisons VALUES('${other}','${other}','private fixture','[]',NOW());
- INSERT INTO zera_ai_task_attempts VALUES('${client}','brand-ai-de','provider-failed'),('${other}','brand-ai-tr','stored');`);
+ INSERT INTO zera_ai_task_attempts VALUES('${client}','brand-ai-de','provider-failed'),('${other}','brand-ai-tr','stored');
+ INSERT INTO client_credentials VALUES('${other}','other@fixture.invalid','PRIVATEHASH');
+ INSERT INTO client_pilot_access VALUES('${other}',NULL,NOW()+interval '1 day');
+ INSERT INTO payments VALUES('${client}','pending'),('${client}','pending'),('${other}','paid');`);
  pool={connect:async()=>({query:(sql,args)=>db.query(sql,args),release(){}})};
 });
 after(async()=>{await db.close();await rm(dir,{recursive:true,force:true})});
 test('read-only SQL inspection handles historical missing reasons and excludes another customer',async()=>{
  const result=await readZeraDiagnostics({pool,env:{GEMINI_API_KEY:'PRIVATEKEY',ZERA_GEMINI_FREE_TIER_CONFIRMED:'true'}});
  assert.equal(result.pilot.identified,true);assert.equal(result.storage.comparisonCount,0);
+ assert.deepEqual(result.pilot.linkedAccess,{
+  credentialCount:0,pilotGrantCount:0,activePilotGrantCount:0,pendingPaymentCount:2,paidLabelCount:0
+ });
  assert.equal(result.tasks[0].status,'provider-failed');assert.equal(result.tasks[0].failureReason,null);
  assert.equal(result.tasks[1].status,'not-observed');assert.equal(result.storage.failureReasonColumnAvailable,false);
  assert.equal(result.providerRequests,0);assert.equal(result.readOnly,true);assert.equal(result.storage.insertActuallyTested,false);
@@ -62,4 +71,16 @@ test('storage failures and invalid settings do not expose raw keys, error text o
  const r=await handler(new Request('https://app.example/api/clients/zera-diagnostics'));assert.equal(r.status,503);assert.doesNotMatch(await r.text(),/PRIVATE|connection string|toString/);
  const config=diagnosticSettings({ZERA_GEMINI_MODEL:'secret/invalid?key=PRIVATE',GEMINI_API_KEY:'PRIVATE'});
  assert.equal(config.model,null);assert.equal(config.modelConfigurationValid,false);assert.doesNotMatch(JSON.stringify(config),/PRIVATE/);
+});
+
+test('linked readiness remains unknown without identity or optional tables, never cross-tenant',async()=>{
+ await db.query("UPDATE clients SET name='ZERA Clothing' WHERE id=$1",[other]);
+ try{
+  const r=await readZeraDiagnostics({pool});
+  assert.equal(r.pilot.identified,false);
+  assert.deepEqual(r.pilot.linkedAccess,{
+   credentialCount:null,pilotGrantCount:null,activePilotGrantCount:null,
+   pendingPaymentCount:null,paidLabelCount:null
+  });
+ }finally{await db.query("UPDATE clients SET name='Other fixture' WHERE id=$1",[other])}
 });
