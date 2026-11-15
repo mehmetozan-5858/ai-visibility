@@ -43,9 +43,10 @@ test('real PostgreSQL pilot writer commits grant/revoke and rolls back failed au
 
   // SQL acceptance: a shortened deadline commits, an extension must be denied.
   const originalExpiry=(await db.query('SELECT expires_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows[0].expires_at;
-  const shortened='2026-11-15T15:00:00.000Z';
+  const shortened=new Date(originalExpiry.getTime()-60_000).toISOString();
+  const extended=new Date(originalExpiry.getTime()+60_000).toISOString();
   assert.deepEqual(await changePilotExpiryWithLockReview(db,A,shortened),{changed:true});
-  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,'2030-01-01T00:00:00.000Z'),{changed:false});
+  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,extended),{changed:false});
   const shortState=(await db.query('SELECT expires_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows[0];
   assert.equal(new Date(shortState.expires_at).toISOString(),shortened);
   assert.ok(originalExpiry>shortState.expires_at);
