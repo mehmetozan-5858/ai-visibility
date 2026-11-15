@@ -17,7 +17,7 @@ SELECT
   (SELECT count(*) FROM public.client_pilot_access) AS pilot_access_rows,
   (SELECT count(*) FROM portal_authz_trial.consumed_claims) AS consumed_claim_rows,
   position('client_pilot_access' in pg_get_functiondef(p.oid)) > 0 AS revocation_check_present,
-  position('FOR SHARE' in pg_get_functiondef(p.oid)) > 0 AS lock_check_present
+  position('pg_advisory_xact_lock' in pg_get_functiondef(p.oid)) > 0 AS advisory_lock_source_present
 FROM pg_proc p
 WHERE p.oid='public.portal_trial_one_time_report(uuid,bigint,uuid,text)'::regprocedure;
 
@@ -59,3 +59,31 @@ JOIN pg_namespace n ON n.oid=c.relnamespace
 WHERE NOT t.tgisinternal AND n.nspname='public'
   AND c.relname IN ('clients','client_pilot_access')
 ORDER BY 1,2,3;
+
+-- OWNER / RLS PRECONDITIONS (READ ONLY). Management-role membership is NOT
+-- a substitute for the gateway role's own authenticated connection test.
+SELECT current_user AS inspected_as,
+       pg_get_userbyid(p.proowner) AS report_owner,
+       pg_has_role(current_user,p.proowner,'MEMBER') AS inspector_member_of_owner,
+       p.prosecdef AS security_definer,
+       has_schema_privilege('portal_report_fn_owner_trial_20261115',
+         'portal_authz_trial','USAGE') AS definer_auth_schema_usage,
+       has_table_privilege('portal_report_fn_owner_trial_20261115',
+         'public.client_pilot_access','SELECT') AS definer_pilot_read,
+       has_table_privilege('portal_report_fn_owner_trial_20261115',
+         'portal_authz_trial.signing_keys','SELECT') AS definer_signing_key_read,
+       has_table_privilege('portal_report_fn_owner_trial_20261115',
+         'portal_authz_trial.consumed_claims','INSERT') AS definer_claim_insert
+FROM pg_proc p
+WHERE p.oid='public.portal_trial_one_time_report(uuid,bigint,uuid,text)'::regprocedure;
+
+SELECT c.relname AS object_name,c.relrowsecurity AS rls_enabled,
+       c.relforcerowsecurity AS force_rls,
+       pol.polname AS policy_name,pg_get_expr(pol.polqual,pol.polrelid) AS using_expression
+FROM pg_class c
+JOIN pg_namespace n ON n.oid=c.relnamespace
+LEFT JOIN pg_policy pol ON pol.polrelid=c.oid
+WHERE n.nspname='public' AND c.relname='ai_provider_comparisons'
+ORDER BY pol.polname;
+-- A policy granting the definer USING(true) remains an independent
+-- security review finding, even when a function filters by tenant.
