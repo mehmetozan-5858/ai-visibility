@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Pool} from 'pg';
 import {grantPilotWithLockReview,revokePilotWithLockReview,changePilotExpiryWithLockReview,
- suspendClientWithLockReview}
+ suspendClientWithLockReview,suspendAndRevokeClientWithLockReview}
  from '../lib/portal-pilot-writes-review.mjs';
 
 // Disposable PostgreSQL 16 GitHub CI service ONLY: never use a Neon, customer,
@@ -72,6 +72,27 @@ test('real PostgreSQL pilot writer commits grant/revoke and rolls back failed au
    'expiry change must not revive or edit a revoked pilot');
   assert.deepEqual(await revokePilotWithLockReview(db,A),{revoked:false});
   assert.equal((await db.query("SELECT count(*)::int AS n FROM public.client_activity WHERE client_id=$1 AND event_type='pilot-revoked'",[A])).rows[0].n,1);
+
+  // One atomic, non-destructive retirement on synthetic B; no external
+  // payment, provider, customer, or production resources touched.
+  await db.query(`INSERT INTO public.client_pilot_access
+   (client_id,email,reason,expires_at) VALUES
+   ($1,'b@example.test','Synthetic retirement verification',clock_timestamp()+interval '1 day')`,[B]);
+  assert.deepEqual(await suspendAndRevokeClientWithLockReview(db,B),{
+   accountPresent:true,suspended:true,pilotRevoked:true
+  });
+  const retired=(await db.query(`SELECT c.status,p.revoked_at
+   FROM public.clients c JOIN public.client_pilot_access p ON p.client_id=c.id
+   WHERE c.id=$1`,[B])).rows[0];
+  assert.equal(retired.status,'payment-review');
+  assert.ok(retired.revoked_at);
+  assert.deepEqual(await suspendAndRevokeClientWithLockReview(db,B),{
+   accountPresent:true,suspended:false,pilotRevoked:false
+  },'repeated retirement must never reauthorize pilot access');
+  assert.deepEqual(await suspendAndRevokeClientWithLockReview(db,
+   '33333333-3333-4333-8333-333333333333'),{
+   accountPresent:false,suspended:false,pilotRevoked:false
+  },'missing account must be denied without a new pilot');
  }finally{
   await db.query('DROP TABLE IF EXISTS public.client_activity').catch(()=>{});
   await db.query('DROP TABLE IF EXISTS public.client_pilot_access').catch(()=>{});
