@@ -230,7 +230,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     assert.equal(authorizedResponse.status,200);
     assert.equal(authorizedResponse.headers.get('Cache-Control'),
      'private, no-store, max-age=0');
-    assert.deepEqual(await authorizedResponse.json(),{authorized:true,reports:[]});
+    assert.deepEqual(await authorizedResponse.json(),{authorized:true,evidenceClass:'historical',verifiedProviderEvidence:false,reports:[]});
     const invalidResponse=await http('invalid-signed-customer-session');
     assert.equal(invalidResponse.status,401);
     assert.deepEqual(await invalidResponse.json(),{error:'customer-session-required'});
