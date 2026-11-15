@@ -75,11 +75,11 @@ test('bank confirmation now shares tenant lock, but external settlement writers 
  const end=repositorySource.indexOf('export async function upsertSalesOpportunity',start);
  assert.ok(start>=0&&end>start);
  const body=repositorySource.slice(start,end);
- assert.match(body,/const tx=await pool\\.connect\\(\\)/);
+ assert.match(body,/const tx=await pool\.connect\(\)/);
  assert.match(body,/BEGIN ISOLATION LEVEL READ COMMITTED/);
- assert.match(body,/acquirePilotAdvisoryLockReview\\(tx,bound\\.clientId\\)/);
- assert.match(body,/await tx\\.query\\(\"COMMIT\"\\)/);
- assert.match(body,/await tx\\.query\\(\"ROLLBACK\"\\)/);
+ assert.match(body,/acquirePilotAdvisoryLockReview\(tx,bound\.clientId\)/);
+ assert.match(body,/await tx\.query\(\"COMMIT\"\)/);
+ assert.match(body,/await tx\.query\(\"ROLLBACK\"\)/);
  const audit=auditPortalEntitlementWriterCoverage({
   pilotSource:await read('lib/pilot-access.js'),repositorySource,
   reviewSource:await read('lib/portal-pilot-writes-review.mjs')
