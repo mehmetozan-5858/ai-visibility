@@ -99,6 +99,26 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
    'same-name fake HMAC cannot create report signing or claim artifacts');
   await db.query('DROP FUNCTION portal_authz.hmac(bytea,bytea,text)');
   await db.query('CREATE EXTENSION pgcrypto WITH SCHEMA portal_authz');
+  // The real pgcrypto HMAC exists, but the NOLOGIN function owner must also
+  // have EXECUTE. A genuine extension without that privilege is insufficient.
+  await db.query('REVOKE EXECUTE ON FUNCTION portal_authz.hmac(bytea,bytea,text) FROM PUBLIC');
+  const deniedCryptoPrivilege=(await db.query(
+   "SELECT has_function_privilege($1, 'portal_authz.hmac(bytea,bytea,text)', 'EXECUTE') AS allowed",
+   [ownerName]
+  )).rows[0].allowed;
+  assert.equal(deniedCryptoPrivilege,false,
+   'the fixture must establish missing owner HMAC EXECUTE before negative test');
+  await assert.rejects(db.query(migration),error=>
+   error.message.includes('review-report-hmac-placement-unverified'));
+  await db.query('ROLLBACK');
+  const deniedCryptoArtifacts=(await db.query(
+   "SELECT to_regclass('portal_authz.signing_keys') IS NOT NULL AS keys_exist, "+
+   "to_regclass('portal_authz.consumed_claims') IS NOT NULL AS claims_exist, "+
+   "to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
+  )).rows[0];
+  assert.deepEqual(deniedCryptoArtifacts,{keys_exist:false,claims_exist:false,rpc_exists:false},
+   'missing owner EXECUTE must not create any signed-report artifacts');
+  await db.query('GRANT EXECUTE ON FUNCTION portal_authz.hmac(bytea,bytea,text) TO '+ownerName);
   // signing_keys/consumed_claims tables are made by the migration below;
   // grant their minimum required privileges only after it has completed.
 
