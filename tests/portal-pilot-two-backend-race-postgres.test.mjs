@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Pool} from 'pg';
+import {randomUUID} from 'node:crypto';
 import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 
 // Live two-backend contention only against the disposable PostgreSQL CI
@@ -15,8 +16,9 @@ if(url){
   target.pathname!=='/fixture'||decodeURIComponent(target.username)!=='fixture')
   throw Error('disposable-ci-postgres-only');
 }
-const A='11111111-1111-4111-8111-111111111111';
-const B='22222222-2222-4222-8222-222222222222';
+// Avoid shared advisory-lock keys when GitHub runs multiple CI tests in parallel.
+const A=randomUUID();
+const B=randomUUID();
 const fixture='ci_portal_pilot_lock_fixture';
 
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
