@@ -428,6 +428,54 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   }
   await db.query("UPDATE public.clients SET status='active' WHERE id=$1",[A]);
 
+  // Reverse direction: once an authorized signed report obtains its tenant
+  // lock, an account-state writer must wait until the report transaction ends.
+  // This is a disposable PostgreSQL lock protocol test, not payment execution.
+  const reportFirst=await db.connect(),accountSecond=await db.connect(),
+   reverseObserver=await db.connect();
+  let holdingReport=false,holdingAccount=false;
+  try{
+   await reportFirst.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+   holdingReport=true;
+   const reverseNonce=randomUUID(),reverseExpiry=Math.floor(Date.now()/1000)+60;
+   const reverseReport=(await reportFirst.query(rpc,[A,reverseExpiry,reverseNonce,
+    sign(A,reverseExpiry,reverseNonce)])).rows;
+   assert.equal(reverseReport.length,1,
+    'report must have its tenant lock before the account writer starts');
+   await accountSecond.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+   holdingAccount=true;
+   await accountSecond.query("SET LOCAL lock_timeout = '5000ms'");
+   const writerPid=(await accountSecond.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+   const pendingAccount=(async()=>{
+    await accountSecond.query(PILOT_LOCK_SQL,[A]);
+    await accountSecond.query("UPDATE public.clients SET status='payment-review' WHERE id=$1",[A]);
+   })();
+   pendingAccount.catch(()=>{});
+   let writerBlocked=false;
+   for(let i=0;i<120;i++){
+    const state=await reverseObserver.query(
+     'SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',[writerPid]);
+    if(state.rows[0]?.wait_event_type==='Lock'){writerBlocked=true;break}
+    await wait(25);
+   }
+   assert.equal(writerBlocked,true,
+    'account-state writer must wait behind in-flight authorized report');
+   assert.equal((await reverseObserver.query(
+    'SELECT status FROM public.clients WHERE id=$1',[A])).rows[0].status,
+    'active','uncommitted account change must remain invisible');
+   await reportFirst.query('COMMIT');holdingReport=false;
+   await pendingAccount;
+   await accountSecond.query('COMMIT');holdingAccount=false;
+   assert.equal((await reverseObserver.query(
+    'SELECT status FROM public.clients WHERE id=$1',[A])).rows[0].status,
+    'payment-review','writer must commit only after signed report finishes');
+  }finally{
+   if(holdingReport)await reportFirst.query('ROLLBACK').catch(()=>{});
+   if(holdingAccount)await accountSecond.query('ROLLBACK').catch(()=>{});
+   reportFirst.release();accountSecond.release();reverseObserver.release();
+  }
+  await db.query("UPDATE public.clients SET status='active' WHERE id=$1",[A]);
+
   // New active pilot, but writer revokes it while the signed report waits:
   // the report must take the same tenant advisory lock and then see revocation.
   await db.query("UPDATE public.client_pilot_access SET revoked_at=NULL WHERE client_id=$1",[A]);
