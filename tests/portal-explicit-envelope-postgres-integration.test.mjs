@@ -146,7 +146,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   }
  }finally{
   if(db)await db.end().catch(()=>{});
-  if(created)await admin.query('DROP DATABASE '+dbName+' WITH (FORCE)').catch(()=>{});
+  if(created)await admin.query('DROP DATABASE '+dbName).catch(()=>{});
   if(roleCreated)await admin.query('DROP ROLE IF EXISTS '+roleName).catch(()=>{});
   await admin.end();
  }
