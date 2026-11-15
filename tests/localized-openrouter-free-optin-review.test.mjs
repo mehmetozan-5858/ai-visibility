@@ -39,7 +39,13 @@ test('only explicitly enabled free OpenRouter path returns labeled synthetic pro
   OPENROUTER_FREE_MODEL:'openrouter/free'},async()=>{
   let calls=0;
   globalThis.fetch=async (url,opts)=>{
-   calls++;assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');
+   calls++;
+   if(url==='https://openrouter.ai/api/v1/models'){
+    assert.equal(opts.method,'GET');
+    return {ok:true,json:async()=>({data:[{id:'openrouter/free',
+     pricing:{prompt:'0',completion:'0',request:'0'}}]})};
+   }
+   assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');
    assert.equal(JSON.parse(opts.body).model,'openrouter/free');
    return {ok:true,json:async()=>({
     id:'synthetic-completion-only',model:'synthetic/model:free',
@@ -48,7 +54,7 @@ test('only explicitly enabled free OpenRouter path returns labeled synthetic pro
    })};
   };
   const response=await runLocalizedProviderChecks(business,'tr');
-  assert.equal(calls,1);
+  assert.equal(calls,2);
   assert.equal(response.results.length,1);
   assert.equal(response.results[0].provider,'OpenRouter');
   assert.equal(response.results[0].score,61);
