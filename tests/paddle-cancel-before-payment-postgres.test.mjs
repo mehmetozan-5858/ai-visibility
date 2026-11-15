@@ -16,7 +16,7 @@ test('delayed completed payment cannot undo earlier cancellation for same subscr
  await db.query("INSERT INTO payments(id,client_id,status,currency,plan,setup_amount,monthly_amount) VALUES($1,$2,'pending','EUR','pilot',0,49)",[payment,client]);
  const tx={query:(sql,args=[])=>db.query(sql,args),release(){}};
  const pool={query:tx.query,connect:async()=>tx};
- const record=new Function('databasePool','getDatabaseUrl','randomUUID',source+';return recordPaddleLiveEvent;')(()=>pool,()=> 'postgres://offline-only',randomUUID);
+ const record=new Function('databasePool','getDatabaseUrl','randomUUID','acquirePilotAdvisoryLockReview',source+';return recordPaddleLiveEvent;')(()=>pool,()=> 'postgres://offline-only',randomUUID,async()=>{});
  const evt=(id,type,data,time)=>({event_id:id,event_type:type,occurred_at:time,data});
  await record(evt('evt_createdcancel1','subscription.created',{id:sub,status:'active',transaction_id:txn},'2026-11-01T08:00:00Z'));
  await record(evt('evt_canceledfirst1','subscription.canceled',{id:sub,status:'canceled'},'2026-11-01T08:01:00Z'));
