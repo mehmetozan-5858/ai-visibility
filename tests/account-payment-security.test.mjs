@@ -60,7 +60,7 @@ globalThis.__paymentTest={
  }
 };
 const {confirmPayment}=await import('data:text/javascript;base64,'+Buffer.from(
- 'const {withDb,acquirePilotAdvisoryLockReview}=globalThis.__paymentTest;\\n'+confirmSource
+ 'const {withDb,acquirePilotAdvisoryLockReview}=globalThis.__paymentTest;\n'+confirmSource
 ).toString('base64'));
 test('one-time payment confirmation preserves invoice amounts and activates atomically under tenant lock',async()=>{
  const row=await confirmPayment('payment',{setupAmount:0,monthlyAmount:0});
