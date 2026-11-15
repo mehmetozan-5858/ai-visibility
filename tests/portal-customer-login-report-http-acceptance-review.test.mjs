@@ -1,0 +1,103 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {hashPassword,verifyHash} from '../lib/client-password-verifier.mjs';
+import {createClientToken} from '../lib/admin-auth.js';
+import {createEnvelopeGatewayReview} from '../lib/portal-envelope-gateway-review.mjs';
+import {createPortalReportHttpReview} from '../lib/portal-report-http-review.mjs';
+
+// REVIEW ONLY. A fully synthetic session-to-report HTTP acceptance seam.
+// No real password, Neon, Paddle, customer record or production route.
+const A='11111111-1111-4111-8111-111111111111';
+const B='22222222-2222-4222-8222-222222222222';
+const ROLE='portal_gateway_reader_synthetic';
+const role={name:ROLE,login:true,superuser:false,bypassRls:false,
+ createDb:false,createRole:false,replication:false,schemaUsage:true,
+ schemaCreate:false,envelopeExecute:true,rawSelect:false,
+ credentialSelect:false,paymentSelect:false,settlementSelect:false,
+ privateSchemaUsage:false};
+async function withSyntheticEnv(fn){
+ const keys=['AUTH_SECRET','PORTAL_REPORT_CLAIM_SECRET','PORTAL_REPORT_READER_ROLE'];
+ const old=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
+ process.env.AUTH_SECRET='synthetic-existing-login-secret-2026';
+ process.env.PORTAL_REPORT_CLAIM_SECRET='synthetic-separated-claim-secret-at-least-32-characters';
+ process.env.PORTAL_REPORT_READER_ROLE=ROLE;
+ try{return await fn()}finally{
+  for(const key of keys){
+   if(old[key]===undefined)delete process.env[key];
+   else process.env[key]=old[key];
+  }
+ }
+}
+function fixture({entitled=true,reports=[],roleRow=role}={}){
+ const calls=[];
+ let connections=0,releases=0;
+ const reportPool={async connect(){
+  connections++;
+  return {
+   async query(sql,args){
+    calls.push(sql);
+    if(sql.includes('current_user AS "name"'))return {rows:[roleRow]};
+    if(sql.includes('FROM public.portal_verified_one_time_envelope_review(')){
+     assert.equal(args[0],A,'signed claim may only target session tenant');
+     return {rows:[{authorized:true,tenantId:A,reports}]};
+    }
+    return {rows:[]};
+   },
+   release(){releases++}
+  };
+ }};
+ const entitlementAuthority=async tenant=>({
+  tenantId:tenant,active:entitled,source:'verified-pilot',checkedAt:Date.now()
+ });
+ return {http:createPortalReportHttpReview(createEnvelopeGatewayReview({
+  reportPool,entitlementAuthority
+ })),calls,get connections(){return connections},get releases(){return releases}};
+}
+test('unchanged existing password yields a private authorized tenant report',async()=>{
+ await withSyntheticEnv(async()=>{
+  const password='synthetic-existing-passphrase-do-not-reset';
+  const stored=hashPassword(password);
+  assert.equal(verifyHash(password,stored),true);
+  assert.equal(verifyHash(password+'wrong',stored),false);
+  assert.equal(verifyHash(password,stored),true);
+  const token=await createClientToken(A);
+  const f=fixture({reports:[{clientId:A,query:'synthetic query',results:{},createdAt:'2026-11-15T00:00:00Z'}]});
+  const response=await f.http(token);
+  assert.equal(response.status,200);
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
+  assert.deepEqual((await response.json()).reports.map(x=>x.clientId),[A]);
+  assert.equal(f.calls.at(-1),'COMMIT');
+  assert.equal(f.connections,1);
+  assert.equal(f.releases,1);
+ });
+});
+test('unauthenticated or unentitled customer cannot open report SQL',async()=>{
+ await withSyntheticEnv(async()=>{
+  const f=fixture({entitled:false});
+  assert.equal((await f.http('')).status,401);
+  assert.equal((await f.http('invalid-cookie')).status,401);
+  assert.equal((await f.http(await createClientToken(A))).status,403);
+  assert.equal(f.connections,0);
+ });
+});
+test('different-tenant response is rejected, rolled back and never cached',async()=>{
+ await withSyntheticEnv(async()=>{
+  const f=fixture({reports:[{clientId:B,query:'foreign',results:{}}]});
+  const response=await f.http(await createClientToken(A));
+  assert.equal(response.status,503);
+  assert.deepEqual(await response.json(),{error:'verified-report-unavailable'});
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
+  assert.equal(f.calls.at(-1),'ROLLBACK');
+  assert.equal(f.releases,1);
+ });
+});
+test('unsafe SQL reader role never reaches report RPC',async()=>{
+ await withSyntheticEnv(async()=>{
+  const f=fixture({roleRow:{...role,rawSelect:true}});
+  const response=await f.http(await createClientToken(A));
+  assert.equal(response.status,503);
+  assert.equal(f.calls.some(x=>x.includes('FROM public.portal_verified_one_time_envelope_review(')),false);
+  assert.equal(f.calls.at(-1),'ROLLBACK');
+  assert.equal(f.releases,1);
+ });
+});
