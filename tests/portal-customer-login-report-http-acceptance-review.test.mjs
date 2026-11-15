@@ -13,7 +13,9 @@ const B='22222222-2222-4222-8222-222222222222';
 const ROLE='portal_gateway_reader_synthetic';
 const role={name:ROLE,login:true,superuser:false,bypassRls:false,
  createDb:false,createRole:false,replication:false,schemaUsage:true,
- schemaCreate:false,databaseCreate:false,envelopeExecute:true,rawSelect:false,
+ schemaCreate:false,databaseCreate:false,envelopeExecute:true,
+ legacyReportExecute:false,legacyOneTimeExecute:false,
+ oldSignedReportExecute:false,oldAdvisoryReportExecute:false,rawSelect:false,
  credentialSelect:false,paymentSelect:false,settlementSelect:false,
  privateSchemaUsage:false};
 async function withSyntheticEnv(fn){
