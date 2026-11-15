@@ -6,6 +6,12 @@
 --
 -- Purpose: fail closed when a pilot has been revoked, expired or not granted.
 -- Keep the preexisting HMAC, single-use claim and active-account checks.
+-- Required least-privilege grant: the SECURITY DEFINER owner currently has
+-- no direct SELECT on client_pilot_access. Without this, the guard fails with
+-- a permission error. Apply ONLY on the isolated branch after review.
+GRANT SELECT (client_id, revoked_at, expires_at)
+ON public.client_pilot_access TO portal_report_fn_owner_trial_20261115;
+
 CREATE OR REPLACE FUNCTION public.portal_trial_one_time_report(
   p_tenant uuid, p_expires bigint, p_claim_id uuid, p_mac text
 )
