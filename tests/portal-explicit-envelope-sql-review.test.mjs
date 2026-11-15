@@ -52,3 +52,15 @@ test('SECURITY DEFINER migration cannot commit under privileged migration runner
  assert.match(s,/ALTER FUNCTION public\.portal_verified_one_time_envelope_review\(UUID,BIGINT,UUID,TEXT\)/);
  assert.doesNotMatch(s,/^\s*(?:CREATE|ALTER)\s+ROLE\s+portal_report_fn_owner/mi);
 });
+
+test('migration refuses missing private HMAC placement before changing schema',async()=>{
+ const s=await load();
+ const hmacCheck=s.indexOf("to_regprocedure('portal_authz.hmac(bytea,bytea,text)')");
+ const firstDdl=s.indexOf('CREATE SCHEMA IF NOT EXISTS portal_authz');
+ const ownerCheck=s.indexOf("rolname='portal_report_fn_owner'");
+ assert.ok(ownerCheck>0&&hmacCheck>ownerCheck&&hmacCheck<firstDdl);
+ assert.match(s,/RAISE EXCEPTION 'review-report-hmac-placement-unverified'/);
+ assert.doesNotMatch(s,/^\s*CREATE\s+EXTENSION|^\s*ALTER\s+EXTENSION/mi);
+ assert.doesNotMatch(s,/to_regprocedure\('portal_authz_trial\.hmac/,
+  'trial-only HMAC cannot masquerade as proposed private function placement');
+});
