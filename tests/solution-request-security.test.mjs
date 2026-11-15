@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
+import {revokePilotWithLockReview} from '../lib/portal-pilot-writes-review.mjs';
+import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 const findings=await fs.readFile(new URL('../lib/findings.js',import.meta.url),'utf8');
 const requestSource=findings.slice(findings.indexOf('export async function requestSolution('),findings.indexOf('export async function updateFindingOffer')).replace('export ','');
 function fixture({findingStatus='open',offerStatus='draft',missing=false,failOffer=false}={}){
@@ -17,11 +19,36 @@ test('free pilot can read findings but cannot initiate implementation through AP
  assert.equal((await api.POST(new Request('https://example.com/api',{method:'POST',body:JSON.stringify({findingId:'finding'})}))).status,403);assert.equal(writes,0);
 });
 const pilotSource=(await fs.readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8')).replace(/^import .*;$/gm,'').replace(/export /g,'');
-test('pilot revocation and its audit commit together; repeats produce no second audit',async()=>{
+test('pilot revocation uses tenant advisory lock and audit commits atomically',async()=>{
+ const tenant='11111111-1111-4111-8111-111111111111';
  for(const mode of ['ok','already-revoked','audit-failure']){
- const calls=[],tx={release(){calls.push('release')},async query(sql){calls.push(sql);if(sql.startsWith('UPDATE client_pilot_access'))return {rows:mode==='already-revoked'?[]:[{expires_at:'2026-11-01'}]};if(sql.startsWith('INSERT INTO client_activity')&&mode==='audit-failure')throw Error('audit-failed');return {rows:[]}}};
- const revoke=new Function('crypto','databasePool','getDatabaseUrl','initializeSchema',pilotSource+';return revokePilot')(crypto,()=>({connect:async()=>tx}),()=> 'db',async()=>{});
- if(mode==='audit-failure'){await assert.rejects(revoke('client'),/audit-failed/);assert.ok(calls.includes('ROLLBACK'));assert.ok(!calls.includes('COMMIT'))}else{assert.equal((await revoke('client')).revoked,mode==='ok');assert.ok(calls.includes('COMMIT'));assert.equal(calls.some(x=>x.startsWith('INSERT INTO client_activity')),mode==='ok')}
- assert.equal(calls.at(-1),'release');
+  const calls=[];
+  const tx={release(){calls.push('release')},async query(sql,args=[]){
+   calls.push(sql);
+   if(sql.startsWith('UPDATE public.client_pilot_access'))
+    return {rows:mode==='already-revoked'?[]:[{expires_at:'2026-11-01'}]};
+   if(sql.includes('INSERT INTO public.client_activity')&&mode==='audit-failure')
+    throw Error('audit-failed');
+   return {rows:[]};
+  }};
+  const revoke=new Function('crypto','databasePool','getDatabaseUrl','initializeSchema',
+   'revokePilotWithLockReview','grantPilotWithLockReview',
+   pilotSource+';return revokePilot')(
+    crypto,()=>({connect:async()=>tx}),()=> 'db',async()=>{},
+    revokePilotWithLockReview,async()=>{throw Error('grant not expected')}
+   );
+  if(mode==='audit-failure'){
+   await assert.rejects(revoke(tenant),/audit-failed/);
+   assert.ok(calls.includes('ROLLBACK'));
+   assert.equal(calls.includes('COMMIT'),false);
+  }else{
+   assert.equal((await revoke(tenant)).revoked,mode==='ok');
+   assert.ok(calls.includes('COMMIT'));
+   assert.equal(calls.some(x=>x.includes('INSERT INTO public.client_activity')),mode==='ok');
+  }
+  const pos=calls.indexOf(PILOT_LOCK_SQL);
+  assert.ok(pos>=0,'lock required before mutation');
+  assert.ok(calls.indexOf('UPDATE public.client_pilot_access\n   SET revoked_at=clock_timestamp()')>pos);
+  assert.equal(calls.at(-1),'release');
  }
 });
