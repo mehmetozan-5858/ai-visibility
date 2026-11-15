@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 
-const source=(await readFile(new URL('../lib/answer-evidence-store.js',import.meta.url),'utf8'))
- .replace(/^import .*;\s*$/gm,'').replace(/export /g,'');
+const whole=(await readFile(new URL('../lib/answer-evidence-store.js',import.meta.url),'utf8'));
+const marker='export async function measureProspectAnswerEvidence(';
+assert.equal(whole.split(marker).length,2,'legacy helper must exist exactly once');
+const source='async function measureProspectAnswerEvidence('+whole.split(marker)[1];
 function helper(env){
  const state={providers:0,measurements:0};
  const providerList=()=>{state.providers++;return ['Perplexity']};
