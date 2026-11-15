@@ -79,6 +79,22 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   const call=async(tenant,{nonce=randomUUID(),mac,expires=Math.floor(Date.now()/1000)+60}={})=>
    (await db.query(rpc,[tenant,expires,nonce,mac??sign(tenant,expires,nonce)])).rows;
 
+  // Execute the actual SECURITY DEFINER RPC as the narrowly privileged role.
+  // This is more than a metadata check: the role cannot SELECT raw report rows.
+  const restricted=await db.connect();
+  try{
+   await restricted.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+   await restricted.query('SET LOCAL ROLE '+roleName);
+   const restrictedNonce=randomUUID(),restrictedExpiry=Math.floor(Date.now()/1000)+60;
+   const limitedResult=await restricted.query(rpc,
+    [A,restrictedExpiry,restrictedNonce,sign(A,restrictedExpiry,restrictedNonce)]);
+   assert.deepEqual(decodeAuthorizedReportEnvelopeReview(limitedResult.rows,A),
+    {authorized:true,reports:[]});
+   await restricted.query('COMMIT');
+  }finally{
+   await restricted.query('ROLLBACK').catch(()=>{});
+   restricted.release();
+  }
   const empty=await call(A);
   assert.deepEqual(decodeAuthorizedReportEnvelopeReview(empty,A),{authorized:true,reports:[]});
   await db.query("INSERT INTO public.ai_provider_comparisons(client_id,query,results) VALUES($1,'Synthetic report A','[]'::jsonb)",[A]);
