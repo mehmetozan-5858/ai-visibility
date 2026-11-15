@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {hashPassword,verifyHash} from '../lib/client-credentials.js';
+import {hashPassword,verifyHash} from '../lib/client-password-verifier.mjs';
 import {createClientToken,verifyClientToken} from '../lib/admin-auth.js';
 
 // Synthetic-only acceptance: never change any real customer password/hash.
