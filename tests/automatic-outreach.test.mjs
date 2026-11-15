@@ -7,7 +7,7 @@ import {evaluateOutreachPool} from '../lib/outreach-selection.js';
 import {publicAddress,contactPageUrl,pageContainsAddress} from '../lib/contact-page-verification.js';
 const source=(await readFile(new URL('../lib/automatic-outreach.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
 const {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach}=new Function('recipientScopeIssue','evaluateOutreachPool','permissionEnquiry',source+'\nreturn {outreachPolicy,automaticRecipientIssue,permissionMessage,runAutomaticOutreach};')(recipientScopeIssue,evaluateOutreachPool,permissionEnquiry);
-const prospect=(id='one')=>({id,name:'Example Business '+id,country:'Germany',domain:id+'.business.de',contactSourceUrl:'https://'+id+'.business.de/contact',contactStatus:'verified',contactEmail:'info@'+id+'.business.de',communicationStatus:'ready-for-review',qualificationScore:80,outreachStatus:'drafted',proposalStatus:'drafted',scanScore:40,scanProvider:'Perplexity',scanFindings:['Product descriptions need clear structured markup.'],scanRecommendations:['Add structured product schema and buyer-specific FAQ.']});
+const prospect=(id='one')=>({id,name:'Example Business '+id,country:'Germany',domain:id+'.business.de',contactSourceUrl:'https://'+id+'.business.de/contact',contactStatus:'verified',lawfulBasisVerified:true,contactEmail:'info@'+id+'.business.de',communicationStatus:'ready-for-review',qualificationScore:80,outreachStatus:'drafted',proposalStatus:'drafted',scanScore:40,scanProvider:'Perplexity',scanFindings:['Product descriptions need clear structured markup.'],scanRecommendations:['Add structured product schema and buyer-specific FAQ.']});
 function fixture({today=0,hour=0,locked=true,blocked='',verify=true,rows=[prospect()],follow=[]}={}){
  const state={sends:[],reports:[],unlocked:false,released:false,lockSql:[]};const client={query:async sql=>{state.lockSql.push(sql);if(sql==='ROLLBACK')state.unlocked=true;return {rows:[{acquired:locked}]}},release:()=>{state.released=true}};
  const pool={connect:async()=>client,query:async(sql,p)=>{if(sql.includes('count(*)'))return{rows:[{total:sql.includes("date_trunc('hour'")?hour:today}]};if(sql.includes('INSERT INTO outreach_cycle_reports'))state.reports.push(JSON.parse(p[0]));return{rows:[]}}};
@@ -16,6 +16,17 @@ function fixture({today=0,hour=0,locked=true,blocked='',verify=true,rows=[prospe
 test('recipient must match official source and email domain',()=>{
  assert.equal(automaticRecipientIssue(prospect()),'');
  for(const x of [{...prospect(),contactEmail:'person@gmail.com'},{...prospect(),contactSourceUrl:'https://directory.org/business'},{...prospect(),replyStatus:'replied'},{...prospect(),clientId:'customer'},{...prospect(),name:'Berlin-Klinik'}])assert.ok(automaticRecipientIssue(x));
+});
+test('missing lawful basis and stale follow-up never call external verification or sender',async()=>{
+ for(const data of [
+  {rows:[{...prospect(),lawfulBasisVerified:false}],follow:[]},
+  {rows:[],follow:[{...prospect(),communicationStatus:'sent',lawfulBasisVerified:false,followUpCount:0,followUpAt:'2020-01-01'}]},
+  {rows:[],follow:[{...prospect(),communicationStatus:'ready-for-review',followUpCount:0,followUpAt:'2020-01-01'}]},
+ ]){
+  const f=fixture(data);let verifies=0;f.deps.verify=async()=>{verifies++;return true};
+  const report=await runAutomaticOutreach({deps:f.deps});
+  assert.equal(report.sent,0);assert.equal(verifies,0);assert.equal(f.state.sends.length,0);
+ }
 });
 test('page verification rejects private destinations and address substrings',()=>{
  for(const ip of ['127.0.0.1','169.254.169.254','10.1.1.1','192.168.0.1','::1'])assert.equal(publicAddress(ip),false);
@@ -67,5 +78,21 @@ test('automatic route requires admin for manual runs and scheduler credential fo
  const api=new Function('requireAdmin','enforceSameOrigin','runAutomaticOutreach','automaticOutreachStatus','process',raw+'\nreturn {GET,POST};')(async()=>Response.json({error:'unauthorized'},{status:401}),()=>null,async()=>{calls++;return{ok:true}},async()=>({}),{env:{AUTO_HUNT_SECRET:'secret'}});
  assert.equal((await api.POST(new Request('https://example.org/api/outreach-cycle',{method:'POST',body:'{}'}))).status,401);
  assert.equal((await api.GET(new Request('https://example.org/api/outreach-cycle'))).status,401);assert.equal(calls,0);
- assert.equal((await api.GET(new Request('https://example.org/api/outreach-cycle',{headers:{authorization:'Bearer secret'}}))).status,200);assert.equal(calls,1);
+ assert.equal((await api.GET(new Request('https://example.org/api/outreach-cycle',{headers:{authorization:'Bearer secret'}}))).status,200);assert.equal(calls,0);
+});
+
+test('authorized outreach status reads never send and manual writes require explicit confirmSend',async()=>{
+ const raw=(await readFile(new URL('../app/api/outreach-cycle/route.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
+ const calls=[];
+ const api=new Function('requireAdmin','enforceSameOrigin','runAutomaticOutreach','automaticOutreachStatus','process',raw+'\nreturn {GET,POST};')(
+  async()=>null,()=>null,async x=>{calls.push(x);return{ok:true}},async()=>({policy:{enabled:true}}),{env:{CRON_SECRET:'secret'}});
+ const base='https://example.org/api/outreach-cycle';
+ assert.equal((await api.GET(new Request(base,{headers:{authorization:'Bearer secret'}}))).status,200);
+ assert.equal(calls.length,0);
+ for(const body of [{},{dryRun:false},{confirmSend:true},{dryRun:true,confirmSend:true}]){
+  assert.equal((await api.POST(new Request(base,{method:'POST',body:JSON.stringify(body)}))).status,200);
+ }
+ assert.deepEqual(calls.map(x=>x.dryRun),[true,true,true,true]);
+ assert.equal((await api.POST(new Request(base,{method:'POST',body:JSON.stringify({confirmSend:true,dryRun:false})}))).status,200);
+ assert.equal(calls.at(-1).dryRun,false);
 });
