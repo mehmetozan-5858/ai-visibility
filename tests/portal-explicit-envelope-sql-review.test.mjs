@@ -37,8 +37,9 @@ test('SECURITY DEFINER migration cannot commit under privileged migration runner
  const roleGate=s.indexOf("rolname='portal_report_fn_owner'");
  const alter=s.indexOf('OWNER TO portal_report_fn_owner;');
  const commit=s.lastIndexOf('COMMIT;');
- assert.ok(create>=0&&roleGate>create&&alter>roleGate&&commit>alter,
-  'narrow owner preflight and ownership transfer must precede COMMIT');
+ const firstDdl=s.indexOf('CREATE SCHEMA IF NOT EXISTS portal_authz');
+ assert.ok(roleGate>0&&roleGate<firstDdl&&firstDdl<create&&create<alter&&alter<commit,
+  'narrow owner preflight must run before ANY DDL; transfer must precede COMMIT');
  for(const flag of ['rolcanlogin=false','rolsuper=false','rolbypassrls=false',
   'rolcreatedb=false','rolcreaterole=false','rolreplication=false'])
   assert.ok(s.includes(flag),'owner privilege guard missing: '+flag);
