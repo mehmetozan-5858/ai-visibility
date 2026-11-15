@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Pool} from 'pg';
-import {grantPilotWithLockReview,revokePilotWithLockReview}
+import {grantPilotWithLockReview,revokePilotWithLockReview,changePilotExpiryWithLockReview}
  from '../lib/portal-pilot-writes-review.mjs';
 
 // Disposable PostgreSQL 16 GitHub CI service ONLY: never use a Neon, customer,
@@ -41,10 +41,21 @@ test('real PostgreSQL pilot writer commits grant/revoke and rolls back failed au
   assert.equal(state[0].valid,true);
   assert.equal((await db.query("SELECT count(*)::int AS n FROM public.client_activity WHERE client_id=$1 AND event_type='pilot-granted'",[A])).rows[0].n,1);
 
+  // SQL acceptance: a shortened deadline commits, an extension must be denied.
+  const originalExpiry=(await db.query('SELECT expires_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows[0].expires_at;
+  const shortened='2026-11-15T15:00:00.000Z';
+  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,shortened),{changed:true});
+  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,'2030-01-01T00:00:00.000Z'),{changed:false});
+  const shortState=(await db.query('SELECT expires_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows[0];
+  assert.equal(new Date(shortState.expires_at).toISOString(),shortened);
+  assert.ok(originalExpiry>shortState.expires_at);
+
   assert.deepEqual(await revokePilotWithLockReview(db,A),{revoked:true});
   state=(await db.query('SELECT revoked_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows;
   assert.ok(state[0].revoked_at,'revoked pilot must be marked in committed SQL');
   assert.equal((await db.query("SELECT count(*)::int AS n FROM public.client_activity WHERE client_id=$1 AND event_type='pilot-revoked'",[A])).rows[0].n,1);
+  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,'2026-11-14T15:00:00.000Z'),{changed:false},
+   'expiry change must not revive or edit a revoked pilot');
   assert.deepEqual(await revokePilotWithLockReview(db,A),{revoked:false});
   assert.equal((await db.query("SELECT count(*)::int AS n FROM public.client_activity WHERE client_id=$1 AND event_type='pilot-revoked'",[A])).rows[0].n,1);
  }finally{
