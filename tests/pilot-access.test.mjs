@@ -35,7 +35,7 @@ test('pilot grant and revoke take the identical tenant lock before row DML',asyn
  assert.equal(revokeLock,1);
  assert.ok(revokeWrite>revokeLock);
  assert.equal(queries.at(-1),'COMMIT');
- assert.equal(queries[revokeLock], 'SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(\'portal-pilot-v1:\' || $1::uuid::text, 0))');
+ assert.equal(queries[revokeLock], 'SELECT pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(\'portal-pilot-lock-v1:\' || $1::uuid::text, 0))');
 });
 
 test('failed tenant lock rolls back without writing pilot grant or revoke',async()=>{
