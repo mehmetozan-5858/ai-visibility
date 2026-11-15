@@ -6,6 +6,15 @@ import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 // Live two-backend contention only against the disposable PostgreSQL CI
 // service. No Neon, production/customer URLs, secrets or external DB writes.
 const url=process.env.PORTAL_LOCK_RACE_DATABASE_URL;
+// Only the disposable local GitHub CI PostgreSQL service is eligible.
+// A misconfigured Neon/customer/production URL must fail before any SQL.
+if(url){
+ const target=new URL(url);
+ if(!['postgres:','postgresql:'].includes(target.protocol)||
+  !['localhost','127.0.0.1'].includes(target.hostname)||
+  target.pathname!=='/fixture'||decodeURIComponent(target.username)!=='fixture')
+  throw Error('disposable-ci-postgres-only');
+}
 const A='11111111-1111-4111-8111-111111111111';
 const B='22222222-2222-4222-8222-222222222222';
 const fixture='ci_portal_pilot_lock_fixture';
