@@ -23,8 +23,8 @@ test('signed completed event cannot revive refunded payment or client access',as
    release(){calls.push('release')}
  };
  const pool={query:sql=>tx.query(sql),connect:async()=>tx};
- const record=new Function('databasePool','getDatabaseUrl','randomUUID',source+';return recordPaddleLiveEvent;')(
-   ()=>pool,()=> 'postgres://fixture-only',randomUUID
+ const record=new Function('databasePool','getDatabaseUrl','randomUUID','acquirePilotAdvisoryLockReview',source+';return recordPaddleLiveEvent;')(
+   ()=>pool,()=> 'postgres://fixture-only',randomUUID,async()=>{}
  );
  const response=await record({event_id:'evt_testabc',event_type:'transaction.completed',
    occurred_at:'2026-11-01T00:00:00Z',
