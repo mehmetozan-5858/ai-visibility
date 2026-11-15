@@ -6,6 +6,15 @@ export default function ZeraCustomerDetail(){
  const [run,setRun]=useState({ready:false,loading:true,busy:false,used:false,message:""});
  const [preflight,setPreflight]=useState({busy:false,message:''});
  const [payment,setPayment]=useState({busy:false,url:'',error:''});
+ const [audit,setAudit]=useState({loading:true,data:null,error:''});
+ useEffect(()=>{let alive=true;(async()=>{try{
+  const response=await fetch('/api/clients/zera-diagnostics',{cache:'no-store',credentials:'same-origin'});
+  if(!response.ok)throw Error('Salt okunur pilot kabul kontrolü erişilemedi.');
+  const data=await response.json();
+  if(alive)setAudit({loading:false,data,error:''});
+ }catch(e){if(alive)setAudit({loading:false,data:null,error:e.message})}})();
+ return()=>{alive=false}},[]);
+
  async function checkPreflight(prepare=false){
   if(preflight.busy)return;
   setPreflight({busy:true,message:prepare?'Kayıt altyapısı hazırlanıyor…':'Model erişimi kontrol ediliyor…'});
@@ -57,6 +66,22 @@ export default function ZeraCustomerDetail(){
      <p><b>Durum:</b> {state.client.status==="active"?"Aktif":state.client.status} · <b>Paket:</b> {state.client.plan}</p>
      <p><b>Sektör:</b> {state.client.profile?.sector||"Belirlenmedi"} · <b>Konum:</b> {state.client.profile?.city||"Wetzlar"}, {state.client.profile?.country||"Germany"}</p>
      <p><b>Web sitesi:</b> {state.client.domain||"Henüz doğrulanmadı"}</p>
+    </section>
+    <section className="panel" style={{padding:18,marginBottom:16}} aria-label="ZERA teknik kabul durumu">
+     <h2>ZERA pilot kabul durumu — salt okunur</h2>
+     <p>ZERA yalnız test müşterisidir. Bu denetim şifre, e-posta, ödeme veya AI sağlayıcı çağrısı yapmaz.</p>
+     {audit.loading?<p>Teknik bağlantılar kontrol ediliyor…</p>:audit.error?<p role="alert">{audit.error}</p>:
+      !audit.data?.pilot?.identified?<p role="alert">Pilot kimliği doğrulanamadı; erişim kabulü kapalı.</p>:
+      <ul>
+       {[
+        ['Müşteri giriş kaydı',audit.data.pilot.linkedAccess?.credentialCount],
+        ['Aktif pilot erişimi',audit.data.pilot.linkedAccess?.activePilotGrantCount],
+        ['Kayıtlı AI karşılaştırması',audit.data.storage?.comparisonCount],
+        ['Bekleyen ödeme kaydı',audit.data.pilot.linkedAccess?.pendingPaymentCount]
+       ].map(([name,count])=><li key={name}>{name}: <b>{Number.isInteger(count)?count:'doğrulanamadı'}</b></li>)}
+       <li>AI görevleri: {(audit.data.tasks||[]).map(t=>t.taskId+' '+t.status).join(', ')||'doğrulanamadı'}</li>
+      </ul>}
+     <p>Buradaki sayılar canlı müşteri girişi, sağlayıcı sonucu veya tahsilat kanıtı değildir. Eksik bağlantılar için otomatik işlem başlatılmaz.</p>
     </section>
     <section className="panel" style={{padding:18,marginBottom:16}}>
      <h2>Ödeme bağlantısı</h2>
