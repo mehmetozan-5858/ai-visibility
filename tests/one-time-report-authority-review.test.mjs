@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ACTIVE_PILOT_SQL,SIGNED_SETTLEMENT_SQL,createReviewReportEntitlementAuthority}
+import {ACTIVE_PILOT_SQL,SIGNED_SETTLEMENT_SQL,createReviewReportEntitlementAuthority,createOneTimeReportGatewayReview}
  from '../lib/one-time-report-authority-review.mjs';
 import {createClientToken} from '../lib/admin-auth.js';
 import {readOneTimeDbReportReview} from '../lib/one-time-db-report-review.mjs';
@@ -107,5 +107,31 @@ test('revoked pilot cannot open SQL reader even with valid signed HTTP token',as
  }finally{
   if(prev===undefined)delete process.env.AUTH_SECRET;
   else process.env.AUTH_SECRET=prev;
+ }
+});
+
+test('trusted gateway factory never accepts caller-supplied tenant or proof callback',async()=>{
+ const old=process.env.AUTH_SECRET;
+ process.env.AUTH_SECRET='synthetic-http-token-for-private-bound-gateway';
+ let authorityCalls=0,reportAcquires=0;
+ try{
+  const token=await createClientToken(A);
+  const reportPool={connect:async()=>{reportAcquires++;throw Error('report SQL must stay closed')}};
+  const authorityPool={query:async(sql,args)=>{
+   authorityCalls++;
+   assert.equal(sql,ACTIVE_PILOT_SQL);
+   assert.deepEqual(args,[A],'only verified cookie tenant may reach DB authority');
+   return {rows:[{activeClient:true,activePilot:false}]};
+  }};
+  const gateway=createOneTimeReportGatewayReview({reportPool,authorityPool});
+  await assert.rejects(gateway(token,B,async()=>({tenantId:B,active:true})),
+   /verified-customer-entitlement-required/);
+  assert.equal(authorityCalls,1);
+  assert.equal(reportAcquires,0);
+  await assert.rejects(gateway('invalid-cookie'),/verified-customer-session-required/);
+  assert.equal(authorityCalls,1,'invalid signed session never queries authority');
+  assert.equal(reportAcquires,0);
+ }finally{
+  if(old===undefined)delete process.env.AUTH_SECRET;else process.env.AUTH_SECRET=old;
  }
 });
