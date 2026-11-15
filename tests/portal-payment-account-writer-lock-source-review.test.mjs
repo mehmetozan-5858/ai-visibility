@@ -38,3 +38,32 @@ for(const [name,next] of [
   assert.doesNotMatch(section,/pool\.query\("UPDATE clients SET/);
  });
 }
+
+test('failed card transition keeps paid records protected and shares tenant lock',async()=>{
+ const repository=await source();
+ const section=body(repository,
+  'export async function markCardPaymentFailedByMerchantOid(',
+  'export async function addClientActivity(');
+ const sequence=[
+  'await pool.connect()',
+  'BEGIN ISOLATION LEVEL READ COMMITTED',
+  "SET LOCAL lock_timeout = '2500ms'",
+  "SET LOCAL statement_timeout = '10000ms'",
+  'SELECT client_id AS "clientId" FROM payments',
+  'await acquirePilotAdvisoryLockReview(tx,bound.clientId)',
+  "UPDATE payments SET status='failed',method='card'",
+  'COMMIT'
+ ];
+ let previous=-1;
+ for(const step of sequence){
+  const next=section.indexOf(step,previous+1);
+  assert.ok(next>previous,'ordered locked payment failure step missing: '+step);
+  previous=next;
+ }
+ assert.match(section,/status<>'paid'/,
+  'a failure event must never downgrade an already paid record');
+ assert.match(section,/await tx.query\("ROLLBACK"\)/);
+ assert.match(section,/tx\.release\(\)/);
+ assert.doesNotMatch(section,/pool\.query\(/,
+  'failure must not update payment outside pinned transaction');
+});
