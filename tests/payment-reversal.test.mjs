@@ -21,5 +21,6 @@ test('payment reversal acquires advisory lock before payment and client row lock
  const idxPaymentRow=calls.findIndex(x=>x.startsWith('SELECT * FROM payments'));
  const idxClientRow=calls.findIndex(x=>x.startsWith('SELECT id FROM clients'));
  assert.ok(idxLock>0&&idxLock<idxPaymentRow&&idxPaymentRow<idxClientRow);
+ assert.match(calls[idxLock],/portal-pilot-lock-v1:/);
  assert.ok(calls.indexOf('SELECT client_id FROM payments WHERE id=$1')<idxLock);
 });
