@@ -93,7 +93,6 @@ test('real PostgreSQL rolls back card paid state if account activation fails',{
 
   // Duplicate merchant IDs across tenants must deny without cross-tenant writes.
   const P2='44444444-4444-4444-8444-444444444444';
-  await db.query("INSERT INTO public.clients(id,status) VALUES($1,'payment-review')",[B]);
   await db.query(`INSERT INTO public.payments(id,client_id,reference_code,method,status,plan,currency)
    VALUES($1,$2,$3,'card','pending','Starter','EUR')`,[P2,B,OID]);
   await assert.rejects(confirmCardPaymentLockedReview(db,OID),/review-card-payment-unresolved/);
