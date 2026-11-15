@@ -1,4 +1,8 @@
--- REVIEW ONLY / NOT A MIGRATION / DO NOT EXECUTE WITHOUT EXPLICIT APPROVAL.
+-- BLOCKED DESIGN SKETCH / NOT A MIGRATION / DO NOT EXECUTE.
+-- Security review identified potential row-lock/advisory-lock inversion.
+-- See docs/security/neon-pilot-mutation-security-review.md.
+-- Prefer an audited writer function that acquires the advisory transaction
+-- lock BEFORE table DML; no row trigger installation until independently proven.
 -- Scope: isolated Neon branch br-plain-poetry-b2u7f7a6.
 -- A design sketch to force writers through the same per-tenant transaction lock
 -- without granting UPDATE on clients or client_pilot_access to the report owner.
