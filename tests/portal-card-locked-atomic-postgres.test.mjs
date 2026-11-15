@@ -65,8 +65,33 @@ test('real PostgreSQL rolls back card paid state if account activation fails',{
   const repeat=await confirmCardPaymentLockedReview(db,OID);
   assert.equal(repeat?.id,P);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.payments')).rows[0].n,1);
-  // Duplicate merchant IDs across tenants must deny without cross-tenant writes.
+  // A payment can move to a different owner between the initial, nonlocking
+  // reference lookup and the tenant lock. The locked recheck must fail closed.
   const B='33333333-3333-4333-8333-333333333333';
+  await db.query("INSERT INTO public.clients(id,status) VALUES($1,'payment-review')",[B]);
+  let moved=false;
+  const racingPool={
+   async query(sql,args){
+    const result=await db.query(sql,args);
+    if(!moved && sql.includes('SELECT id,client_id AS "clientId"') &&
+       sql.includes("LIMIT 2")){
+     moved=true;
+     await db.query('UPDATE public.payments SET client_id=$2 WHERE id=$1',[P,B]);
+    }
+    return result;
+   },
+   connect:()=>db.connect()
+  };
+  await assert.rejects(confirmCardPaymentLockedReview(racingPool,OID),
+   /review-card-payment-changed/,
+   'ownership reassignment after lookup must not activate either account');
+  assert.equal(moved,true);
+  assert.equal((await db.query('SELECT client_id FROM public.payments WHERE id=$1',[P])).rows[0].client_id,B);
+  assert.equal((await db.query('SELECT status FROM public.clients WHERE id=$1',[B])).rows[0].status,
+   'payment-review');
+  await db.query('UPDATE public.payments SET client_id=$2 WHERE id=$1',[P,A]);
+
+  // Duplicate merchant IDs across tenants must deny without cross-tenant writes.
   const P2='44444444-4444-4444-8444-444444444444';
   await db.query("INSERT INTO public.clients(id,status) VALUES($1,'payment-review')",[B]);
   await db.query(`INSERT INTO public.payments(id,client_id,reference_code,method,status,plan,currency)
