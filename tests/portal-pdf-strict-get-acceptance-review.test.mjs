@@ -84,3 +84,12 @@ test('valid strict PDF uses only verified tenant reader and non-cacheable respon
  assert.equal(body.clientId,A);
  assert.deepEqual(body.comparisons.map(x=>x.clientId),[A]);
 });
+
+test('foreign tenant comparison rejects PDF even after narrow-reader success',async()=>{
+ const {response,f}=await run({foreign:true});
+ assert.equal(response.status,503);
+ assert.equal(f.calls.secured,1);
+ assert.equal(f.calls.legacy,0);
+ assert.equal(f.calls.pdf,0,'foreign tenant data must never be rendered');
+ assert.equal(response.headers.get('cache-control'),'private, no-store, max-age=0');
+});
