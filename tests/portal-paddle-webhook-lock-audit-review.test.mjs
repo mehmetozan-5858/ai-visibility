@@ -9,13 +9,14 @@ test('live webhook completion and subscription writers are explicit advisory-loc
  assert.equal(audit.ready,false);
  const keys=audit.findings.map(f=>f.code+':'+(f.method||''));
  for(const finding of [
-  'webhook-account-writer-unlocked:applyTransaction',
-  'webhook-account-writer-unlocked:applySubscriptionAccess',
-  'webhook-tenant-lock-missing:',
   'transaction-completion-direct-activation:',
   'subscription-direct-activation:',
   'refund-reversal-event-coverage-unverified:'
  ])assert.ok(keys.includes(finding),'missing BLOCKER: '+finding);
+ assert.equal(keys.some(x=>x.startsWith('webhook-tenant-lock-missing:')),false,
+  'linked Paddle writer must join the tenant advisory lock');
+ assert.equal(keys.some(x=>x.startsWith('webhook-account-writer-unlocked:')),false,
+  'transaction-scoped lock applies to both private account writers');
  assert.ok(audit.unresolvedExternal.includes('live-Paddle-and-Neon-E2E'));
 });
 test('missing source always fails closed',()=>{
@@ -51,4 +52,25 @@ export async function recordPaddleLiveEvent(event){
  const audit=auditPaddleWebhookLockReview(source);
  assert.ok(audit.findings.some(f=>f.code==='webhook-tenant-lock-missing'),
   'missing lock in the full body of recordPaddleLiveEvent must not be lost');
+});
+
+test('live webhook lock must be tenant-bound before event insert and payment row locks',async()=>{
+ const src=await read('lib/paddle-live.js');
+ const audit=auditPaddleWebhookLockReview(src);
+ assert.equal(audit.ready,false,'source review must never promote production');
+ assert.equal(audit.findings.some(f=>f.code==='webhook-tenant-lock-missing'),false);
+ const noLock=auditPaddleWebhookLockReview(src.replace(
+  'await acquirePilotAdvisoryLockReview(tx,item.clientId);',
+  '/* removed tenant lock */'));
+ assert.ok(noLock.findings.some(f=>f.code==='webhook-tenant-lock-missing'));
+ const inverted=auditPaddleWebhookLockReview(src.replace(
+  'await acquirePilotAdvisoryLockReview(tx,item.clientId);','')
+  .replace('const paymentResult=item.type.startsWith',
+   'await acquirePilotAdvisoryLockReview(tx,item.clientId);\n    const paymentResult=item.type.startsWith'));
+ assert.ok(inverted.findings.some(f=>f.code==='webhook-tenant-lock-missing'),
+  'locking after event insert and payment row lock must be rejected');
+ const unbound=auditPaddleWebhookLockReview(src.replace(
+  'UUID.test(item.clientId)&&UUID.test(item.paymentId)',
+  'UUID.test(item.clientId)'));
+ assert.ok(unbound.findings.some(f=>f.code==='webhook-tenant-lock-missing'));
 });
