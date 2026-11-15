@@ -65,6 +65,9 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query(migration);
   await db.query(`GRANT SELECT ON TABLE portal_authz.signing_keys TO ${ownerName}`);
   await db.query(`GRANT INSERT ON TABLE portal_authz.consumed_claims TO ${ownerName}`);
+  // RETURNING claim_id on a one-use INSERT needs read access to that column;
+  // do not grant unrestricted table SELECT to the function owner.
+  await db.query(`GRANT SELECT (claim_id) ON TABLE portal_authz.consumed_claims TO ${ownerName}`);
 
   // Role is synthetic and cluster-scoped to this disposable CI PostgreSQL.
   // Grant EXECUTE only; no direct SELECT on report or private claim ledger.
