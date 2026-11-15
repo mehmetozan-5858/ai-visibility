@@ -85,7 +85,11 @@ test('unchanged existing password yields a private authorized tenant report',asy
   const response=await f.http(token);
   assert.equal(response.status,200);
   assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
-  assert.deepEqual((await response.json()).reports.map(x=>x.clientId),[A]);
+  const reports=(await response.json()).reports;
+  assert.deepEqual(reports.map(x=>x.clientId),[A]);
+  assert.equal(reports[0].results[0].verified,false,
+   'synthetic answer must never be presented as verified provider evidence');
+  assert.equal(reports[0].results[0].status,'answer-received-unverified');
   assert.equal(f.calls.at(-1),'COMMIT');
   assert.equal(f.connections,1);
   assert.equal(f.releases,1);
