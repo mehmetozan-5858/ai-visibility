@@ -7,7 +7,7 @@ const PAYMENT='22222222-2222-4222-8222-222222222222';
 const evidence={confirmed:true,amount:'10.00',currency:'EUR',
  invoiceReference:'INV-REVIEW-001',bankReference:'BANK-REVIEW-000001',
  valueDate:'2026-11-14'};
-function fixture({missing=false,wrongTenant=false,already=false,conflict=false,
+function fixture({missing=false,wrongTenant=false,already=false,conflict=false,conflictDate=false,
  failInsert=false,wrongStatus=false}={}){
  const calls=[];let released=0;
  const tx={release(){released++},async query(sql,args){
@@ -17,7 +17,8 @@ function fixture({missing=false,wrongTenant=false,already=false,conflict=false,
     method:'bank-transfer',status:wrongStatus?'paid':'customer-reported',currency:'EUR',
     referenceCode:evidence.invoiceReference,setupAmount:10,monthlyAmount:0}]};
   if(sql.includes('FROM public.bank_confirmations WHERE'))
-   return {rows:already||conflict?[{paymentId:conflict?TENANT:PAYMENT,amountMinor:1000}]:[]};
+   return {rows:already||conflict||conflictDate?[{paymentId:conflict?TENANT:PAYMENT,amountMinor:1000,
+      valueDate:conflictDate?'2026-11-13':evidence.valueDate,invoiceReference:evidence.invoiceReference}]:[]};
   if(sql.includes('INSERT INTO public.bank_confirmations')){
    if(failInsert)throw Error('fixture-bank-write-failed');
    return {rows:[{id:PAYMENT}]};
@@ -44,6 +45,9 @@ test('existing same reference is idempotent, conflicting references fail closed'
  const b=fixture({conflict:true});
  await assert.rejects(stageBankConfirmationLockedReview(b.pool,PAYMENT,evidence),/reference-conflict/);
  assert.equal(b.calls.at(-1),'ROLLBACK');assert.equal(b.released,1);
+ const c=fixture({conflictDate:true});
+ await assert.rejects(stageBankConfirmationLockedReview(c.pool,PAYMENT,evidence),/reference-conflict/);
+ assert.equal(c.calls.at(-1),'ROLLBACK');
 });
 test('invalid or ineligible payments and failed insert do not commit',async()=>{
  for(const opts of [{missing:true},{wrongTenant:true},{wrongStatus:true},{failInsert:true}]){
