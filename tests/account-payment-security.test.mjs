@@ -11,7 +11,7 @@ const credentialPool={query:async(sql,args)=>{
 }};
 const credentialVerifier=await import('../lib/client-password-verifier.mjs');
 globalThis.__credentialTest={withDb:fn=>fn(credentialPool),...credentialVerifier};
-const moduleSource='const {withDb,hashPassword,verifyHash}=globalThis.__credentialTest;\\n'
+const moduleSource='const {withDb,hashPassword,verifyHash}=globalThis.__credentialTest;\n'
   +credentialSource.slice(credentialSource.indexOf('export async function createClientCredential'));
 const credentials=await import('data:text/javascript;base64,'+Buffer.from(moduleSource).toString('base64'));
 test('reusing setup cannot replace an existing credential',async()=>{
