@@ -49,15 +49,11 @@ BEGIN
   );
   IF p_mac <> v_expected THEN RETURN; END IF;
 
-  -- Lock authoritative account and pilot rows to serialize with UPDATE/DELETE
-  -- revocation transactions through the end of this SQL transaction.
-  -- Any session that issues a report must complete/commit before a waiting
-  -- revocation may commit, or else observe its already-committed revocation.
+  -- Basic fail-closed guard only. Concurrent revocation ordering is NOT solved.
   -- Fail closed on account suspension AND pilot-access revocation/expiry.
   IF NOT EXISTS (
     SELECT 1 FROM public.clients c
     WHERE c.id = p_tenant AND c.status = 'active'
-    FOR SHARE
   ) THEN RETURN; END IF;
 
   IF NOT EXISTS (
@@ -65,7 +61,6 @@ BEGIN
     WHERE a.client_id = p_tenant
       AND a.revoked_at IS NULL
       AND a.expires_at > clock_timestamp()
-    FOR SHARE
   ) THEN RETURN; END IF;
 
   -- A primary key on claim_id ensures no replay, including concurrent requests.
@@ -99,8 +94,8 @@ $function$;
 -- For revocation between issue and consumption, perform revocation then call
 -- with the already-signed claim: it must return zero rows.
 --
--- IMPORTANT: FOR SHARE is a proposed transaction-level serialization guard,
--- not a proven revocation test result. Validate behavior with two independent
--- SQL sessions and REVOKE/UPDATE paths, including timeout/error paths. All
--- production issuers/revokers must use the same authoritative pilot row.
+-- IMPORTANT: Strict concurrency-safe revocation remains an OPEN BLOCKER.
+-- PostgreSQL FOR SHARE requires UPDATE privilege; do not grant broader UPDATE
+-- rights as a shortcut. A separately reviewed coordinated lock/revocation
+-- design and two-session test are required before any production deployment.
 -- Token issuance and session cache invalidation remain separate acceptance gates.
