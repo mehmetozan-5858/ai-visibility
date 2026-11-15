@@ -42,5 +42,5 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
     return privateJson({error:'Ücretsiz sağlayıcı sunucu ön kontrolünden geçmedi; AI çağrısı yapılmadı.',preflightState:preflight.state},{status:503,headers:{'cache-control':'no-store'}});
   }
   options.measurementOrigin='admin';
-  const run=await measureAnswerEvidence(entity,options,body.freeOnly===true?{collect:collectFreeAnswerEvidence}:{});return privateJson({run},{status:run.skipped?409:200});
+  const run=await measureAnswerEvidence(entity,options,body.freeOnly===true?{collect:collectFreeAnswerEvidence,freeOnly:true}:{});return privateJson({run},{status:run.skipped?409:200});
  }catch{return privateJson({error:'Yanıt kanıtı turu tamamlanamadı. Yapılandırmayı kontrol edip tekrar deneyin.'},{status:503})}}
