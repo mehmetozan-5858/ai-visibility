@@ -34,13 +34,14 @@ test('signed cancellation is tenant-locked before owned conditional update and a
  assert.deepEqual(result,{accessChanged:true,clientStatus:'payment-review'});
  assert.equal(f.calls[3].sql,PILOT_LOCK_SQL);
  assert.equal(f.calls[4].sql,CANCEL_OWNED_ACCESS_SQL);
- assert.deepEqual(f.calls[4].args,[A,P,'sub_review123']);
+ assert.deepEqual(f.calls[4].args,[A,P,'sub_review123','evt_reviewcancel123','2026-11-15T09:00:00Z']);
  assert.equal(f.calls[5].sql,AUDIT_CANCELLATION_SQL);
  assert.equal(f.calls[5].args[1],A);
  assert.equal(f.calls.at(-1).sql,'COMMIT');
  assert.equal(f.releases,1);
  assert.match(CANCEL_OWNED_ACCESS_SQL,/JOIN public\.payments p ON p\.id=l\.payment_id AND p\.client_id=l\.client_id/);
  assert.match(CANCEL_OWNED_ACCESS_SQL,/l\.client_id=c\.id AND l\.payment_id=\$2::uuid AND l\.subscription_id=\$3/);
+ assert.match(CANCEL_OWNED_ACCESS_SQL,/e\.event_id=\$4 AND e\.occurred_at=\$5::timestamptz/);
 });
 test('already-revoked or missing ownership adds no extra audit',async()=>{
  const f=fixture({changed:false});
@@ -71,4 +72,27 @@ test('active subscription, wrong tenant/payment and unknown subscription reject 
    /review-cancellation-invalid-or-unsupported/);
  }
  assert.equal(f.calls.length,0);
+});
+
+test('missing event identity or timestamp must reject before query',async()=>{
+ let calls=0;
+ const tx={query:async()=>{calls++;return {rows:[]}}};
+ const base={type:'subscription.canceled',status:'canceled',clientId:A,
+  paymentId:P,entityId:'sub_review123',id:'evt_valid123',
+  occurredAt:'2026-11-15T09:00:00Z'};
+ for(const event of [
+  {...base,id:null},{...base,id:'wrong-id'},
+  {...base,occurredAt:null},{...base,occurredAt:'not-a-date'}
+ ]){
+  await assert.rejects(applyOwnedPaddleCancellationReview(tx,event),
+   /review-cancellation-invalid-or-unsupported/);
+ }
+ assert.equal(calls,0);
+});
+
+test('current provider event identity is required, so stale or replayed cancellation cannot update',()=>{
+ assert.match(CANCEL_OWNED_ACCESS_SQL,/JOIN public\.paddle_live_entities e ON e\.entity_id=l\.subscription_id/);
+ assert.match(CANCEL_OWNED_ACCESS_SQL,/e\.client_id=l\.client_id AND e\.payment_id=l\.payment_id/);
+ assert.match(CANCEL_OWNED_ACCESS_SQL,/e\.event_id=\$4 AND e\.occurred_at=\$5::timestamptz/);
+ assert.match(CANCEL_OWNED_ACCESS_SQL,/e\.event_type IN \('subscription\.paused','subscription\.canceled','subscription\.past_due'\)/);
 });
