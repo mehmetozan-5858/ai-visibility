@@ -46,6 +46,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query('CREATE TABLE public.clients(id uuid PRIMARY KEY,status text NOT NULL)');
   await db.query('CREATE TABLE public.client_credentials(client_id uuid PRIMARY KEY)');
   await db.query('CREATE TABLE public.payments(id uuid PRIMARY KEY)');
+  await db.query('CREATE TABLE public.verified_customer_settlements(id uuid PRIMARY KEY)');
   await db.query('CREATE TABLE public.client_pilot_access(client_id uuid PRIMARY KEY, revoked_at timestamptz, expires_at timestamptz NOT NULL)');
   await db.query('CREATE TABLE public.ai_provider_comparisons(client_id uuid NOT NULL,query text NOT NULL,results jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp())');
   const migration=await readFile(new URL('../migrations/portal-one-time-explicit-envelope-review.sql',import.meta.url),'utf8');
@@ -127,6 +128,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
       'SELECT 1 FROM public.ai_provider_comparisons LIMIT 1',
       'SELECT 1 FROM public.client_credentials LIMIT 1',
       'SELECT 1 FROM public.payments LIMIT 1',
+      'SELECT 1 FROM public.verified_customer_settlements LIMIT 1',
       'SELECT 1 FROM portal_authz.signing_keys LIMIT 1',
       'SELECT 1 FROM portal_authz.consumed_claims LIMIT 1'
      ]){
