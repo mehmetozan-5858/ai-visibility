@@ -22,6 +22,12 @@ A test-only `pgcrypto` extension, private `portal_authz_trial.signing_keys` tabl
 
 These observations show the prior forgeable `app.tenant_id` attack does not grant unauthorized reads through this **specific signed function**. It does **not** prove deployed signed HTTP sessions, real provider evidence or payments.
 
+## Follow-up actual replay test (2026-11-15)
+
+A fresh synthetic customer/report row was inserted on the **same isolated test branch**, and the passwordless trial reader invoked the scoped PostgreSQL verification function **twice with the same signed tenant, expiry and MAC** inside one transaction. The first call returned **1** row; the second identical call also returned **1** row. Both synthetic records were removed in the same transaction and cleanup was verified (0 remaining).
+
+**Replay is currently accepted during the 90-second token lifetime.** Short expiry limits duration but is **not** one-time use. Production launch requires a reviewed nonce/jti-and-revocation mechanism or an explicitly justified bounded replay threat model with narrow network access and independently verified customer session. Do not claim replay denial or revocation acceptance from the previous A/B tests.
+
 ## Mandatory blockers before anything can go live
 
 1. Review an auditable DB-verification function migration for production; avoid PUBLIC EXECUTE and exposed private schemas. Confirm the owner can read only the required data and no broader SECURITY DEFINER capabilities escape. Validate lock and rollback.
