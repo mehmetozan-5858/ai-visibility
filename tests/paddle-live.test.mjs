@@ -106,3 +106,16 @@ test('final totals support explicit tax-inclusive and tax-exclusive prices witho
  assert.equal(validPaddleCompletionTotals(data,16900,'EUR'),false);
  data.details.totals.discount='1';assert.equal(validPaddleCompletionTotals(data,14000,'EUR'),false);
 });
+
+test('Paddle live acceptance rejects both an unlinked zero-total completion and a linked READY payment',async()=>{
+ const {validPaddleCompletionTotals}=await import('../lib/paddle-live.js');
+ const zero={status:'completed',currency_code:'EUR',items:[{quantity:1,price:{tax_mode:'internal',unit_price:{amount:'0'}}}],details:{totals:{subtotal:'0',discount:'0',tax:'0',total:'0',credit:'0',credit_to_balance:'0',balance:'0',grand_total:'0',currency_code:'EUR'}}};
+ assert.equal(validPaddleCompletionTotals(zero,11900,'EUR'),false);
+ assert.equal(validPaddleCompletionTotals(zero,0,'EUR'),false);
+ const ready={...zero,status:'ready',items:[{quantity:1,price:{tax_mode:'internal',unit_price:{amount:'11900'}}}],details:{totals:{subtotal:'11900',discount:'0',tax:'0',total:'11900',credit:'0',credit_to_balance:'0',balance:'0',grand_total:'11900',currency_code:'EUR'}}};
+ assert.equal(validPaddleCompletionTotals(ready,11900,'EUR'),false);
+ const unlinked={event_id:'evt_acceptance123',event_type:'transaction.completed',occurred_at:'2026-11-14T00:00:00Z',data:{...zero,id:'txn_acceptance123'}};
+ const normalized=normalizePaddleLiveEvent(unlinked);
+ assert.equal(normalized.clientId,'');
+ assert.equal(normalized.paymentId,'');
+});

@@ -173,7 +173,7 @@ test('local ecosystem uses the selected saved business without leaking account f
   test.skip(!['http://127.0.0.1:3000','http://localhost:3000'].includes(BASE),'local fixture only');
   await context.addCookies([{name:'ai_admin',value:await createAdminToken(),url:BASE,httpOnly:true,sameSite:'Strict'},{name:'ai_client',value:await createClientToken('eco-a'),url:BASE,httpOnly:true,sameSite:'Strict'},{name:'ai_lang',value:'tr',url:BASE}]);
   const clients=[{id:'eco-a',name:'Ecosystem A',domain:'example.com',profile:{country:'Germany',sector:'B2B / Sanayi',phone:'PRIVATE_SENTINEL'}},{id:'eco-b',name:'Ecosystem B',domain:'example.org',profile:{country:'Türkiye',sector:'Tekstil / Giyim'}}];
-  const account=client=>({client,profile:client.profile,scans:[],payments:[],activity:[],workItems:[],access:{kind:'pilot',expiresAt:'2030-01-01'}});
+  const account=client=>({client,profile:client.profile,scans:[],payments:[],activity:[],workItems:[],access:{allowed:true,kind:'pilot',expiresAt:'2030-01-01'}});
   let writes=0;
   await page.route('**/api/**',route=>{
     if(!['GET','HEAD'].includes(route.request().method())){writes++;return route.abort();}
