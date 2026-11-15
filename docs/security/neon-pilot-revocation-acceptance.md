@@ -7,7 +7,7 @@
 2. Securely provide gateway role credentials to the test runner (do not use DB owner to substitute for the gateway role).
 3. Obtain an explicit change approval and snapshot/restore plan before applying the review SQL on the isolated branch. Do not execute this SQL in production. Confirm required column-level SELECT, no direct access to signing_keys/consumed_claims, and callable function privileges after replacement.
 4. Verify that the existing function remains owned by `portal_report_fn_owner_trial_20261115` and `SECURITY DEFINER SET search_path = pg_catalog`. Do not grant EXECUTE to PUBLIC.
-5. The patch uses `FOR SHARE` on clients and client_pilot_access. Verify with two independent database sessions that revocation UPDATE or DELETE blocks during an authorized read, then commits after the read transaction completes. Observe statements' commit order, not just timestamps.
+5. **Blocking design gap:** this draft intentionally does not include `FOR SHARE`: PostgreSQL requires UPDATE privilege for such row locks, which the restricted function owner does not have. Do NOT widen privileges simply to get a green test. Design an independently reviewed revocation synchronization mechanism and then test its ordering using separate sessions.
 
 ## Test matrix (isolation only)
 | Case | Condition | Expected |
@@ -29,10 +29,10 @@
 
 ## Two-session concurrency procedure
 - Provision only synthetic records on the isolated branch with a unique claim_id. Record minimal redacted trace: UTC time, git SHA, branch ID, transaction ID and expected/actual outcome.
-- Session A: begin transaction, invoke report with the signed synthetic claim and keep transaction open. Session B: begin, UPDATE the same pilot row to set revoked_at, measure whether it waits.
-- Commit Session A; verify Session B can now commit; Session C with a freshly signed claim must return no rows. If a revocation commits first, subsequently started claim must fail.
+- Session A: begin transaction, invoke report with a signed synthetic claim and keep transaction open. Session B: begin, UPDATE the same pilot row to set revoked_at. **In the current draft no serialization guarantee exists:** record this as a failed/unproven safety gate rather than assuming Session B waits.
+- Only after an approved coordinated-lock design is implemented should the ordering be tested: commit Session A, verify Session B can commit, then verify a fresh claim after revocation returns no rows. A revocation committed before the read should always reject subsequent claims.
 - Also test the reversed ordering, expired grant, deleted pilot row and client suspension. Make sure any timeout/exception fails closed. Keep short lock_timeout and statement_timeout in the harness to prevent indefinite waits.
 - Confirm no other paths can issue or revoke pilot access without maintaining these invariants.
 
 ## Exit criteria
-All T01–T12 pass with redacted SQL logs and exact PR head; no credentials exposed; independent approval of row-lock semantics; restore/cleanup synthetic fixture. Keep production HOLD until real customer current-password login, owned report rendering, live provider evidence, Paddle and exact-head CI have each been verified independently.
+All T01–T12 pass (including a separately designed and implemented T11 concurrency guarantee) with redacted SQL logs and exact PR head; no credentials exposed; independent approval of row-lock semantics; restore/cleanup synthetic fixture. Keep production HOLD until real customer current-password login, owned report rendering, live provider evidence, Paddle and exact-head CI have each been verified independently.
