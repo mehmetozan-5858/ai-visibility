@@ -8,7 +8,9 @@ import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 import {readFile} from 'node:fs/promises';
 
 const A='11111111-1111-4111-8111-111111111111';
-function fixture({proof=true,changed=true,failSql}={}){
+function fixture(options={}){
+ const {changed=true,failSql}=options;
+ const proof=Object.hasOwn(options,'proof')?options.proof:true;
  const calls=[];let released=0;
  const conn={query:async(sql,args=[])=>{
   calls.push({sql,args});
