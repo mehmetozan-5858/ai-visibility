@@ -8,14 +8,15 @@ const source=(await readFile(new URL('../app/api/admin-pilots/route.js',import.m
  .replace(/^import .*;$/gm,'')
  .replace(/export async function /g,'async function ');
 const clientId='11111111-1111-4111-8111-111111111111';
-function scenario({credential=null,account={client:{id:clientId,name:'ZERA Clothing',plan:'Pilot',status:'active'}},action='grant',email='pilot@example.test',confirmZeraPilotBootstrap=false,priorPilot=null}={}){
+function scenario({credential=null,account={client:{id:clientId,name:'ZERA Clothing',plan:'Pilot',status:'active'}},action='grant',email='pilot@example.test',confirmZeraPilotBootstrap=false,priorPilot=null,emailSenderConfigured=true}={}){
  const calls=[];
  const route=new Function('requireAdmin','enforceSameOrigin','getClientAccount','listClients',
-  'getPilotAccess','grantPilot','revokePilot','getClientCredential','createPaymentAccessToken',
+  'getPilotAccess','grantPilot','revokePilot','getClientCredential','createPaymentAccessToken','process',
   source+';return {POST};')(
   async()=>null,()=>null,async()=>account,async()=>[],
   async()=>priorPilot,async()=>{calls.push('grant')},async()=>{calls.push('revoke')},
-  async()=>credential,async()=>{calls.push('payment-token');return 'SYNTHETIC_TOKEN'});
+  async()=>credential,async()=>{calls.push('payment-token');return 'SYNTHETIC_TOKEN'},
+  {env:emailSenderConfigured?{RESEND_API_KEY:'synthetic-test-key',EMAIL_FROM:'test@example.invalid'}:{}});
  const req=new Request('https://test.example/api/admin-pilots',{
   method:'POST',headers:{'Content-Type':'application/json'},
   body:JSON.stringify({clientId,action,email,days:7,reason:'Synthetic customer pilot acceptance',confirmZeraPilotBootstrap})
@@ -77,4 +78,13 @@ test('unknown action cannot grant or generate a payment token',async()=>{
  const {calls,invoke}=scenario({action:'unknown',credential:{email:'pilot@example.test'}});
  assert.equal((await invoke()).status,400);
  assert.deepEqual(calls,[]);
+});
+
+test('ZERA first-account bootstrap denies invitation if email sender is unconfigured',async()=>{
+ const {calls,invoke}=scenario({action:'bootstrap',confirmZeraPilotBootstrap:true,
+  emailSenderConfigured:false});
+ const result=await invoke();
+ assert.equal(result.status,503);
+ assert.deepEqual(calls,[],'must not grant entitlement or create link');
+ assert.match((await result.json()).error,/E-posta doğrulama/);
 });
