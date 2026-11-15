@@ -24,6 +24,7 @@ if(source){
 }
 const dbName='ci_portal_envelope_review';
 const roleName='portal_gateway_reader_ci_envelope';
+const ownerName='portal_report_fn_owner';
 const rolePassword='synthetic-ci-only-local-reader-password';
 const A='11111111-1111-4111-8111-111111111111';
 const B='22222222-2222-4222-8222-222222222222';
@@ -39,7 +40,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
  const admin=new Pool({connectionString:source,max:1,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000});
  const target=new URL(source);target.pathname='/'+dbName;
  let db;
- let created=false,roleCreated=false;
+ let created=false,roleCreated=false,ownerCreated=false;
  try{
   await admin.query('CREATE DATABASE '+dbName);created=true;
   db=new Pool({connectionString:target.toString(),max:4,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000,idle_in_transaction_session_timeout:12000});
@@ -51,8 +52,20 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query('CREATE TABLE public.verified_customer_settlements(id uuid PRIMARY KEY)');
   await db.query('CREATE TABLE public.client_pilot_access(client_id uuid PRIMARY KEY, revoked_at timestamptz, expires_at timestamptz NOT NULL)');
   await db.query('CREATE TABLE public.ai_provider_comparisons(client_id uuid NOT NULL,query text NOT NULL,results jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp())');
+  // Only the disposable CI cluster gets this NOLOGIN function owner. The
+  // migration itself MUST continue rejecting missing/unverified owners.
+  await admin.query('CREATE ROLE '+ownerName+' NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS');
+  ownerCreated=true;
+  await db.query('GRANT USAGE ON SCHEMA public,portal_authz TO '+ownerName);
+  await db.query('GRANT SELECT ON public.clients,public.client_pilot_access,public.ai_provider_comparisons TO '+ownerName);
+  // signing_keys/consumed_claims tables are made by the migration below;
+  // grant their minimum required privileges only after it has completed.
+
   const migration=await readFile(new URL('../migrations/portal-one-time-explicit-envelope-review.sql',import.meta.url),'utf8');
   await db.query(migration);
+  await db.query(`GRANT SELECT ON TABLE portal_authz.signing_keys TO ${ownerName}`);
+  await db.query(`GRANT INSERT ON TABLE portal_authz.consumed_claims TO ${ownerName}`);
+
   // Role is synthetic and cluster-scoped to this disposable CI PostgreSQL.
   // Grant EXECUTE only; no direct SELECT on report or private claim ledger.
   await admin.query("CREATE ROLE "+roleName+" LOGIN PASSWORD '"+rolePassword+"'");roleCreated=true;
@@ -515,6 +528,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   if(db)await db.end().catch(()=>{});
   if(created)await admin.query('DROP DATABASE '+dbName).catch(()=>{});
   if(roleCreated)await admin.query('DROP ROLE IF EXISTS '+roleName).catch(()=>{});
+  if(ownerCreated)await admin.query('DROP ROLE IF EXISTS '+ownerName).catch(()=>{});
   await admin.end();
  }
 });
