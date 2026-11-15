@@ -12,21 +12,23 @@ function method(source,name,next){
  assert.ok(start>=0&&end>start,'expected '+name+' boundary');
  return source.slice(start,end);
 }
-test('bank-confirmation transaction cannot masquerade as lock-coordinated signed settlement',async()=>{
+test('bank confirmation uses tenant lock but is not provider-signed Paddle settlement',async()=>{
  const src=await read('lib/repository.js');
  const bank=method(src,'confirmPayment','upsertSalesOpportunity');
- assert.match(bank,/await tx\.query\("BEGIN"\)/);
+ assert.match(bank,/BEGIN ISOLATION LEVEL READ COMMITTED/);
+ assert.match(bank,/acquirePilotAdvisoryLockReview\(tx,bound\.clientId\)/);
  assert.match(bank,/UPDATE clients SET plan=\$2,status='active'/);
- assert.doesNotMatch(bank,/withPilotWriteLockReview|acquirePilotAdvisoryLockReview|pg_advisory_xact_lock/);
- // Bank evidence is distinct from provider-signed Paddle settlement.
  assert.doesNotMatch(bank,/verified_customer_settlements|verifyPaddleSignature/);
 });
-test('legacy card update is non-atomic and not linked to signed proof',async()=>{
+test('card activation is atomic and tenant-locked but lacks signed Paddle settlement',async()=>{
  const src=await read('lib/repository.js');
  const card=method(src,'confirmCardPaymentByMerchantOid','markCardPaymentFailedByMerchantOid');
- assert.match(card,/pool\.query\([\s\S]*UPDATE payments/);
- assert.match(card,/pool\.query\("UPDATE clients SET plan=/);
- assert.doesNotMatch(card,/BEGIN|withPilotWriteLockReview|verified_customer_settlements/);
+ assert.match(card,/BEGIN ISOLATION LEVEL READ COMMITTED/);
+ assert.match(card,/acquirePilotAdvisoryLockReview\(tx,bound\.clientId\)/);
+ assert.match(card,/UPDATE payments SET status='paid'/);
+ assert.match(card,/UPDATE clients SET plan=\$2,status='active'/);
+ assert.match(card,/await tx\.query\("ROLLBACK"\)/);
+ assert.doesNotMatch(card,/pool\.query\("UPDATE clients SET|verified_customer_settlements|verifyPaddleSignature/);
 });
 test('isolated card transaction cannot establish verified Paddle entitlement',async()=>{
  const [card,strict,repository]=await Promise.all([
