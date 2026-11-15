@@ -10,7 +10,7 @@ const live=await readFile(new URL('../lib/paddle-live.js',import.meta.url),'utf8
 const route=await readFile(new URL('../app/api/paddle/webhook/route.js',import.meta.url),'utf8');
 const review=await readFile(new URL('../lib/portal-paddle-writer-lock-review.mjs',import.meta.url),'utf8');
 
-const within=(start,end)=>live.slice(live.indexOf(start),live.indexOf(end));
+const within=(start,end)=>{const i=live.indexOf(start);return i<0?'':live.slice(i,live.indexOf(end,i+start.length)<0?undefined:live.indexOf(end,i+start.length));};
 
 test('Paddle real route authenticates raw bytes and never claims review helper is wired',()=>{
  assert.match(route,/verifyPaddleLiveSignature\(raw,req\.headers\.get\('paddle-signature'\),secret\)/);
