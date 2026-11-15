@@ -41,3 +41,13 @@ test('gateway acceptance requires a real independent authenticated connection',a
  assert.match(sql,/signing_key_read_blocked/);
  assert.match(sql,/Do not run SET ROLE from owner/);
 });
+
+test('preflight audits raw reader role membership and mutable tenant context',async()=>{
+ const sql=await readFile(new URL('../docs/security/neon-pilot-readonly-preflight.sql',import.meta.url),'utf8');
+ assert.match(sql,/RAW COMPARISON READER ROLE REACHABILITY/);
+ assert.match(sql,/portal_reader_isolated_20261114/);
+ assert.match(sql,/pg_auth_members/);
+ assert.match(sql,/comparison_select/);
+ assert.match(sql,/isolated_reader_member/);
+ assert.match(sql,/customer-reachable login/);
+});
