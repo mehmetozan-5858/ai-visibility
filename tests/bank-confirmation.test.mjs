@@ -30,6 +30,7 @@ const confirmSource=repository.slice(repository.indexOf('export async function c
 function fixture(auditFailure=false){
  const state={paid:false,active:false,committed:false,rolledBack:false};
  const tx={release(){},query:async(sql)=>{
+  if(sql.startsWith('SELECT client_id AS "clientId" FROM payments'))return {rows:[{clientId:invoice.clientId}]};
   if(sql.includes('UPDATE payments')){state.paid=true;return {rows:[invoice]}}
   if(sql.includes('INSERT INTO bank_confirmations'))return {rows:[{id:'confirmation'}]};
   if(sql.includes('INSERT INTO client_activity')&&auditFailure)throw Error('audit-failed');
@@ -38,7 +39,7 @@ function fixture(auditFailure=false){
   if(sql==='ROLLBACK'){state.rolledBack=true;state.paid=false;state.active=false}
   return {rows:[]};
  }};
- const confirm=new Function('withDb','ensureBankConfirmation','recordBankConfirmation',confirmSource+'\nreturn confirmPayment;')(fn=>fn({connect:async()=>tx}),async()=>{},recordBankConfirmation);
+ const confirm=new Function('withDb','ensureBankConfirmation','recordBankConfirmation','acquirePilotAdvisoryLockReview',confirmSource+'\nreturn confirmPayment;')(fn=>fn({connect:async()=>tx}),async()=>{},recordBankConfirmation,async(_tx,tenant)=>{assert.equal(_tx,tx);assert.equal(tenant,invoice.clientId)});
  return {state,confirm};
 }
 test('incorrect bank amount rolls back payment and activation',async()=>{
