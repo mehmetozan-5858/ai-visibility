@@ -52,7 +52,7 @@ test('missing, changed tenant, lock timeout and callback error roll back and rel
 });
 test('invalid payment identifier rejects before any database call',async()=>{
  const f=fixture();
- for(const payment of ['',null,'malformed',A.replace(/a/g,'x')]){
+ for(const payment of ['',null,'malformed','11111111-1111-1111-1111-111111111111']){
   await assert.rejects(withPaddleEntitlementWriterLockReview(f.pool,payment,async()=>{}),
    /paddle-review-writer-invalid/);
  }
