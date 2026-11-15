@@ -1,7 +1,7 @@
 import {readCustomerComparisonReport} from '../../../../lib/customer-comparison-report.mjs';
 import {databasePool} from '../../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../../lib/db';
-import {customerAccess} from "../../../../lib/pilot-access";
+import {customerAccess,withTenantReportLock} from "../../../../lib/pilot-access";
 import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../../lib/admin-auth";
 import {getClientAccount} from "../../../../lib/repository";
@@ -12,6 +12,9 @@ export async function GET(req){
   const store=await cookies();
   const session=await verifyClientToken(store.get("ai_client")?.value||"");
   if(!session)return Response.json({error:"Müşteri oturumu gerekli."},{status:401});
+  return await withTenantReportLock(session.clientId,async()=>{
+  // Re-read authoritative account and access while holding the same tenant
+  // lock as coordinated grant/revoke and payment-status writers.
   const account=await getClientAccount(session.clientId);
   if(!account)return Response.json({error:"Müşteri bulunamadı."},{status:404});
   const access=await customerAccess(account);
@@ -25,5 +28,6 @@ export async function GET(req){
   const disposition=response.headers.get("content-disposition");
   if(disposition&&(!req||new URL(req.url).searchParams.get("download")!=="1"))response.headers.set("content-disposition",disposition.replace("attachment;","inline;"));
   return response;
+  });
  }catch{return Response.json({error:"Rapor hazırlanamadı."},{status:500})}
 }
