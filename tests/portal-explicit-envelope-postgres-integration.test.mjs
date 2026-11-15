@@ -83,96 +83,10 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   )).rows[0];
   assert.deepEqual(absentCryptoObjects,{keys_exist:false,claims_exist:false,rpc_exists:false},
    'missing private HMAC cannot leave any signed-envelope artifacts');
-  // A lookalike SQL function with the exact HMAC signature must NOT be
-  // accepted as cryptographic authority. The gate requires pgcrypto
-  // extension membership, not only name, signature and EXECUTE privilege.
+  // A lookalike HMAC with matching signature but no pgcrypto extension
+  // membership is never trusted, even when it can be executed.
   await db.query(`CREATE FUNCTION portal_authz.hmac(bytea,bytea,text)
-    RETURNS bytea LANGUAGE SQL IMMUTABLE AS $fake$ SELECT $1 $fakeimport test from 'node:test';
-import assert from 'node:assert/strict';
-import {createHmac,randomUUID} from 'node:crypto';
-import {readFile} from 'node:fs/promises';
-import {Pool} from 'pg';
-import {createClientToken} from '../lib/admin-auth.js';
-import {hashPassword,verifyHash} from '../lib/client-password-verifier.mjs';
-import {issueExistingPasswordSessionReview} from '../lib/portal-existing-password-session-review.mjs';
-import {createEnvelopeGatewayReview} from '../lib/portal-envelope-gateway-review.mjs';
-import {createPortalReportHttpReview} from '../lib/portal-report-http-review.mjs';
-import {createReviewReportEntitlementAuthority} from '../lib/one-time-report-authority-review.mjs';
-import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
-import {decodeAuthorizedReportEnvelopeReview} from '../lib/portal-explicit-report-envelope-review.mjs';
-
-// DDL is restricted to a new disposable LOCAL PostgreSQL 16 CI database.
-// Never connect this destructive fixture to Neon, staging or production.
-const source=process.env.PORTAL_LOCK_RACE_DATABASE_URL;
-if(source){
- const u=new URL(source);
- if(!['postgres:','postgresql:'].includes(u.protocol)||
-    !['localhost','127.0.0.1'].includes(u.hostname)||
-    u.pathname!=='/fixture'||decodeURIComponent(u.username)!=='fixture')
-  throw Error('disposable-ci-postgres-only');
-}
-const dbName='ci_portal_envelope_review';
-const roleName='portal_gateway_reader_ci_envelope';
-const ownerName='portal_report_fn_owner';
-const rolePassword='synthetic-ci-only-local-reader-password';
-const A='11111111-1111-4111-8111-111111111111';
-const B='22222222-2222-4222-8222-222222222222';
-const SECRET='fixture-synthetic-report-secret-not-for-live-use';
-const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-const sign=(tenant,expiry,nonce)=>createHmac('sha256',SECRET)
- .update('portal-one-time-report-v1|'+tenant+'|'+expiry+'|'+nonce).digest('hex');
-
-test('real isolated SQL RPC differentiates denial, authorized empty, replay, expiry and revocation',{
- skip:!source?'requires disposable local PostgreSQL service':false,
- timeout:35000
-},async()=>{
- const admin=new Pool({connectionString:source,max:1,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000});
- const target=new URL(source);target.pathname='/'+dbName;
- let db;
- let created=false,roleCreated=false,ownerCreated=false;
- try{
-  await admin.query('CREATE DATABASE '+dbName);created=true;
-  db=new Pool({connectionString:target.toString(),max:4,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000,idle_in_transaction_session_timeout:12000});
-  // Real PostgreSQL fail-before-DDL acceptance: the mandatory NOLOGIN owner
-  // must exist BEFORE this review migration may create its private schema.
-  const migration=await readFile(new URL('../migrations/portal-one-time-explicit-envelope-review.sql',import.meta.url),'utf8');
-  await assert.rejects(db.query(migration),error=>
-   error.message.includes('review-report-function-owner-unverified'));
-  // Clear the failed BEGIN transaction on the pooled backend before the
-  // following catalog probe (and before disposable fixture DDL).
-  await db.query('ROLLBACK');
-  const beforeAnyDdl=(await db.query(
-   "SELECT to_regnamespace('portal_authz') IS NOT NULL AS schema_exists, "+
-   "to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
-  )).rows[0];
-  assert.deepEqual(beforeAnyDdl,{schema_exists:false,rpc_exists:false},
-   'missing owner must leave no schema and no SECURITY DEFINER function');
-  await db.query('CREATE SCHEMA portal_authz');
-  await db.query('CREATE TABLE public.clients(id uuid PRIMARY KEY,status text NOT NULL)');
-  await db.query('CREATE TABLE public.client_credentials(client_id uuid PRIMARY KEY)');
-  await db.query('CREATE TABLE public.payments(id uuid PRIMARY KEY)');
-  await db.query('CREATE TABLE public.verified_customer_settlements(id uuid PRIMARY KEY)');
-  await db.query('CREATE TABLE public.client_pilot_access(client_id uuid PRIMARY KEY, revoked_at timestamptz, expires_at timestamptz NOT NULL)');
-  await db.query('CREATE TABLE public.ai_provider_comparisons(client_id uuid NOT NULL,query text NOT NULL,results jsonb NOT NULL,created_at timestamptz NOT NULL DEFAULT clock_timestamp())');
-  // Only the disposable CI cluster gets this NOLOGIN function owner. The
-  // migration itself MUST continue rejecting missing/unverified owners.
-  await admin.query('CREATE ROLE '+ownerName+' NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS');
-  ownerCreated=true;
-  await db.query('GRANT USAGE ON SCHEMA public,portal_authz TO '+ownerName);
-  await db.query('GRANT SELECT ON public.clients,public.client_pilot_access,public.ai_provider_comparisons TO '+ownerName);
-  // Once the role and sensitive-table checks pass, a missing private pgcrypto
-  // HMAC must still fail BEFORE creating any signing/nonce tables or RPC.
-  await assert.rejects(db.query(migration),error=>
-   error.message.includes('review-report-hmac-placement-unverified'));
-  await db.query('ROLLBACK');
-  const absentCryptoObjects=(await db.query(
-   "SELECT to_regclass('portal_authz.signing_keys') IS NOT NULL AS keys_exist, "+
-   "to_regclass('portal_authz.consumed_claims') IS NOT NULL AS claims_exist, "+
-   "to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
-  )).rows[0];
-  assert.deepEqual(absentCryptoObjects,{keys_exist:false,claims_exist:false,rpc_exists:false},
-   'missing private HMAC cannot leave any signed-envelope artifacts');
-);
+    RETURNS bytea LANGUAGE SQL IMMUTABLE AS $fake$ SELECT $1 $fake$`);
   await assert.rejects(db.query(migration),error=>
    error.message.includes('review-report-hmac-placement-unverified'));
   await db.query('ROLLBACK');
