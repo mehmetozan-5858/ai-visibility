@@ -69,7 +69,7 @@ test('unchanged existing password yields a private authorized tenant report',asy
    return email==='owner@example.com'&&verifyHash(input,stored)
     ?{clientId:A,email:'owner@example.com'}:null;
   };
-  const f=fixture({reports:[{clientId:A,query:'synthetic query',results:{},createdAt:'2026-11-15T00:00:00Z'}]});
+  const f=fixture({reports:[{clientId:A,query:'synthetic query',results:[{provider:'gemini',status:'answer-received-unverified',answer:'Synthetic answer',verified:false}],createdAt:'2026-11-15T00:00:00Z'}]});
   for(const input of ['incorrect-password',password+'-changed']){
    const invalid=await issueExistingPasswordSessionReview({
     email:'OWNER@example.com',password:input,verifyExisting
