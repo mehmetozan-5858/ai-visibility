@@ -28,6 +28,16 @@ A fresh synthetic customer/report row was inserted on the **same isolated test b
 
 **Replay is currently accepted during the 90-second token lifetime.** Short expiry limits duration but is **not** one-time use. Production launch requires a reviewed nonce/jti-and-revocation mechanism or an explicitly justified bounded replay threat model with narrow network access and independently verified customer session. Do not claim replay denial or revocation acceptance from the previous A/B tests.
 
+## Follow-up: one-time nonce consumed inside the database (2026-11-15)
+
+On the **same existing isolated Neon branch**, added trial-only `portal_authz_trial.consumed_claims` with `claim_id UUID PRIMARY KEY`, and `public.portal_trial_one_time_report(tenant UUID,expiry BIGINT,claim_id UUID,mac TEXT)`. The HMAC binds a fixed report audience, tenant, expiry, and unique claim ID; PostgreSQL inserts the verified ID using `ON CONFLICT DO NOTHING RETURNING` before returning any rows. The reader's EXECUTE privilege on the **old replayable** trial function was revoked. The reader has EXECUTE on only the one-time function, no direct table/key/claim-ledger permissions.
+
+**Real test-branch synthetic SQL results:** first valid claim returned 1 row, identical replay returned **0**, cross-tenant reuse returned **0**, forged `app.tenant_id` + wrong claim returned **0**, empty and expired claims returned **0**. Synthetic customers, reports and consumed claim were explicitly cleaned up (0 remaining).
+
+**Transaction and operational limitation:** the claim ledger must be written to prevent replay. A `BEGIN READ ONLY` gateway transaction **cannot** work with this design. An audited `BEGIN` transaction can remain narrowly scoped to a role with no table INSERT/UPDATE/DELETE grants, invoking only the reviewed `SECURITY DEFINER` function. A rollback also rolls back consumption, so one-time behavior is for **committed** reads. Network failures after the read may require a **new, freshly signed claim**; do not automatically replay the original claim or report acceptance. Real production requires secure claim-key provisioning/rotation, bounded ledger retention, key revocation, concurrent replay tests, function owner/EXECUTE safety review and a separate deployment decision.
+
+Review-only JS integration modules: `lib/one-time-db-report-review.mjs` and `tests/one-time-db-report-review.test.mjs`; **not wired** into the customer API, no production secrets, migrations or deploys.
+
 ## Mandatory blockers before anything can go live
 
 1. Review an auditable DB-verification function migration for production; avoid PUBLIC EXECUTE and exposed private schemas. Confirm the owner can read only the required data and no broader SECURITY DEFINER capabilities escape. Validate lock and rollback.
