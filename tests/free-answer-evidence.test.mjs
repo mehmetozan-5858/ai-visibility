@@ -101,3 +101,22 @@ test('network timeout and failed cost persistence stop second free-provider requ
   assert.doesNotMatch(JSON.stringify(result),/private-network-details|private-cost-storage-failure/);
  }
 });
+
+test('unverified successful-looking free response prevents later prompts and ledger writes',async()=>{
+ for(const bad of [
+  {usage:{cost:1}},
+  {complete:false},
+  {responseId:''},
+  {modelId:'different/model:free'}
+ ]){
+  let calls=0,costs=0;
+  const result=await collectFreeAnswerEvidence(entity,{queries},{env,
+   request:async()=>{calls++;return {ok:true,verifiedZeroPriceAtRequest:true,usage:{cost:0},modelId:env.OPENROUTER_FREE_MODEL,answer:'A complete answer.',complete:true,responseId:'synthetic-identifier',...bad}},
+   recordCost:async()=>{costs++;return {id:'unexpected'}}});
+  assert.equal(calls,1,JSON.stringify(bad));
+  assert.equal(costs,0,JSON.stringify(bad));
+  assert.deepEqual(result.observations,[]);
+  assert.equal(result.errors[0].reason,'answer-verification-failed');
+  assert.equal(result.errors[1].reason,'skipped-after-provider-block');
+ }
+});
