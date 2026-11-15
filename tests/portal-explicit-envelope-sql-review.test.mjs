@@ -46,6 +46,12 @@ test('SECURITY DEFINER migration cannot commit under privileged migration runner
  assert.match(s,/NOT EXISTS \(SELECT 1 FROM pg_catalog\.pg_auth_members m WHERE m\.member=r\.oid\)/);
  assert.match(s,/NOT has_database_privilege\(r\.oid,current_database\(\),'CREATE'\)/);
  assert.match(s,/NOT has_schema_privilege\(r\.oid,'public','CREATE'\)/);
+ for(const table of ['clients','client_pilot_access','ai_provider_comparisons']){
+  assert.match(s,new RegExp("to_regclass\\('public\\."+table+"'\\) IS NOT NULL"),
+   'owner prerequisite table must exist before DDL: '+table);
+  assert.match(s,new RegExp("AND has_table_privilege\\(r\\.oid,to_regclass\\('public\\."+table+"'\\),'SELECT'\\)"),
+   'function owner must have preapproved SELECT before any DDL: '+table);
+ }
  assert.match(s,/to_regclass\('public\.client_credentials'\) IS NOT NULL/);
  assert.match(s,/NOT has_table_privilege\(r\.oid,to_regclass\('public\.client_credentials'\),'SELECT'\)/);
  assert.match(s,/to_regclass\('public\.payments'\) IS NOT NULL/);
