@@ -33,7 +33,7 @@ test('release HOLD: event claim precedes tenant row lock and must not be confuse
  assert.doesNotMatch(subscription,/acquirePilotAdvisoryLockReview/);
 });
 
-test('release HOLD: normalized merchant-reference uniqueness is not related to Paddle signed settlement',()=>{
+test('release HOLD: normalized merchant-reference uniqueness is not related to Paddle signed settlement',async()=>{
  const repository=await readFile(new URL('../lib/repository.js',import.meta.url),'utf8');
  assert.match(repository,/confirmCardPaymentByMerchantOid/);
  assert.match(repository,/WHERE replace\(reference_code,'-',\s*''\)=\$1/);
