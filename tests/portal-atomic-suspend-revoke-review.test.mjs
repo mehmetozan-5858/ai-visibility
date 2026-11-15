@@ -26,7 +26,7 @@ test('retirement uses single tenant lock and transaction for suspension plus rev
   accountPresent:true,suspended:true,pilotRevoked:true
  });
  const statements=calls.map(x=>x.sql);
- const find=q=>statements.findIndex(x=>x.includes(q));
+ const find=q=>statements.findIndex(x=>q==='COMMIT'||q==='ROLLBACK' ? x===q : x.includes(q));
  assert.ok(find('BEGIN ISOLATION LEVEL READ COMMITTED')<find('pg_advisory_xact_lock'));
  assert.ok(find('pg_advisory_xact_lock')<find('UPDATE public.clients'));
  assert.ok(find('UPDATE public.clients')<find('UPDATE public.client_pilot_access'));
