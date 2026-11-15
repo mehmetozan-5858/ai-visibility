@@ -164,7 +164,13 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
       'SELECT 1 FROM public.payments LIMIT 1',
       'SELECT 1 FROM public.verified_customer_settlements LIMIT 1',
       'SELECT 1 FROM portal_authz.signing_keys LIMIT 1',
-      'SELECT 1 FROM portal_authz.consumed_claims LIMIT 1'
+      'SELECT 1 FROM portal_authz.consumed_claims LIMIT 1',
+      "UPDATE portal_authz.signing_keys SET secret='forged-key' WHERE key_id='review-v1'",
+      "DELETE FROM portal_authz.signing_keys WHERE key_id='review-v1'",
+      `INSERT INTO portal_authz.consumed_claims(claim_id,tenant_id,expires_at)
+        VALUES('33333333-3333-4333-8333-333333333333',
+        '11111111-1111-4111-8111-111111111111',1999999999)`,
+      "DELETE FROM portal_authz.consumed_claims WHERE tenant_id='11111111-1111-4111-8111-111111111111'"
      ]){
       await auditConn.query('SAVEPOINT forbidden_reader_probe');
       await assert.rejects(auditConn.query(query),error=>error.code==='42501',
