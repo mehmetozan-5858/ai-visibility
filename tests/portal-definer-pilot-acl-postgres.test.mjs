@@ -61,7 +61,7 @@ test('NOLOGIN SQL definer requires pilot SELECT, while RPC-only LOGIN reader nev
 
   const ownerRights=(await db.query(`SELECT rolcanlogin,
    has_table_privilege($1,'public.client_pilot_access','SELECT') AS pilot_select,
-   has_table_privilege($1,'public.ai_provider_comparisons','SELECT') AS comparison_select,
+   has_table_privilege($1,'public.ai_provider_comparisons','SELECT') AS comparison_select
    FROM pg_roles WHERE rolname=$1`,[owner])).rows[0];
   assert.equal(ownerRights.rolcanlogin,false);
   assert.equal(ownerRights.pilot_select,false);
