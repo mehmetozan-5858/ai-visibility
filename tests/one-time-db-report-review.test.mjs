@@ -147,3 +147,30 @@ test('unsafe SQL role rolls back without RPC and always releases connection',asy
   assert.equal(calls.length,5);assert.equal(calls[4],'ROLLBACK');assert.equal(released,1);
  });
 });
+
+test('lock timeout in the RPC rolls back and never returns verified report',async()=>{
+ await withSyntheticEnv(async()=>{
+  const token=await createClientToken(A);
+  let releases=0;
+  const calls=[];
+  const pool={connect:async()=>({
+   query:async sql=>{
+    calls.push(sql);
+    if(sql==='BEGIN ISOLATION LEVEL READ COMMITTED'||
+       sql==="SET LOCAL lock_timeout = '2500ms'"||
+       sql==="SET LOCAL statement_timeout = '10000ms'"||
+       sql==='ROLLBACK')return {rows:[]};
+    if(sql.includes('current_user AS "name"'))return {rows:[safeRole]};
+    if(sql.startsWith('SELECT "clientId",query,results,"createdAt" FROM public.portal_trial_one_time_report('))
+     throw Object.assign(Error('synthetic lock timeout'),{code:'55P03'});
+    throw Error('unexpected SQL');
+   },
+   release:()=>{releases++}
+  })};
+  await assert.rejects(readOneTimeDbReportReview(pool,token,verified(A)),
+   /synthetic lock timeout/);
+  assert.equal(calls.at(-1),'ROLLBACK');
+  assert.equal(calls.filter(x=>x==='COMMIT').length,0);
+  assert.equal(releases,1);
+ });
+});
