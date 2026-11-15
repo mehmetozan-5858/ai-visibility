@@ -15,10 +15,8 @@ test('structurally valid tenant RLS is not a trusted identity boundary',()=>{
 });
 
 test('strict customer portal and PDF fail closed when RLS verification is not ready',async()=>{
- for(const name of ['app/api/client-portal/route.js','app/musteri-panel/rapor/route.js']){
-  let source;
-  try{source=await readFile(new URL('../'+name,import.meta.url),'utf8')}
-  catch(e){if(e.code==='ENOENT'&&name.includes('/rapor/'))continue;throw e}
+ for(const name of ['app/api/client-portal/route.js','app/api/client-portal/report/route.js']){
+  const source=await readFile(new URL('../'+name,import.meta.url),'utf8');
   assert.match(source,/inspectComparisonRlsPolicy\(reader\)/);
   assert.match(source,/if\(!rls\.ready\)return privateJson\(/);
  }
