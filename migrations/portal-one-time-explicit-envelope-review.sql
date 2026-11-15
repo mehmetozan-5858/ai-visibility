@@ -89,6 +89,12 @@ BEGIN
   ),'[]'::jsonb);
 END; $$;
 
+-- Fail closed if the separately reviewed NOLOGIN function-owner role is absent.
+-- NEVER let SECURITY DEFINER retain the migration runner's broad privileges.
+-- This role is NOT auto-created or granted privileges by this review script.
+ALTER FUNCTION public.portal_verified_one_time_envelope_review(UUID,BIGINT,UUID,TEXT)
+  OWNER TO portal_report_fn_owner;
+
 REVOKE ALL ON FUNCTION public.portal_verified_one_time_envelope_review(UUID,BIGINT,UUID,TEXT) FROM PUBLIC;
 
 -- Deliberately no reader role or EXECUTE GRANT in this review migration.
