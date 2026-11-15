@@ -49,6 +49,9 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   const migration=await readFile(new URL('../migrations/portal-one-time-explicit-envelope-review.sql',import.meta.url),'utf8');
   await assert.rejects(db.query(migration),error=>
    error.message.includes('review-report-function-owner-unverified'));
+  // Clear the failed BEGIN transaction on the pooled backend before the
+  // following catalog probe (and before disposable fixture DDL).
+  await db.query('ROLLBACK');
   const beforeAnyDdl=(await db.query(
    "SELECT to_regnamespace('portal_authz') IS NOT NULL AS schema_exists, "+
    "to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
