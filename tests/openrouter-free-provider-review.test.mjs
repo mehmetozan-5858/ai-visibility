@@ -46,6 +46,14 @@ test('free-only exact request and provider receipt parsing are synthetic',async(
 test('missing, nonzero or mismatched catalog pricing prevents POST inference',async()=>{
  for(const listing of [
   {data:[]},
+  {data:[
+   {id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}},
+   {id:'openrouter/free',pricing:{prompt:'0.01',completion:'0',request:'0'}}
+  ]},
+  {data:[
+   {id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}},
+   {id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}}
+  ]},
   {data:[{id:'openrouter/free',pricing:{prompt:'0.1',completion:'0'}}]},
   {data:[{id:'openrouter/free',pricing:{prompt:'0'}}]},
   {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0.00001'}}]},
