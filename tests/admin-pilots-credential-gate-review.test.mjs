@@ -8,14 +8,15 @@ const source=(await readFile(new URL('../app/api/admin-pilots/route.js',import.m
  .replace(/^import .*;$/gm,'')
  .replace(/export async function /g,'async function ');
 const clientId='11111111-1111-4111-8111-111111111111';
-function scenario({credential=null,account={client:{id:clientId,name:'ZERA Clothing',plan:'Pilot',status:'active'}},action='grant',email='pilot@example.test',confirmZeraPilotBootstrap=false,priorPilot=null,emailSenderConfigured=true,signingConfigured=true}={}){
+function scenario({credential=null,account={client:{id:clientId,name:'ZERA Clothing',plan:'Pilot',status:'active'}},action='grant',email='pilot@example.test',confirmZeraPilotBootstrap=false,priorPilot=null,emailSenderConfigured=true,signingConfigured=true,otherTenantEmailUsed=false}={}){
  const calls=[];
  const route=new Function('requireAdmin','enforceSameOrigin','getClientAccount','listClients',
-  'getPilotAccess','grantPilot','revokePilot','getClientCredential','createPaymentAccessToken','process',
+  'getPilotAccess','grantPilot','revokePilot','getClientCredential','getClientCredentialByEmail','createPaymentAccessToken','process',
   source+';return {POST};')(
   async()=>null,()=>null,async()=>account,async()=>[],
   async()=>priorPilot,async()=>{calls.push('grant')},async()=>{calls.push('revoke')},
-  async()=>credential,async()=>{calls.push('payment-token');return 'SYNTHETIC_TOKEN'},
+  async()=>credential,async()=>otherTenantEmailUsed?{clientId:'OTHER_SYNTHETIC_TENANT'}:null,
+  async()=>{calls.push('payment-token');return 'SYNTHETIC_TOKEN'},
   {env:{...(emailSenderConfigured?{RESEND_API_KEY:'synthetic-test-key',EMAIL_FROM:'test@example.invalid'}:{}),...(signingConfigured?{AUTH_SECRET:'SYNTHETIC_SIGNING_SECRET'}:{})}});
  const req=new Request('https://test.example/api/admin-pilots',{
   method:'POST',headers:{'Content-Type':'application/json'},
@@ -97,4 +98,14 @@ test('no invitation signing key means zero pilot writes or payment tokens',async
   assert.equal(result.status,503);
   assert.deepEqual(calls,[]);
  }
+});
+
+test('existing email on a different customer blocks ZERA activation before pilot write',async()=>{
+ const {calls,invoke}=scenario({action:'bootstrap',confirmZeraPilotBootstrap:true,otherTenantEmailUsed:true});
+ const response=await invoke();
+ assert.equal(response.status,409);
+ assert.deepEqual(calls,[]);
+ const payload=await response.json();
+ assert.match(payload.error,/başka bir müşteri giriş hesabına bağlı/);
+ assert.doesNotMatch(JSON.stringify(payload),/OTHER_SYNTHETIC_TENANT/);
 });
