@@ -44,6 +44,15 @@ test('pilot grant/revoke use the vetted lock-aware writer rather than raw SQL',a
  await assert.rejects(grantPilot(tenant,'owner@example.com',31,'Free analysis pilot'),/invalid-pilot/);
 });
 
+test('invalid tenant is rejected before pilot schema preparation and SQL',async()=>{
+ queries=[];
+ const prior=pilotWrites.length;
+ await assert.rejects(grantPilot('invalid','owner@example.com',7,'Free analysis pilot'),/invalid-pilot/);
+ await assert.rejects(revokePilot('invalid'),/invalid-pilot/);
+ assert.deepEqual(queries,[]);
+ assert.equal(pilotWrites.length,prior);
+});
+
 // Regression guard: an explicitly granted pilot must reach the same report
 // UI that the server-side customerAccess and PDF endpoint authorize.
 test('pilot report UI is reachable and paid implementation actions stay hidden',async()=>{
