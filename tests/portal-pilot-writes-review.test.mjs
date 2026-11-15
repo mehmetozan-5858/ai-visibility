@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {grantPilotWithLockReview,revokePilotWithLockReview,changePilotExpiryWithLockReview}
+import {grantPilotWithLockReview,revokePilotWithLockReview,changePilotExpiryWithLockReview,suspendClientWithLockReview}
  from '../lib/portal-pilot-writes-review.mjs';
 import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 
@@ -97,4 +97,28 @@ test('invalid pilot expiry change rejects without opening database connection',a
   await assert.rejects(changePilotExpiryWithLockReview(pool,TENANT,expiry),/review-pilot-expiry-invalid/);
  }
  assert.equal(opened,false);
+});
+
+
+test('account suspension follows tenant lock and cannot update a different client',async()=>{
+ let released=false;const calls=[];
+ const tx={query:async(sql,args)=>{
+  calls.push({sql,args});
+  if(sql.includes('UPDATE public.clients'))return {rows:[{id:TENANT}]};
+  return {rows:[]};
+ },release:()=>{released=true}};
+ const result=await suspendClientWithLockReview({connect:async()=>tx},TENANT);
+ assert.deepEqual(result,{suspended:true});
+ assert.deepEqual(calls.slice(0,4).map(c=>c.sql),start);
+ assert.match(calls[4].sql,/SET status='payment-review'/);
+ assert.match(calls[4].sql,/WHERE id=\$1 AND status<>'payment-review'/);
+ assert.deepEqual(calls[4].args,[TENANT]);
+ assert.equal(calls[5].sql,'COMMIT');
+ assert.equal(released,true);
+});
+
+test('suspension rejects invalid client UUID before database connection',async()=>{
+ let opened=0;const pool={connect:async()=>{opened++;throw Error('unexpected connection')}};
+ await assert.rejects(suspendClientWithLockReview(pool,'wrong'),/review-client-suspend-invalid/);
+ assert.equal(opened,0);
 });
