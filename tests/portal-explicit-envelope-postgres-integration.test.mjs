@@ -201,6 +201,20 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
      reportPool:readerPool,
      entitlementAuthority:createReviewReportEntitlementAuthority(db)
     });
+    // Disposable real PostgreSQL negative probe: even an unrelated
+    // SECURITY DEFINER function with PUBLIC EXECUTE must fail role
+    // readiness BEFORE the signed report RPC is attempted.
+    await db.query(`CREATE FUNCTION public.portal_unexpected_definer_ci()
+      RETURNS integer LANGUAGE sql SECURITY DEFINER AS $ SELECT 1 $`);
+    try{
+     await db.query('GRANT EXECUTE ON FUNCTION public.portal_unexpected_definer_ci() TO PUBLIC');
+     await assert.rejects(
+      gateway(await createClientToken(A)),/review-envelope-role-unverified/,
+      'unexpected callable security definer must block signed report reader');
+    }finally{
+     await db.query('DROP FUNCTION public.portal_unexpected_definer_ci()');
+    }
+
     // Full review acceptance: the signed session MUST originate from
     // unchanged existing-password verification, not a direct test token.
     // All data is synthetic. No real user credential is read or reset.
