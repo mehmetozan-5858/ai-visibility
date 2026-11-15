@@ -205,7 +205,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     // SECURITY DEFINER function with PUBLIC EXECUTE must fail role
     // readiness BEFORE the signed report RPC is attempted.
     await db.query(`CREATE FUNCTION public.portal_unexpected_definer_ci()
-      RETURNS integer LANGUAGE sql SECURITY DEFINER AS $ SELECT 1 $`);
+      RETURNS integer LANGUAGE sql SECURITY DEFINER AS $$ SELECT 1 $$`);
     try{
      await db.query('GRANT EXECUTE ON FUNCTION public.portal_unexpected_definer_ci() TO PUBLIC');
      await assert.rejects(
