@@ -17,6 +17,22 @@ test('review migration is non-operative until separate secret and role approvals
  assert.doesNotMatch(s,/^\s*CREATE\s+ROLE|^\s*ALTER\s+ROLE|^\s*CREATE\s+EXTENSION/mi);
 });
 
+test('pilot read holds tenant row locks across nonce consumption',async()=>{
+ const s=await read();
+ const fn=s.slice(s.indexOf('CREATE OR REPLACE FUNCTION public.portal_verified_one_time_report'));
+ const clientLock=fn.indexOf("PERFORM 1 FROM public.clients c");
+ const pilotLock=fn.indexOf("PERFORM 1 FROM public.client_pilot_access pilot");
+ const nonceWrite=fn.indexOf("INSERT INTO portal_authz.consumed_claims");
+ assert.ok(clientLock>=0&&pilotLock>clientLock&&nonceWrite>pilotLock,
+  'client then pilot locks must precede nonce write');
+ assert.match(fn,/c\\.status='active' FOR SHARE/);
+ assert.match(fn,/pilot\\.expires_at>clock_timestamp\\(\\) FOR SHARE/);
+ assert.match(fn,/IF NOT FOUND THEN RETURN; END IF;/);
+ assert.ok(fn.indexOf("pilot.revoked_at IS NULL")<nonceWrite);
+ assert.match(fn,/Recheck expiration after any lock wait/);
+ assert.match(fn,/explicit pinned-connection transaction/);
+});
+
 test('one-time function requires active customer, signature and atomic nonce consumption',async()=>{
  const s=await read();
  assert.match(s,/SECURITY DEFINER SET search_path=pg_catalog/);
