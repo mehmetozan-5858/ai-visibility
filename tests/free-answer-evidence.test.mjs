@@ -22,6 +22,9 @@ test('only complete real-shaped zero-cost answers retain identity and enter cost
  assert.equal(calls.length,2);assert.ok(calls.every(x=>x.enabled===true&&x.modelId.endsWith(':free')));
  assert.equal(r.summary.successful,1);assert.equal(r.summary.neutralComplete,1);assert.equal(r.observations.length,1);assert.equal(r.errors.length,1);assert.equal(r.errors[0].reason,'answer-verification-failed');assert.equal(costs.length,1);
  assert.equal(new Set(r.observations.map(x=>x.provider)).size,1);assert.equal(r.observations[0].responseId,'local-1');
+ assert.equal(r.observations[0].costRecordId,'synthetic-cost');
+ assert.equal(costs[0].metadata.responseId,'local-1');
+ assert.equal(costs[0].metadata.pricingSource,'provider-reported-zero');
  assert.ok(costs.every(x=>x.amount===0&&x.estimated===false));
 });
 test('failed, missing-cost and mismatched-model answers never become evidence or fall back',async()=>{
