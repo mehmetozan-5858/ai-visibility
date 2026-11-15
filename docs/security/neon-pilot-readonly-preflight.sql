@@ -35,7 +35,8 @@ SELECT
     AS report_reads_authoritative_pilot_access,
   position('revoked_at' in pg_get_functiondef(p.oid)) > 0
     AS report_checks_revocation,
-  position('expires_at' in pg_get_functiondef(p.oid)) > 0
+  position('client_pilot_access a' in pg_get_functiondef(p.oid)) > 0 AND
+  position('a.expires_at' in pg_get_functiondef(p.oid)) > 0
     AS report_checks_pilot_expiration,
   NOT has_table_privilege('portal_gateway_reader_trial_20261114',
     'public.ai_provider_comparisons','SELECT') AS gateway_raw_comparison_read_blocked,
