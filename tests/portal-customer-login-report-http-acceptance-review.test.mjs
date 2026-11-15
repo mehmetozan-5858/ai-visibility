@@ -213,3 +213,31 @@ test('malformed nonempty SQL report fails closed and rolls back one-time claim',
   assert.equal(f.releases,1);
  });
 });
+
+test('historical signed SQL provider answer never becomes independently verified evidence',async()=>{
+ await withSyntheticEnv(async()=>{
+  const evidence={sourceUrl:'https://example.org/audit-only',observation:'synthetic answer'};
+  const f=fixture({reports:[{clientId:A,query:'synthetic historical provider evidence',
+   createdAt:'2026-11-15T00:00:00Z',results:[{
+    provider:'gemini',status:'source-supported-answer',verified:true,
+    answer:'This synthetic answer is not live evidence: synthetic answer',
+    evidence
+   }]}]});
+  const response=await f.http(await createClientToken(A));
+  assert.equal(response.status,200);
+  const payload=await response.json();
+  assert.equal(payload.evidenceClass,'historical');
+  assert.equal(payload.verifiedProviderEvidence,false);
+  assert.equal(payload.reports.length,1);
+  const provider=payload.reports[0].results[0];
+  assert.equal(provider.provider,'gemini');
+  assert.equal(provider.verified,false);
+  assert.equal(provider.supported,false);
+  assert.equal(provider.status,'answer-received-unverified');
+  assert.equal(provider.sourceUrl,null);
+  assert.equal(provider.evidence,null);
+  assert.equal(provider.observation,null);
+  assert.equal(f.calls.at(-1),'COMMIT');
+  assert.equal(f.releases,1);
+ });
+});
