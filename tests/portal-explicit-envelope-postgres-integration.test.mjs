@@ -4,6 +4,8 @@ import {createHmac,randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {Pool} from 'pg';
 import {createClientToken} from '../lib/admin-auth.js';
+import {hashPassword,verifyHash} from '../lib/client-password-verifier.mjs';
+import {issueExistingPasswordSessionReview} from '../lib/portal-existing-password-session-review.mjs';
 import {createEnvelopeGatewayReview} from '../lib/portal-envelope-gateway-review.mjs';
 import {createPortalReportHttpReview} from '../lib/portal-report-http-review.mjs';
 import {createReviewReportEntitlementAuthority} from '../lib/one-time-report-authority-review.mjs';
@@ -146,12 +148,37 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
      reportPool:readerPool,
      entitlementAuthority:createReviewReportEntitlementAuthority(db)
     });
-    assert.deepEqual(await gateway(await createClientToken(A)),[],
-     'real LOGIN role must execute signed empty-report RPC without raw SELECT');
-    // HTTP adapter + signed cookie + live disposable DB role/RPC:
-    // a valid empty report must be 200, never cached, and clearly authorized.
+    // Full review acceptance: the signed session MUST originate from
+    // unchanged existing-password verification, not a direct test token.
+    // All data is synthetic. No real user credential is read or reset.
+    const existingPassword='synthetic-existing-customer-password-no-reset';
+    const existingHash=hashPassword(existingPassword);
+    let verificationCalls=0;
+    const verifyExisting=async(email,input)=>{
+     verificationCalls++;
+     return email==='owner@example.test'&&verifyHash(input,existingHash)
+      ?{clientId:A,email:'owner@example.test'}:null;
+    };
     const http=createPortalReportHttpReview(gateway);
-    const authorizedResponse=await http(await createClientToken(A));
+    const wrongSession=await issueExistingPasswordSessionReview({
+     email:'owner@example.test',password:'wrong-existing-password',
+     verifyExisting
+    });
+    assert.equal(wrongSession,null);
+    const wrongResponse=await http(wrongSession||'');
+    assert.equal(wrongResponse.status,401);
+    assert.equal(wrongResponse.headers.get('Cache-Control'),'private, no-store, max-age=0');
+    const verifiedSession=await issueExistingPasswordSessionReview({
+     email:'OWNER@EXAMPLE.TEST',password:existingPassword,verifyExisting
+    });
+    assert.ok(verifiedSession,'only verified existing password can create session');
+    assert.equal(verifyHash(existingPassword,existingHash),true);
+    assert.equal(verificationCalls,2);
+    assert.deepEqual(await gateway(verifiedSession),[],
+     'existing-password session must reach restricted role and signed empty-report RPC');
+    // HTTP adapter + verified password-derived session + disposable PG role/RPC:
+    // a valid empty report must be 200, never cached, and authorized.
+    const authorizedResponse=await http(verifiedSession);
     assert.equal(authorizedResponse.status,200);
     assert.equal(authorizedResponse.headers.get('Cache-Control'),
      'private, no-store, max-age=0');
