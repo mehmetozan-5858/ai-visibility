@@ -122,3 +122,14 @@ test('suspension rejects invalid client UUID before database connection',async()
  await assert.rejects(suspendClientWithLockReview(pool,'wrong'),/review-client-suspend-invalid/);
  assert.equal(opened,0);
 });
+
+test('suspension rolls back a failed account update on the same pinned connection',async()=>{
+ const m=mockPool({failOn:'UPDATE public.clients'});
+ await assert.rejects(suspendClientWithLockReview(m.pool,TENANT),/synthetic-sql-failure/);
+ assert.deepEqual(m.calls.slice(0,4).map(c=>c.sql),start);
+ assert.match(m.calls[4].sql,/UPDATE public\.clients/);
+ assert.deepEqual(m.calls[4].args,[TENANT]);
+ assert.equal(m.calls.at(-1).sql,'ROLLBACK');
+ assert.equal(m.calls.some(c=>c.sql==='COMMIT'),false);
+ assert.equal(m.releases,1);
+});
