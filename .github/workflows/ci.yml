@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: "24"
       - run: npm install
+      - name: Existing customer password verification acceptance (synthetic only)
+        timeout-minutes: 2
+        run: timeout --signal=TERM --kill-after=5s 90s node --test tests/client-existing-password-scrypt-acceptance.test.mjs
       - name: Isolated signed-report PostgreSQL RPC acceptance (fail fast)
         timeout-minutes: 3
         run: timeout --signal=TERM --kill-after=5s 120s node --test tests/portal-explicit-envelope-postgres-integration.test.mjs
