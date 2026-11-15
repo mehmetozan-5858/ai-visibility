@@ -182,3 +182,26 @@ test('nonempty signed envelope with no safe provider evidence rolls back claim',
   assert.equal(m.released,1);
  });
 });
+
+
+test('plausible historical provider URLs never become independently verified AI proof',async()=>{
+ await env(async()=>{
+  const token=await createClientToken(A);
+  const m=mock({response:[{authorized:true,tenantId:A,reports:[{
+   clientId:A,query:'Synthetic historical question',createdAt:'2026-11-15T00:00:00Z',
+   results:[{provider:'gemini',status:'source-supported-answer',
+    verified:true,answer:'Synthetic historical statement',
+    evidence:{sourceUrl:'https://example.com/source',observation:'Synthetic historical statement'}}]
+  }]}]});
+  const gateway=createEnvelopeGatewayReview({reportPool:m.pool,entitlementAuthority:proof(A)});
+  const safe=await gateway(token);
+  assert.equal(safe.length,1);
+  const item=safe[0].results[0];
+  assert.equal(item.verified,false);
+  assert.equal(item.supported,false);
+  assert.equal(item.status,'answer-received-unverified');
+  assert.equal(item.sourceUrl,null);
+  assert.equal(item.evidence,null);
+  assert.equal(m.queries.at(-1).sql,'COMMIT');
+ });
+});
