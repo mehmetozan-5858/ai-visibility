@@ -49,3 +49,13 @@ test('failed tenant lock rolls back without writing pilot grant or revoke',async
  assert.ok(!queries.some(x=>x.includes('UPDATE client_pilot_access')));
  failLock=false;
 });
+
+test('paid and pilot entitlement cannot override non-active client status',async()=>{
+ const statuses=['payment-review','inactive','suspended','blocked','cancelled',''];
+ for(const status of statuses){
+  const a={client:{id:'client',status},payments:[{status:'paid'}]};
+  assert.equal((await customerAccess(a)).allowed,false,status);
+  assert.equal((await customerAccess({...a,payments:[]})).allowed,false,status);
+ }
+ assert.equal((await customerAccess({client:{id:'client',status:'active'},payments:[{status:'paid'}]})).kind,'paid');
+});
