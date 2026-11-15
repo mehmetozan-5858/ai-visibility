@@ -15,7 +15,7 @@ const role={name:ROLE,login:true,superuser:false,bypassRls:false,
  createDb:false,createRole:false,replication:false,schemaUsage:true,
  schemaCreate:false,databaseCreate:false,envelopeExecute:true,
  legacyReportExecute:false,legacyOneTimeExecute:false,
- oldSignedReportExecute:false,oldAdvisoryReportExecute:false,otherDefinerExecute:false,rawSelect:false,
+ oldSignedReportExecute:false,oldAdvisoryReportExecute:false,otherDefinerExecute:false,memberOfOtherRole:false,rawSelect:false,
  credentialSelect:false,paymentSelect:false,settlementSelect:false,
  privateSchemaUsage:false};
 async function withSyntheticEnv(fn){
