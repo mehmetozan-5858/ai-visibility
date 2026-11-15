@@ -45,6 +45,10 @@ export async function GET(req){
    try{comparisons=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId)}
    catch{if(!scans.length)throw Error();comparisonEvidenceUnavailable=true}
   }
+  // Defensive boundary: no PDF can be generated if its comparison result
+  // contains another customer, even if a DB function returns unexpected rows.
+  if(!Array.isArray(comparisons)||comparisons.some(row=>row?.clientId!==session.clientId))
+   return privateJson({error:"Müşteri raporu kapsamı doğrulanamadı."},503);
   if(!scans.length&&!comparisons.length)return privateJson({error:"Tamamlanmış rapor henüz yok."},409);
   const response=await buildReportResponse({comparisons,comparisonEvidenceUnavailable,pilot:access.kind==="pilot",clients:[account.client],clientId:session.clientId,allScans:scans.map(s=>({...s,clientId:session.clientId}))});
   for(const [key,value] of Object.entries(privateHeaders))response.headers.set(key,value);
