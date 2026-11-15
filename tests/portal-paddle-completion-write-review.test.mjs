@@ -24,13 +24,13 @@ function signed(overrides={}){
  return {raw,secret,header:`ts=${ts};h1=${createHmac('sha256',secret).update(`${ts}:${raw}`).digest('hex')}`};
 }
 function fixture({status='customer-reported',owned=true,conflict=false,
- badCurrency=false,failProof=false}={}){
+ badCurrency=false,failProof=false,method='paddle'}={}){
  const calls=[];let released=0,connects=0;
  const tx={async query(sql,args=[]){
   calls.push({sql,args});
   if(sql===READ_OWNED_PAYMENT_FOR_COMPLETION_SQL)
    return {rows:owned?[{id:P,client_id:A,status,
-    currency:badCurrency?'USD':'EUR',setup_amount:120,monthly_amount:49}]:[]};
+    method,currency:badCurrency?'USD':'EUR',setup_amount:120,monthly_amount:49}]:[]};
   if(sql===MARK_VERIFIED_PADDLE_PAYMENT_SQL)
    return {rows:conflict?[]:[{id:P,client_id:A}]};
   if(sql===INSERT_VERIFIED_PADDLE_PROOF_SQL){
@@ -93,4 +93,20 @@ test('bad Paddle signature cannot create transaction connection',async()=>{
  await assert.rejects(dispatch(f,{...signed(),header:'ts=1;h1='+('0'.repeat(64))}),
   /review-webhook-signature-required/);
  assert.equal(f.connects,0);
+});
+
+test('failed, cancelled and bank-transfer invoices cannot be converted to Paddle paid proof',async()=>{
+ for(const opts of [
+  {status:'failed'},
+  {status:'canceled'},
+  {status:'payment-review'},
+  {status:'pending',method:'bank-transfer'},
+  {status:'customer-reported',method:'manual'}
+ ]){
+  const f=fixture(opts);
+  await assert.rejects(dispatch(f),/review-completion-payment-ineligible/);
+  assert.equal(f.calls.some(c=>c.sql===MARK_VERIFIED_PADDLE_PAYMENT_SQL),false);
+  assert.equal(f.calls.some(c=>c.sql===INSERT_VERIFIED_PADDLE_PROOF_SQL),false);
+  assert.equal(f.calls.at(-1).sql,'ROLLBACK');
+ }
 });
