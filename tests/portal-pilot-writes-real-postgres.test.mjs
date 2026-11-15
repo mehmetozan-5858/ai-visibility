@@ -8,6 +8,15 @@ import {grantPilotWithLockReview,revokePilotWithLockReview}
 // production or remotely-provided URL. Synthetic tenants and audit events.
 // This is a SQL writer acceptance probe, not a real customer-path release test.
 const url=process.env.PORTAL_LOCK_RACE_DATABASE_URL;
+// Fail closed before opening a connection or running public-table DDL.
+// These destructive synthetic fixtures must NEVER be pointed at Neon/production.
+if(url){
+ const target=new URL(url);
+ if(!['postgres:','postgresql:'].includes(target.protocol)||
+  !['localhost','127.0.0.1'].includes(target.hostname)||
+  target.pathname!=='/fixture'||decodeURIComponent(target.username)!=='fixture')
+  throw Error('disposable-ci-postgres-only');
+}
 const A='11111111-1111-4111-8111-111111111111';
 const B='22222222-2222-4222-8222-222222222222';
 test('real PostgreSQL pilot writer commits grant/revoke and rolls back failed audit',{
