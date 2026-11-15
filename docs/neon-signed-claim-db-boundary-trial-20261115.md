@@ -38,6 +38,14 @@ On the **same existing isolated Neon branch**, added trial-only `portal_authz_tr
 
 Review-only JS integration modules: `lib/one-time-db-report-review.mjs` and `tests/one-time-db-report-review.test.mjs`; **not wired** into the customer API, no production secrets, migrations or deploys.
 
+## 2026-11-15 follow-up: overlapping replay and suspended-account status
+
+Two trial PostgreSQL transactions were requested concurrently with **the same signed claim** and wholly synthetic customer report. The returned row counts were **1** and **0**, and both calls completed. This confirms the unique nonce ledger did not permit two successful committed reads in this observation; request overlap at the PostgreSQL execution layer was **not independently established**, so a controlled synchronized race/lock test remains required.
+
+A separate negative test exposed that the first version of `portal_trial_one_time_report` accepted a valid earlier-signed claim **after** its synthetic customer row was marked `status='suspended'`: returned **1**. The function was amended **only on the isolated test branch** to recheck `public.clients.status='active'` after validating the MAC but before nonce consumption. Direct PostgreSQL retest: active synthetic customer→**1**, suspended synthetic customer with a fresh valid claim→**0**, and the suspended claim was **not** entered in the consumption ledger. All synthetic client, report and claim records were cleaned up (0 remaining). This still does not enforce revocation of an individual HTTP session, pilot entitlement or issued claim outside account status.
+
+The first review helper CI failed at `npm test` because its UUID validation regex omitted the complete fourth UUID segment, rejecting even valid signed A/B sessions. Fixed in review commit `e43998b72629a98fb258268fe0091a5c635e5477`; acceptance requires a **new completed CI**, not the previously failed run.
+
 ## Mandatory blockers before anything can go live
 
 1. Review an auditable DB-verification function migration for production; avoid PUBLIC EXECUTE and exposed private schemas. Confirm the owner can read only the required data and no broader SECURITY DEFINER capabilities escape. Validate lock and rollback.
