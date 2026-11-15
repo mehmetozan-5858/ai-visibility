@@ -47,3 +47,16 @@ test('claim expiry is checked again after an advisory lock wait and before nonce
   assert.ok(lock>=0&&ttl>=0&&reject>ttl&&client>reject&&nonce>client,
     'claim must expire closed after lock wait, before authority checks and nonce insertion');
 });
+
+test('candidate report replacement blocks permissive TRUE owner RLS before any grant',async()=>{
+  const sql=await load('docs/security/neon-pilot-revocation-review.sql');
+  const guard=sql.indexOf('DO $rls_guard$');
+  const broad=sql.indexOf('pol.polpermissive',guard);
+  const raise=sql.indexOf("RAISE EXCEPTION 'blocked: unrestricted report-owner comparison RLS policy'",guard);
+  const grant=sql.indexOf('GRANT SELECT (client_id, revoked_at, expires_at)');
+  const replace=sql.indexOf('CREATE OR REPLACE FUNCTION public.portal_trial_one_time_report');
+  assert.ok(guard>=0&&broad>guard&&raise>broad&&grant>raise&&replace>grant,
+    'fail-closed RLS guard must precede any authorization or RPC changes');
+  assert.match(sql,/pol\.polroles=ARRAY\[0::oid\]/);
+  assert.match(sql,/portal_report_fn_owner_trial_20261115/);
+});
