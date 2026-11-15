@@ -115,6 +115,30 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
    const readerPool=new Pool({connectionString:limitedUrl.toString(),
     max:2,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000});
    try{
+    // Verify real LOGIN identity cannot SELECT the raw report, payment,
+    // customer credentials, or the private signing/claim ledgers.
+    const auditConn=await readerPool.connect();
+    try{
+     const identity=(await auditConn.query('SELECT current_user AS name')).rows[0];
+     assert.equal(identity.name,roleName);
+     await auditConn.query('BEGIN');
+     for(const query of [
+      'SELECT 1 FROM public.ai_provider_comparisons LIMIT 1',
+      'SELECT 1 FROM public.client_credentials LIMIT 1',
+      'SELECT 1 FROM public.payments LIMIT 1',
+      'SELECT 1 FROM portal_authz.signing_keys LIMIT 1',
+      'SELECT 1 FROM portal_authz.consumed_claims LIMIT 1'
+     ]){
+      await auditConn.query('SAVEPOINT forbidden_reader_probe');
+      await assert.rejects(auditConn.query(query),error=>error.code==='42501',
+       'privileged report reader unexpectedly accessed forbidden table');
+      await auditConn.query('ROLLBACK TO SAVEPOINT forbidden_reader_probe');
+     }
+     await auditConn.query('COMMIT');
+    }finally{
+     await auditConn.query('ROLLBACK').catch(()=>{});
+     auditConn.release();
+    }
     const gateway=createEnvelopeGatewayReview({
      reportPool:readerPool,
      entitlementAuthority:createReviewReportEntitlementAuthority(db)
