@@ -89,3 +89,34 @@ test('bank confirmation now shares tenant lock, but external settlement writers 
  assert.equal(audit.findings.some(x=>x.code==='card-activation-not-atomic'),false);
  assert.ok(audit.unresolvedExternal.includes('account-suspension-and-deletion'));
 });
+
+test('reintroducing an unlocked payment activation writer is rejected without lifting external HOLD',async()=>{
+ const [pilotSource,repositorySource,reviewSource]=await Promise.all([
+  read('lib/pilot-access.js'),read('lib/repository.js'),
+  read('lib/portal-pilot-writes-review.mjs')
+ ]);
+ for(const method of ['confirmPayment','confirmCardPaymentByMerchantOid']){
+  const start=repositorySource.indexOf('export async function '+method+'(');
+  const next=method==='confirmPayment'
+   ?'export async function upsertSalesOpportunity'
+   :'export async function markCardPaymentFailedByMerchantOid';
+  const end=repositorySource.indexOf(next,start);
+  assert.ok(start>=0&&end>start);
+  const original=repositorySource.slice(start,end);
+  const mutated=original.replace(
+   'await acquirePilotAdvisoryLockReview(tx,bound.clientId)',
+   '/* regression: tenant lock removed */'
+  );
+  assert.notEqual(mutated,original,'a real lock acquisition must exist');
+  const candidate=repositorySource.slice(0,start)+mutated+repositorySource.slice(end);
+  const audit=auditPortalEntitlementWriterCoverage({
+   pilotSource,repositorySource:candidate,reviewSource
+  });
+  assert.equal(audit.ready,false);
+  assert.ok(audit.findings.some(f=>
+   f.code==='account-activation-not-coordinated'&&f.method===method),
+   'a lock removal must be caught: '+method);
+  assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'),
+   'known writer coverage must never certify unrelated external payment writers');
+ }
+});
