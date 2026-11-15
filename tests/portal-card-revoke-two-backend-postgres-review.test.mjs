@@ -90,8 +90,11 @@ test('actual PostgreSQL card activation waits behind committed tenant pilot revo
   if(writerOpen)await writer.query('ROLLBACK').catch(()=>{});
   if(pending)await pending.catch(()=>{});
   observer?.release();writer?.release();
-  if(db)await db.end().catch(()=>{});
-  if(created)await admin.query('DROP DATABASE IF EXISTS "'+name+'" WITH (FORCE)').catch(()=>{});
+  // Do not FORCE-terminate PostgreSQL backends: parallel CI teardown can
+  // otherwise emit an uncaught 57P01 error after node:test has finished.
+  // All pending callbacks, pinned clients and pooled clients must drain first.
+  if(db)await db.end();
+  if(created)await admin.query('DROP DATABASE IF EXISTS "'+name+'"');
   await admin.end();
  }
 });
