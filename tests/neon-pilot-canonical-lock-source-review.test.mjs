@@ -35,3 +35,15 @@ test('unsafe row trigger is still explicitly blocked from execution',async()=>{
   assert.match(sql,/BLOCKED DESIGN SKETCH \/ NOT A MIGRATION \/ DO NOT EXECUTE/);
   // Do not accidentally treat this uninstalled sketch as coordination proof.
 });
+
+test('claim expiry is checked again after an advisory lock wait and before nonce use',async()=>{
+  const sql=await load('docs/security/neon-pilot-revocation-review.sql');
+  const lock=sql.indexOf('PERFORM pg_catalog.pg_advisory_xact_lock');
+  const afterLock=sql.slice(lock);
+  const ttl=afterLock.indexOf('v_now := floor(extract(epoch FROM clock_timestamp()))::bigint;');
+  const reject=afterLock.indexOf('IF p_expires < v_now OR p_expires > v_now + 300 THEN RETURN; END IF;',ttl);
+  const client=afterLock.indexOf('SELECT 1 FROM public.clients c');
+  const nonce=afterLock.indexOf('INSERT INTO portal_authz_trial.consumed_claims');
+  assert.ok(lock>=0&&ttl>=0&&reject>ttl&&client>reject&&nonce>client,
+    'claim must expire closed after lock wait, before authority checks and nonce insertion');
+});
