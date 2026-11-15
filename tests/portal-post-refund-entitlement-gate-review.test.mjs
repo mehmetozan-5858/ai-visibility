@@ -43,3 +43,17 @@ test('review gate is disconnected from real Paddle and customer entitlement path
  assert.doesNotMatch(paddle,/evaluatePostRefundEntitlementReview/);
  assert.doesNotMatch(settlement,/evaluatePostRefundEntitlementReview/);
 });
+
+test('unowned settlement and subscription evidence fails closed even when valid own payment also exists',()=>{
+ const foreign='cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+ assert.deepEqual(evaluate({...base,verifiedSettlementIds:[other,foreign],activeSubscriptionPaymentIds:[other]}),
+  {decision:'hold',reason:'entitlement-evidence-unowned'});
+ assert.deepEqual(evaluate({...base,verifiedSettlementIds:[other],activeSubscriptionPaymentIds:[other,foreign]}),
+  {decision:'hold',reason:'entitlement-evidence-unowned'});
+ assert.deepEqual(evaluate({...base,verifiedSettlementIds:[refunded],activeSubscriptionPaymentIds:[other]}),
+  {decision:'hold',reason:'entitlement-evidence-unowned'});
+});
+test('uppercase UUID proof values normalize without widening entitlement acceptance',()=>{
+ assert.deepEqual(evaluate({...base,verifiedSettlementIds:[other.toUpperCase()],activeSubscriptionPaymentIds:[other.toUpperCase()]}),
+  {decision:'manual-review',reason:'independent-entitlement-candidate'});
+});
