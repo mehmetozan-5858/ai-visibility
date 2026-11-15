@@ -87,3 +87,34 @@ WHERE n.nspname='public' AND c.relname='ai_provider_comparisons'
 ORDER BY pol.polname;
 -- A policy granting the definer USING(true) remains an independent
 -- security review finding, even when a function filters by tenant.
+
+-- FAIL-CLOSED RLS GATE (READ-ONLY). This catches an unrestricted permissive
+-- SELECT policy for the SECURITY DEFINER owner. It is NOT a complete proof
+-- against indirect membership, other permissive expressions, or definer abuse.
+-- Current isolated branch is expected to return safe_for_release=false.
+SELECT c.relrowsecurity AS rls_enabled,
+       c.relforcerowsecurity AS force_rls,
+       EXISTS(
+         SELECT 1 FROM pg_policy p
+         WHERE p.polrelid=c.oid AND p.polpermissive
+           AND p.polcmd IN ('r','*')
+           AND pg_get_expr(p.polqual,p.polrelid)='true'
+           AND (
+             p.polroles=ARRAY[0::oid]
+             OR 'portal_report_fn_owner_trial_20261115'::regrole::oid=ANY(p.polroles)
+           )
+       ) AS definer_has_permissive_true_policy,
+       (c.relrowsecurity AND c.relforcerowsecurity AND NOT EXISTS(
+         SELECT 1 FROM pg_policy p
+         WHERE p.polrelid=c.oid AND p.polpermissive
+           AND p.polcmd IN ('r','*')
+           AND pg_get_expr(p.polqual,p.polrelid)='true'
+           AND (
+             p.polroles=ARRAY[0::oid]
+             OR 'portal_report_fn_owner_trial_20261115'::regrole::oid=ANY(p.polroles)
+           )
+       )) AS safe_for_release
+FROM pg_class c
+WHERE c.oid='public.ai_provider_comparisons'::regclass;
+-- A true safe_for_release is only a necessary condition; execution tests,
+-- exact tenant authorization and complete role/policy audit remain required.
