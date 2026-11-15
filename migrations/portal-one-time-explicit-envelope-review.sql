@@ -34,6 +34,17 @@ BEGIN
 END;
 $owner_gate$;
 
+-- SECURITY DEFINER must use an independently reviewed hmac implementation.
+-- Never create/move an extension while installing this review candidate.
+-- The existing trial-only portal_authz_trial.hmac is NOT interchangeable.
+DO $crypto_gate$
+BEGIN
+ IF to_regprocedure('portal_authz.hmac(bytea,bytea,text)') IS NULL THEN
+   RAISE EXCEPTION 'review-report-hmac-placement-unverified';
+ END IF;
+END;
+$crypto_gate$;
+
 -- pgcrypto availability and extension placement must be independently approved.
 -- Do not silently install or relocate extensions in a live database.
 CREATE SCHEMA IF NOT EXISTS portal_authz;
