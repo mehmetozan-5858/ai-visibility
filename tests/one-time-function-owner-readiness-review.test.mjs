@@ -10,7 +10,7 @@ const role={
  ownerClientSelect:true,ownerReportSelect:true,ownerSigningKeySelect:true,
  ownerNonceInsert:true,ownerNonceIdSelect:true,
  ownerPaymentSelect:false,ownerCredentialSelect:false,
- securityDefiner:true,safeSearchPath:true,ownerPolicyCount:1,functionCount:1,
+ securityDefiner:true,safeSearchPath:true,ownerPolicyCount:1,publicExecute:false,functionCount:1,
  readerExecute:true,readerRawSelect:false,readerPrivateSchema:false,
  readerSigningKeySelect:false,readerNonceSelect:false,readerNonceInsert:false
 };
@@ -23,7 +23,7 @@ test('trial function owner cannot log in, bypass RLS, read payments or expose ke
   ['ownerLogin',true],['ownerBypassRls',true],['ownerSuper',true],
   ['ownerInherit',true],['ownerSchemaCreate',true],['ownerNonceIdSelect',false],
   ['ownerPaymentSelect',true],['ownerCredentialSelect',true],
-  ['safeSearchPath',false],['ownerPolicyCount',0],
+  ['safeSearchPath',false],['ownerPolicyCount',0],['publicExecute',true],
   ['readerRawSelect',true],['readerPrivateSchema',true],
   ['readerSigningKeySelect',true],['readerNonceInsert',true],
   ['readerExecute',false]
@@ -55,6 +55,10 @@ test('metadata SQL performs no database writes, secret retrieval or customer dat
  assert.match(ownerReadinessSql,/pg_proc/);
  assert.match(ownerReadinessSql,/pg_roles/);
  assert.match(ownerReadinessSql,/has_column_privilege/);
+ assert.match(ownerReadinessSql,/aclexplode/);
+ assert.match(ownerReadinessSql,/acl\.grantee=0 AND acl\.privilege_type='EXECUTE'/);
+ assert.match(ownerReadinessSql,/pp\.polcmd='r'/);
+ assert.match(ownerReadinessSql,/pp\.polroles @> ARRAY\[o\.oid\]::oid\[\]/);
  assert.doesNotMatch(ownerReadinessSql,/\bINSERT INTO\b|\bUPDATE\s+public\.|\bDELETE FROM\b|\bALTER\s+ROLE\b/);
  assert.doesNotMatch(ownerReadinessSql,/SELECT\s+secret\s+FROM/);
 });
