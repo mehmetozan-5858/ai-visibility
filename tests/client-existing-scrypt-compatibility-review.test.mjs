@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {hashPassword,verifyHash} from '../lib/client-credentials.js';
+import {hashPassword,verifyHash} from '../lib/client-password-verifier.mjs';
 
 // REVIEW ONLY — synthetic password; no customer hash, DB write or reset.
 // Regression for existing-password verification with malformed stored hashes.
