@@ -26,8 +26,11 @@ BEGIN
      AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid)
      AND NOT has_database_privilege(r.oid,current_database(),'CREATE')
      AND NOT has_schema_privilege(r.oid,'public','CREATE')
-     AND NOT has_table_privilege(r.oid,'public.client_credentials','SELECT')
-     AND NOT has_table_privilege(r.oid,'public.payments','SELECT')
+     -- Missing fixture relations must fail closed, not throw 42P01 during owner preflight.
+     AND to_regclass('public.client_credentials') IS NOT NULL
+     AND NOT has_table_privilege(r.oid,to_regclass('public.client_credentials'),'SELECT')
+     AND to_regclass('public.payments') IS NOT NULL
+     AND NOT has_table_privilege(r.oid,to_regclass('public.payments'),'SELECT')
  ) THEN
    RAISE EXCEPTION 'review-report-function-owner-unverified';
  END IF;
