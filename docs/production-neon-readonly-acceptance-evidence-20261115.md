@@ -50,3 +50,16 @@ Same project, nonproduction branch `br-plain-poetry-b2u7f7a6`:
 - **historical:** previously successful synthetic CI and earlier isolated trials; not substituted for live acceptance
 
 No production or trial database mutations were made in this inspection.
+
+## Follow-up: trial-branch function-owner privilege audit (2026-11-15)
+
+Additional **read-only catalog queries** on `br-plain-poetry-b2u7f7a6` confirmed:
+
+- `portal_gateway_reader_trial_20261114`: LOGIN=true; SUPERUSER/BYPASSRLS/CREATEDB/CREATEROLE/public-schema CREATE=false; direct SELECT on credentials, payments and raw comparisons=false.
+- `portal_report_fn_owner_trial_20261115`: LOGIN=false; SUPERUSER/BYPASSRLS/CREATEDB/CREATEROLE/public-schema CREATE=false; comparison SELECT=true, credential/payment SELECT=false.
+- `public.portal_trial_one_time_report`: SECURITY DEFINER=true, `search_path=pg_catalog`, owner is the narrow NOLOGIN role; trial reader has EXECUTE; PUBLIC EXECUTE=false.
+- Legacy `public.portal_trial_verified_report` remains owned by `neondb_owner`, but trial reader EXECUTE=false and PUBLIC EXECUTE=false.
+- `public.ai_provider_comparisons`: RLS=true, FORCE RLS=true, 2 policies; trial function owner SELECT=true and direct trial reader SELECT=false.
+- `client_credentials` and `payments`: RLS disabled, but these **two trial roles** have no direct SELECT. This catalog check is not a complete production privilege or policy audit.
+
+**Still blocked:** no current E2E SQL RPC execution under the restricted owner is established by these queries; neither claims/replay nor revocation was exercised. Proposed production envelope RPC is distinct and absent in production. Do not infer readiness, change grants, migrate, merge, or deploy.
