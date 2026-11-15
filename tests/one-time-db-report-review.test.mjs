@@ -77,7 +77,7 @@ test('verified customer A and B produce separate claims on one SQL connection ea
   assert.equal(acquired,2);assert.equal(released,2);
   assert.equal(calls.filter(x=>x.sql==='BEGIN').length,2);
   assert.equal(calls.filter(x=>x.sql==='COMMIT').length,2);
-  assert.equal(calls.filter(x=>x.sql.includes('portal_trial_one_time_report(')).length,2);
+  assert.equal(calls.filter(x=>x.sql.startsWith('SELECT "clientId",query,results,"createdAt" FROM public.portal_trial_one_time_report(')).length,2,'count real RPC SELECTs, not privilege-probe SQL');
  });
 });
 
