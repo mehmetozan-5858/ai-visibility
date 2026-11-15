@@ -41,6 +41,12 @@ export async function POST(req){
     return Response.json({error:'ZERA ilk hesap daveti koşulları sağlanmadı.'},{status:409});
    if(await getPilotAccess(b.clientId))
     return Response.json({error:'Pilot daveti zaten etkin; yeniden başlatmayın.'},{status:409});
+   // Existing email-verification route uses Resend exclusively. Refuse to
+   // grant a first-login pilot when the invitation recipient cannot receive
+   // a code. This is presence-only, NOT delivery, free-quota or email proof.
+   if(!process.env.RESEND_API_KEY||
+      !(process.env.EMAIL_FROM||process.env.RESEND_FROM_EMAIL))
+    return Response.json({error:'E-posta doğrulama gönderimi yapılandırılmadı; ZERA daveti açılmadı.'},{status:503});
   }else{
    if(!credential)
     return Response.json({error:'Pilot hesabında doğrulanmış giriş kaydı yok; önce güvenli müşteri girişini hazırlayın.'},{status:409});
