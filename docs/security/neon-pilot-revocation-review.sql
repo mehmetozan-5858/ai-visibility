@@ -9,6 +9,26 @@
 -- Required least-privilege grant: the SECURITY DEFINER owner currently has
 -- no direct SELECT on client_pilot_access. Without this, the guard fails with
 -- a permission error. Apply ONLY on the isolated branch after review.
+-- FAIL-CLOSED RLS PRECONDITION. This DDL draft MUST abort before any GRANT
+-- while a permissive TRUE policy can expose comparisons to the report owner.
+-- Do not remove this check as a shortcut. Replacing a policy requires its own
+-- reviewed, reversible isolated migration and real tenant isolation tests.
+DO $rls_guard$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_catalog.pg_policy pol
+    WHERE pol.polrelid='public.ai_provider_comparisons'::pg_catalog.regclass
+      AND pol.polpermissive AND pol.polcmd IN ('r','*')
+      AND pg_catalog.pg_get_expr(pol.polqual,pol.polrelid)='true'
+      AND (pol.polroles=ARRAY[0::oid] OR
+           'portal_report_fn_owner_trial_20261115'::pg_catalog.regrole::oid=ANY(pol.polroles))
+  ) THEN
+    RAISE EXCEPTION 'blocked: unrestricted report-owner comparison RLS policy'
+      USING ERRCODE='42501';
+  END IF;
+END
+$rls_guard$;
+
 GRANT SELECT (client_id, revoked_at, expires_at)
 ON public.client_pilot_access TO portal_report_fn_owner_trial_20261115;
 
