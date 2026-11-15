@@ -1,4 +1,4 @@
-import {getClientCredential} from "../../../lib/client-credentials";
+import {getClientCredential,getClientCredentialByEmail} from "../../../lib/client-credentials";
 import {requireAdmin,enforceSameOrigin} from '../../../lib/api-security';
 import {getClientAccount,listClients} from '../../../lib/repository';
 import {getPilotAccess,grantPilot,revokePilot} from '../../../lib/pilot-access';
@@ -41,6 +41,11 @@ export async function POST(req){
     return Response.json({error:'ZERA ilk hesap daveti koşulları sağlanmadı.'},{status:409});
    if(await getPilotAccess(b.clientId))
     return Response.json({error:'Pilot daveti zaten etkin; yeniden başlatmayın.'},{status:409});
+   // Existing credential emails are globally unique. An address already
+   // linked to ANY other tenant cannot be assigned to ZERA: do not create
+   // a pilot that the user cannot finish or disclose the other tenant.
+   if(await getClientCredentialByEmail(email))
+    return Response.json({error:'Bu e-posta zaten başka bir müşteri giriş hesabına bağlı; ZERA için farklı bir doğrulanabilir adres kullanın.'},{status:409});
    // Existing email-verification route uses Resend exclusively. Refuse to
    // grant a first-login pilot when the invitation recipient cannot receive
    // a code. This is presence-only, NOT delivery, free-quota or email proof.
