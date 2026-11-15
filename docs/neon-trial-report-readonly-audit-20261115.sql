@@ -39,7 +39,7 @@ SELECT expected.function_oid::text AS function_signature,
             ELSE has_function_privilege(reader.oid,expected.function_oid,'EXECUTE')
        END AS reader_can_execute,
        CASE WHEN expected.function_oid IS NULL THEN NULL
-            ELSE has_function_privilege('PUBLIC',expected.function_oid,'EXECUTE')
+            ELSE EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE')
        END AS public_can_execute
 FROM expected
 LEFT JOIN pg_catalog.pg_proc p ON p.oid=expected.function_oid
