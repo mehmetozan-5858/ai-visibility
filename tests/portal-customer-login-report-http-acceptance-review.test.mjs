@@ -29,7 +29,7 @@ async function withSyntheticEnv(fn){
   }
  }
 }
-function fixture({entitled=true,reports=[],roleRow=role}={}){
+function fixture({entitled=true,reports=[],roleRow=role,preflight={}}={}){
  const calls=[];
  let connections=0,releases=0;
  const reportPool={async connect(){
@@ -48,7 +48,7 @@ function fixture({entitled=true,reports=[],roleRow=role}={}){
   };
  }};
  const entitlementAuthority=async tenant=>({
-  tenantId:tenant,active:entitled,source:'verified-pilot',checkedAt:Date.now()
+  tenantId:tenant,active:entitled,source:'verified-pilot',checkedAt:Date.now(),...preflight
  });
  return {http:createPortalReportHttpReview(createEnvelopeGatewayReview({
   reportPool,entitlementAuthority
@@ -119,5 +119,53 @@ test('unsafe SQL reader role never reaches report RPC',async()=>{
   assert.equal(f.calls.some(x=>x.includes('FROM public.portal_verified_one_time_envelope_review(')),false);
   assert.equal(f.calls.at(-1),'ROLLBACK');
   assert.equal(f.releases,1);
+ });
+});
+
+test('tampered signed cookie never reaches any report database connection',async()=>{
+ await withSyntheticEnv(async()=>{
+  const token=await createClientToken(A);
+  const f=fixture({reports:[{clientId:A}]});
+  // Change an encoded HMAC byte without touching any customer password.
+  const bad=token.slice(0,-1)+(token.at(-1)==='A'?'B':'A');
+  const response=await f.http(bad);
+  assert.equal(response.status,401);
+  assert.equal(f.connections,0);
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
+ });
+});
+test('stale/future/mismatched pilot evidence fails before report database connection',async()=>{
+ await withSyntheticEnv(async()=>{
+  const token=await createClientToken(A);
+  const cases=[
+   {tenantId:B},
+   {source:'historical'},
+   {source:'paid'},
+   {checkedAt:Date.now()-60000},
+   {checkedAt:Date.now()+60000},
+   {active:false}
+  ];
+  for(const preflight of cases){
+   const f=fixture({preflight});
+   const response=await f.http(token);
+   assert.equal(response.status,403);
+   assert.equal(f.connections,0);
+   assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
+  }
+ });
+});
+test('missing or reused report signing secret fails closed without SQL connection',async()=>{
+ await withSyntheticEnv(async()=>{
+  const token=await createClientToken(A);
+  const original=process.env.PORTAL_REPORT_CLAIM_SECRET;
+  try{
+   for(const secret of ['',process.env.AUTH_SECRET]){
+    process.env.PORTAL_REPORT_CLAIM_SECRET=secret;
+    const f=fixture();
+    const response=await f.http(token);
+    assert.equal(response.status,503);
+    assert.equal(f.connections,0);
+   }
+  }finally{process.env.PORTAL_REPORT_CLAIM_SECRET=original}
  });
 });
