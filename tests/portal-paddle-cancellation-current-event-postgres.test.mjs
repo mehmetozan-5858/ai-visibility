@@ -20,14 +20,14 @@ test('actual SQL denies stale Paddle cancellations and enforces exact current ev
   await pool.query('CREATE TABLE '+schema+'.payments(id uuid PRIMARY KEY,client_id uuid NOT NULL)');
   await pool.query('CREATE TABLE '+schema+'.paddle_live_subscription_links(subscription_id text PRIMARY KEY,payment_id uuid NOT NULL,client_id uuid NOT NULL)');
   await pool.query('CREATE TABLE '+schema+'.paddle_live_entities(entity_id text PRIMARY KEY,event_id text NOT NULL,occurred_at timestamptz NOT NULL,event_type text NOT NULL,status text NOT NULL,client_id uuid NOT NULL,payment_id uuid NOT NULL)');
-  await pool.query("INSERT INTO '+schema+'.clients VALUES($1,'active'),($2,'active')",[A,B]);
+  await pool.query("INSERT INTO "+schema+".clients VALUES($1,'active'),($2,'active')",[A,B]);
   await pool.query('INSERT INTO '+schema+'.payments VALUES($1,$2)',[P,A]);
-  await pool.query("INSERT INTO '+schema+'.paddle_live_subscription_links VALUES('sub_review123',$1,$2)",[P,A]);
-  await pool.query("INSERT INTO '+schema+'.paddle_live_entities VALUES('sub_review123','evt_recentresume','2026-11-15T12:00:00Z','subscription.resumed','active',$1,$2)",[A,P]);
+  await pool.query("INSERT INTO "+schema+".paddle_live_subscription_links VALUES('sub_review123',$1,$2)",[P,A]);
+  await pool.query("INSERT INTO "+schema+".paddle_live_entities VALUES('sub_review123','evt_recentresume','2026-11-15T12:00:00Z','subscription.resumed','active',$1,$2)",[A,P]);
   const cancelArgs=[A,P,'sub_review123','evt_oldcancel','2026-11-15T11:00:00Z'];
   assert.equal((await pool.query(sql,cancelArgs)).rowCount,0,'stale cancellation must not close access');
   assert.equal((await pool.query('SELECT status FROM '+schema+'.clients WHERE id=$1',[A])).rows[0].status,'active');
-  await pool.query("UPDATE '+schema+'.paddle_live_entities SET event_id='evt_freshcancel',occurred_at='2026-11-15T13:00:00Z',event_type='subscription.canceled',status='canceled'");
+  await pool.query("UPDATE "+schema+".paddle_live_entities SET event_id='evt_freshcancel',occurred_at='2026-11-15T13:00:00Z',event_type='subscription.canceled',status='canceled'");
   assert.equal((await pool.query(sql,cancelArgs)).rowCount,0,'wrong event id must not update');
   assert.equal((await pool.query(sql,[B,P,'sub_review123','evt_freshcancel','2026-11-15T13:00:00Z'])).rowCount,0,'wrong tenant must not update');
   assert.equal((await pool.query(sql,[A,P,'sub_wrong','evt_freshcancel','2026-11-15T13:00:00Z'])).rowCount,0,'wrong subscription must not update');
