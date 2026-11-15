@@ -50,6 +50,23 @@ test('real PostgreSQL reverts paid state when durable settlement proof insert fa
    assert.equal((await conn.query(sql(INSERT_VERIFIED_PADDLE_PROOF_SQL),[P,A,'evt_test123','txn_test123'])).rowCount,0,'proof replay does not duplicate');
    await conn.query('ROLLBACK');
   }catch(e){await conn.query('ROLLBACK').catch(()=>{});throw e}
+  // Negative real-SQL guards: historical failed or bank-transfer records
+  // cannot be reclassified as Paddle settlements, even with a signed event.
+  for(const [status,method] of [
+   ['failed','paddle'],['canceled','paddle'],
+   ['pending','bank-transfer'],['customer-reported','manual']
+  ]){
+   await conn.query('UPDATE '+schema+'.payments SET status=$2, method=$3 WHERE id=$1',
+    [P,status,method]);
+   const denied=await conn.query(sql(MARK_VERIFIED_PADDLE_PAYMENT_SQL),
+    [P,A,'2026-11-15T11:00:00Z']);
+   assert.equal(denied.rowCount,0,
+    'ineligible previous status or method must never create paid evidence');
+   const current=(await conn.query('SELECT status,method FROM '+schema+
+    '.payments WHERE id=$1',[P])).rows[0];
+   assert.equal(current.status,status);
+   assert.equal(current.method,method);
+  }
  }finally{
   await conn.query('DROP SCHEMA IF EXISTS '+schema+' CASCADE').catch(()=>{});
   conn.release();await pool.end();
