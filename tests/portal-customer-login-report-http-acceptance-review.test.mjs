@@ -241,3 +241,25 @@ test('historical signed SQL provider answer never becomes independently verified
   assert.equal(f.releases,1);
  });
 });
+
+test('mixed valid and invalid report rows do not leak a partial customer report',async()=>{
+ await withSyntheticEnv(async()=>{
+  // A valid row must NOT mask a second malformed row. Returning the subset
+  // would misrepresent the authorized signed envelope and consume its nonce.
+  const good={clientId:A,query:'synthetic valid row',
+   createdAt:'2026-11-15T00:00:00Z',
+   results:[{provider:'gemini',status:'answer-received-unverified',
+    answer:'Synthetic unverified response'}]};
+  const bad={clientId:A,query:'synthetic malformed row',
+   createdAt:'2026-11-15T00:00:01Z',
+   results:[{provider:'openai',status:'error',answer:''}]};
+  const f=fixture({reports:[good,bad]});
+  const response=await f.http(await createClientToken(A));
+  assert.equal(response.status,503);
+  assert.deepEqual(await response.json(),{error:'verified-report-unavailable'});
+  assert.equal(response.headers.get('Cache-Control'),'private, no-store, max-age=0');
+  assert.equal(f.calls.at(-1),'ROLLBACK');
+  assert.equal(f.connections,1);
+  assert.equal(f.releases,1);
+ });
+});
