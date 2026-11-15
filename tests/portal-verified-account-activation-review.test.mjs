@@ -68,3 +68,22 @@ test('legacy payment functions remain explicitly unmodified and BLOCKED',async()
  assert.match(source,/export async function confirmCardPaymentByMerchantOid/);
  assert.doesNotMatch(source,/activateVerifiedPaddleAccountReview/);
 });
+
+test('valid v4 UUID reaches locked settlement query, invalid variant fails before SQL',async()=>{
+ const accepted='11111111-1111-4111-8111-111111111111';
+ const f=fixture({proof:false});
+ await assert.rejects(activateVerifiedPaddleAccountReview(f.pool,accepted),
+  /review-activation-independent-settlement-required/);
+ assert.equal(f.calls.filter(x=>x.sql===VERIFIED_PADDLE_SETTLEMENT_SQL).length,1);
+ assert.equal(f.calls.at(-1).sql,'ROLLBACK');
+ const n=f.calls.length;
+ for(const malformed of [
+  '11111111-1111-4111-1111-111111111111',
+  '11111111-1111-4111-811-111111111111',
+  '11111111-1111-4111-81111-111111111111'
+ ]){
+  await assert.rejects(activateVerifiedPaddleAccountReview(f.pool,malformed),
+   /review-activation-tenant-invalid/);
+ }
+ assert.equal(f.calls.length,n);
+});
