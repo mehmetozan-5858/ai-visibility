@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {auditPortalEntitlementWriterCoverage} from '../lib/portal-entitlement-writer-audit-review.mjs';
 
 const read=p=>readFile(new URL('../'+p,import.meta.url),'utf8');
-test('locked pilot writers remove two bypasses but account activations remain NO-GO',async()=>{
+test('locked pilot and payment writers remain NO-GO without verified external entitlements',async()=>{
  const [pilotSource,repositorySource,reviewSource]=await Promise.all([
   read('lib/pilot-access.js'),read('lib/repository.js'),
   read('lib/portal-pilot-writes-review.mjs')
@@ -13,13 +13,9 @@ test('locked pilot writers remove two bypasses but account activations remain NO
  assert.equal(audit.ready,false);
  assert.equal(audit.reason,'external-entitlement-writers-not-exhaustively-verified');
  const names=audit.findings.map(f=>f.code+':'+(f.method||''));
- for(const path of [
-  'account-activation-not-coordinated:confirmPayment',
-  'account-activation-not-coordinated:confirmCardPaymentByMerchantOid'
- ])assert.ok(names.includes(path),'must expose active bypass: '+path);
+ assert.equal(names.some(x=>x.startsWith('account-activation-not-coordinated:')),false);
  assert.equal(names.some(x=>x.startsWith('legacy-pilot-write-unlocked:')),false);
- assert.ok(names.includes('legacy-paid-label-entitlement-unverified:customerAccess'),
-  'historical paid status cannot be silently accepted as verified settlement');
+ assert.ok(names.includes('legacy-paid-label-entitlement-unverified:customerAccess'));
  assert.ok(audit.unresolvedExternal.includes('direct-admin-sql'));
  assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'));
 });
@@ -44,25 +40,14 @@ export async function markCardPaymentFailedByMerchantOid(){}`;
  assert.equal(result.findings.length,0);
 });
 
-test('card payment activation must be atomic as well as tenant-lock-coordinated',async()=>{
+test('card account activation uses pinned atomic transaction, but release remains HOLD',async()=>{
  const repositorySource=await read('lib/repository.js');
  const pilotSource=await read('lib/pilot-access.js');
  const reviewSource=await read('lib/portal-pilot-writes-review.mjs');
- const audit=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
- assert.ok(audit.findings.some(f=>f.code==='card-activation-not-atomic'&&
-  f.method==='confirmCardPaymentByMerchantOid'),
-  'payment and customer activation cannot commit as separate pool queries');
- assert.equal(audit.ready,false);
-});
-
-test('writer audit loads as executable JavaScript and detects split card transaction',async()=>{
- const {auditPortalEntitlementWriterCoverage:check}=await import('../lib/portal-entitlement-writer-audit-review.mjs');
- const repositorySource=await read('lib/repository.js');
- const pilotSource=await read('lib/pilot-access.js');
- const reviewSource=await read('lib/portal-pilot-writes-review.mjs');
- const report=check({pilotSource,repositorySource,reviewSource});
- assert.ok(report.findings.some(f=>f.code==='card-activation-not-atomic'));
+ const report=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
+ assert.equal(report.findings.some(f=>f.code==='card-activation-not-atomic'),false);
  assert.equal(report.ready,false);
+ assert.match(repositorySource,/acquirePilotAdvisoryLockReview/);
 });
 
 test('review card transaction must not be mistaken for independently verified settlement',async()=>{
@@ -81,30 +66,26 @@ test('review card transaction must not be mistaken for independently verified se
   reviewSource:await read('lib/portal-pilot-writes-review.mjs')
  });
  assert.equal(audit.ready,false);
- assert.ok(audit.findings.some(f=>f.code==='account-activation-not-coordinated'));
+ assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'));
 });
 
-test('bank confirmation is atomic but remains outside the cooperative report lock',async()=>{
+test('bank confirmation now shares tenant lock, but external settlement writers remain unverified',async()=>{
  const repositorySource=await read('lib/repository.js');
  const start=repositorySource.indexOf('export async function confirmPayment(');
  const end=repositorySource.indexOf('export async function upsertSalesOpportunity',start);
- assert.ok(start>=0&&end>start,'must locate the exact bank confirmation function');
+ assert.ok(start>=0&&end>start);
  const body=repositorySource.slice(start,end);
- assert.match(body,/const tx=await pool\.connect\(\)/);
- assert.match(body,/await tx\.query\("BEGIN"\)/);
- assert.match(body,/await tx\.query\("UPDATE clients SET plan=\$2,status='active'/);
- assert.match(body,/await tx\.query\("COMMIT"\)/);
- assert.match(body,/await tx\.query\("ROLLBACK"\)/);
- assert.doesNotMatch(body,/withPilotWriteLockReview|acquirePilotAdvisoryLockReview|pg_advisory_xact_lock/,
-  'payment activation must remain blocked until tenant lock is adopted');
+ assert.match(body,/const tx=await pool\\.connect\\(\\)/);
+ assert.match(body,/BEGIN ISOLATION LEVEL READ COMMITTED/);
+ assert.match(body,/acquirePilotAdvisoryLockReview\\(tx,bound\\.clientId\\)/);
+ assert.match(body,/await tx\\.query\\(\"COMMIT\"\\)/);
+ assert.match(body,/await tx\\.query\\(\"ROLLBACK\"\\)/);
  const audit=auditPortalEntitlementWriterCoverage({
-  pilotSource:await read('lib/pilot-access.js'),
-  repositorySource,
+  pilotSource:await read('lib/pilot-access.js'),repositorySource,
   reviewSource:await read('lib/portal-pilot-writes-review.mjs')
  });
  assert.equal(audit.ready,false);
- assert.ok(audit.findings.some(x=>x.method==='confirmPayment'&&
-  x.code==='account-activation-not-coordinated'));
- assert.ok(audit.findings.some(x=>x.method==='confirmCardPaymentByMerchantOid'&&
-  x.code==='card-activation-not-atomic'));
+ assert.equal(audit.findings.some(x=>x.code==='account-activation-not-coordinated'),false);
+ assert.equal(audit.findings.some(x=>x.code==='card-activation-not-atomic'),false);
+ assert.ok(audit.unresolvedExternal.includes('account-suspension-and-deletion'));
 });
