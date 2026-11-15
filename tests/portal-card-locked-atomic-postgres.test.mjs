@@ -110,6 +110,26 @@ test('real PostgreSQL rolls back card paid state if account activation fails',{
   assert.equal((await db.query('SELECT 1 AS n')).rows[0].n,1,
    'pool must remain reusable after lock timeout');
 
+  // Historical refund and non-card rails must never be converted into paid
+  // status or activate a client, even with a syntactically valid merchant ID.
+  const rejectedCases=[
+   {id:'55555555-5555-4555-8555-555555555555',oid:'cardrefundreview001',method:'card',status:'refunded'},
+   {id:'66666666-6666-4666-8666-666666666666',oid:'cardbankreview001',method:'bank-transfer',status:'pending'}
+  ];
+  for(const item of rejectedCases){
+   await db.query(`INSERT INTO public.payments
+    (id,client_id,reference_code,method,status,plan,currency)
+    VALUES($1,$2,$3,$4,$5,'Starter','EUR')`,
+    [item.id,B,item.oid,item.method,item.status]);
+   await assert.rejects(confirmCardPaymentLockedReview(db,item.oid),
+    /review-card-payment-changed/,
+    'refunded or non-card payment must fail closed');
+   assert.equal((await db.query('SELECT status FROM public.payments WHERE id=$1',[item.id])).rows[0].status,
+    item.status);
+   assert.equal((await db.query('SELECT status FROM public.clients WHERE id=$1',[B])).rows[0].status,
+    'payment-review');
+  }
+
   // Duplicate merchant IDs across tenants must deny without cross-tenant writes.
   const P2='44444444-4444-4444-8444-444444444444';
   await db.query(`INSERT INTO public.payments(id,client_id,reference_code,method,status,plan,currency)
