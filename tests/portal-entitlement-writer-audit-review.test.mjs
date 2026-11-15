@@ -83,3 +83,28 @@ test('review card transaction must not be mistaken for independently verified se
  assert.equal(audit.ready,false);
  assert.ok(audit.findings.some(f=>f.code==='account-activation-not-coordinated'));
 });
+
+test('bank confirmation is atomic but remains outside the cooperative report lock',async()=>{
+ const repositorySource=await read('lib/repository.js');
+ const start=repositorySource.indexOf('export async function confirmPayment(');
+ const end=repositorySource.indexOf('export async function upsertSalesOpportunity',start);
+ assert.ok(start>=0&&end>start,'must locate the exact bank confirmation function');
+ const body=repositorySource.slice(start,end);
+ assert.match(body,/const tx=await pool\.connect\(\)/);
+ assert.match(body,/await tx\.query\("BEGIN"\)/);
+ assert.match(body,/await tx\.query\("UPDATE clients SET plan=\$2,status='active'/);
+ assert.match(body,/await tx\.query\("COMMIT"\)/);
+ assert.match(body,/await tx\.query\("ROLLBACK"\)/);
+ assert.doesNotMatch(body,/withPilotWriteLockReview|acquirePilotAdvisoryLockReview|pg_advisory_xact_lock/,
+  'payment activation must remain blocked until tenant lock is adopted');
+ const audit=auditPortalEntitlementWriterCoverage({
+  pilotSource:await read('lib/pilot-access.js'),
+  repositorySource,
+  reviewSource:await read('lib/portal-pilot-writes-review.mjs')
+ });
+ assert.equal(audit.ready,false);
+ assert.ok(audit.findings.some(x=>x.method==='confirmPayment'&&
+  x.code==='account-activation-not-coordinated'));
+ assert.ok(audit.findings.some(x=>x.method==='confirmCardPaymentByMerchantOid'&&
+  x.code==='card-activation-not-atomic'));
+});
