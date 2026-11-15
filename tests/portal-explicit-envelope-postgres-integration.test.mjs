@@ -148,6 +148,22 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     await assert.rejects(gateway(await createClientToken(B)),
      /review-envelope-entitlement-denied/,
      'expired synthetic tenant must be denied before report connection');
+    // Simulate a stale *server-side* preflight: the authoritative SQL RPC
+    // must reject a revocation committed before its tenant lock/read.
+    const staleAuthority=async tenant=>({tenantId:tenant,active:true,
+     source:'verified-pilot',checkedAt:Date.now()});
+    const staleGateway=createEnvelopeGatewayReview({
+     reportPool:readerPool,entitlementAuthority:staleAuthority
+    });
+    await db.query("UPDATE public.client_pilot_access SET revoked_at=clock_timestamp() WHERE client_id=$1",[A]);
+    const claimsBefore=(await db.query('SELECT count(*)::int AS n FROM portal_authz.consumed_claims')).rows[0].n;
+    await assert.rejects(staleGateway(await createClientToken(A)),
+     /report-envelope-authorization-unproven/,
+     'committed revoke MUST override even a passing preflight');
+    const claimsAfter=(await db.query('SELECT count(*)::int AS n FROM portal_authz.consumed_claims')).rows[0].n;
+    assert.equal(claimsAfter,claimsBefore,
+     'denied stale-preflight request cannot consume a one-use claim');
+    await db.query("UPDATE public.client_pilot_access SET revoked_at=NULL WHERE client_id=$1",[A]);
    }finally{
     await readerPool.end();
    }
