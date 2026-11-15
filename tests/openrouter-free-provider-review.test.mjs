@@ -76,5 +76,5 @@ test('missing model proof, billed responses, truncation and provider outages fai
  ])await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env:enabled,fetcher:reply(payload)}));
  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env:enabled,fetcher:reply({},false)}));
  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env:enabled,fetcher:async()=>{throw Error('secret '+key)}}),
-  /openrouter-free-network-failed/);
+  /openrouter-free-catalog-unavailable/);
 });
