@@ -21,6 +21,7 @@ if(source){
 }
 const dbName='ci_portal_envelope_review';
 const roleName='portal_gateway_reader_ci_envelope';
+const rolePassword='synthetic-ci-only-local-reader-password';
 const A='11111111-1111-4111-8111-111111111111';
 const B='22222222-2222-4222-8222-222222222222';
 const SECRET='fixture-synthetic-report-secret-not-for-live-use';
@@ -48,7 +49,7 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query(migration);
   // Role is synthetic and cluster-scoped to this disposable CI PostgreSQL.
   // Grant EXECUTE only; no direct SELECT on report or private claim ledger.
-  await admin.query('CREATE ROLE '+roleName+' LOGIN');roleCreated=true;
+  await admin.query("CREATE ROLE "+roleName+" LOGIN PASSWORD '"+rolePassword+"'");roleCreated=true;
   await db.query('GRANT USAGE ON SCHEMA public TO '+roleName);
   await db.query('GRANT EXECUTE ON FUNCTION public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text) TO '+roleName);
   const limited=await db.connect();
@@ -107,24 +108,23 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
    process.env.AUTH_SECRET='synthetic-http-session-ci-only-secret';
    process.env.PORTAL_REPORT_CLAIM_SECRET=SECRET;
    process.env.PORTAL_REPORT_READER_ROLE=roleName;
-   const readerPool={connect:async()=>{
-    const connection=await db.connect();
-    return {query:async(sql,args)=>{
-     const result=await connection.query(sql,args);
-     if(sql==='BEGIN ISOLATION LEVEL READ COMMITTED')
-      await connection.query('SET LOCAL ROLE '+roleName);
-     return result;
-    },release:()=>connection.release()};
-   }};
-   const gateway=createEnvelopeGatewayReview({
-    reportPool:readerPool,
-    entitlementAuthority:createReviewReportEntitlementAuthority(db)
-   });
-   assert.deepEqual(await gateway(await createClientToken(A)),[],
-    'actual limited-role SQL must return an authorized empty report');
-   await assert.rejects(gateway(await createClientToken(B)),
-    /review-envelope-entitlement-denied/,
-    'expired synthetic tenant must be denied before report connection');
+   const limitedUrl=new URL(target.toString());
+   limitedUrl.username=roleName;limitedUrl.password=rolePassword;
+   const readerPool=new Pool({connectionString:limitedUrl.toString(),
+    max:2,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000});
+   try{
+    const gateway=createEnvelopeGatewayReview({
+     reportPool:readerPool,
+     entitlementAuthority:createReviewReportEntitlementAuthority(db)
+    });
+    assert.deepEqual(await gateway(await createClientToken(A)),[],
+     'real LOGIN role must execute signed empty-report RPC without raw SELECT');
+    await assert.rejects(gateway(await createClientToken(B)),
+     /review-envelope-entitlement-denied/,
+     'expired synthetic tenant must be denied before report connection');
+   }finally{
+    await readerPool.end();
+   }
   }finally{
    for(const key of keys){
     if(original[key]===undefined)delete process.env[key];
