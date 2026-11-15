@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
+import {evidenceQueries as realEvidenceQueries} from '../lib/answer-evidence-rules.js';
 const source=(await readFile(new URL('../app/api/answer-evidence/route.js',import.meta.url),'utf8'))
  .replace(/^import .*;\s*$/gm,'').replace(/export /g,'');
 const id='12345678-1234-4234-8234-123456789012';
@@ -9,7 +10,7 @@ function endpoint(env={},overrides={}){
  const deps={
   readFreeProviderAccess:async()=>{state.preflights++;return {state:overrides.preflightBlocked?'credential-rejected':'credential-and-price-confirmed',credentialAccepted:!overrides.preflightBlocked,modelFree:!overrides.preflightBlocked}},requireAdmin:async()=>null,enforceSameOrigin:()=>null,checkRateLimit:(_req,options)=>{assert.equal(options.bucket,'manual-answer-evidence');assert.equal(options.limit,6);return overrides.limited?Response.json({error:'limited'},{status:429}):null}, getProspect:async()=>({id,name:'Synthetic',domain:'example.org',sector:'Industry',city:'Ankara'}),
   getClient:async()=>null,getClientProfile:async()=>null,freeMeasurementStatus:()=>({ready:true}),
-  evidenceQueries:(_e,q)=>{if(overrides.invalidQuery)throw Error('invalid-neutral-query');return q.map(query=>({query}))},clientBaselineOptions:()=>{throw Error('not-used')},
+  evidenceQueries:(_e,q)=>{if(overrides.invalidQuery)throw Error('invalid-neutral-query');return overrides.brandCheck?realEvidenceQueries(_e,q):q.map(query=>({query}))},clientBaselineOptions:()=>{throw Error('not-used')},
   answerProviders:()=>['Perplexity'],getAnswerEvidenceRun:async()=>null,repeatEvidenceOptions:()=>{throw Error('not-used')},
   measureAnswerEvidence:async()=>{state.requests++;return {id:'synthetic',result:{summary:{successful:0}}}},
   collectFreeAnswerEvidence:async()=>{},listAnswerEvidence:async()=>[],answerEvidenceStatus:async()=>({}),
@@ -58,4 +59,19 @@ test('invalid free-only queries reject before any provider preflight network che
  assert.equal(response.status,400);
  assert.equal(state.preflights,0);
  assert.equal(state.requests,0);
+});
+
+test('real brand matching rejects branded free-only prompts before preflight, cost or evidence persistence',async()=>{
+ const {POST,state}=endpoint({}, {brandCheck:true});
+ for(const query of ['Recommend Synthetic in Ankara.', 'Which suppliers are listed on example.org?']){
+  const response=await POST(req({freeOnly:true,queries:[query]}));
+  assert.equal(response.status,400);
+  assert.match((await response.json()).error,/tarafsız/);
+ }
+ assert.equal(state.preflights,0);
+ assert.equal(state.requests,0);
+ const accepted=await POST(req({freeOnly:true,queries:['Which industrial firms operate in Ankara?']}));
+ assert.equal(accepted.status,200);
+ assert.equal(state.preflights,1);
+ assert.equal(state.requests,1);
 });
