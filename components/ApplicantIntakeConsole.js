@@ -47,6 +47,11 @@ export default function ApplicantIntakeConsole(){
  return <section className="panel" style={{padding:20,overflowWrap:'anywhere'}}>
   <h2>Başvurudan işletme sahipliği doğrulamasına</h2>
   <p>Doğrulanmış başvuruyu işletme kaydıyla eşleştirin, ardından gerçek DNS TXT kanıtını kontrol edin. Bu işlemler e-posta göndermez, müşteri hesabı açmaz veya AI taraması başlatmaz.</p>
+  <div style={{marginBottom:16}}>
+   <h3>OpenRouter bağlantı denetimi (yalnız yönetici)</h3>
+   <p>Başvuru veya işletme kaydı oluşturmadan, AI yanıtı istemeden yalnız mevcut anahtarın kabulünü ve modelin katalog fiyatını denetler. Kota ve gerçek yanıt bu işlemle doğrulanmaz.</p>
+   <button disabled={busy} type="button" onClick={()=>run('preflight')}>Ücretsiz bağlantıyı AI çağrısı yapmadan denetle</button>
+  </div>
   <form className="client-form" onSubmit={event=>{event.preventDefault();run('prepare')}}>
    <label>Başvuru referansı<input required value={leadId} disabled={busy} onChange={event=>{setLeadId(event.target.value.trim());setBusiness(null);setFreeStatus(null);setQueries('');setChallenge(null);setVerified(false);setMessage('')}} pattern="[0-9a-fA-F-]{36}" style={{fontSize:18,minHeight:48}}/></label>
    <button disabled={busy||!leadId} type="submit">İşletme kaydını hazırla</button>
@@ -63,7 +68,7 @@ export default function ApplicantIntakeConsole(){
    <h3>Yalnız ücretsiz gerçek ölçüm</h3>
    <p>En fazla iki markasız sorgu, tek OpenRouter modeli. Her istekten önce katalog fiyatı sıfır olmalıdır; ücretli modele geçiş ve otomatik tekrar yoktur. Tamamlanmayan yanıtlar uygun örnek sayılmaz. Bu yol tek sağlayıcı sayılır; tek başına skor üretmez.</p>
    {!freeStatus?<p>Ücretsiz bağlantı durumu alınamadı; ölçüm kapalı.</p>:<p>{freeStatus.ready?'Bağlantı tanımlı; sıfır fiyat her istekte yeniden kontrol edilecek.':[!freeStatus.enabled&&'Ücretsiz ölçüm etkin değil.',!freeStatus.serverKeyConfigured&&'Sunucu anahtarı tanımlı değil.',!freeStatus.modelConfigured&&'Ücretsiz model seçilmemiş.'].filter(Boolean).join(' ')}</p>}
-   <button disabled={busy||!freeStatus?.ready} type="button" onClick={()=>run('preflight')}>Ücretsiz bağlantıyı AI çağrısı yapmadan denetle</button>
+
    <label>Markasız ölçüm sorguları (her satıra bir sorgu, en fazla iki)<textarea rows={4} maxLength={1001} value={queries} disabled={busy} onChange={event=>setQueries(event.target.value)} placeholder="Sektör ve konumu belirtin; marka veya alan adını yazmayın."/></label>
    <button disabled={busy||!freeStatus?.ready||!queries.trim()} type="button" onClick={()=>run('measure')}>Yalnız ücretsiz yanıt örneği topla</button>
    <h3>Ücretsiz sonuç önizlemesi</h3>
