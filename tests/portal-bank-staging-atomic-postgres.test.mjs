@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Pool} from 'pg';
 import {stageBankConfirmationLockedReview} from '../lib/portal-bank-confirmation-staging-review.mjs';
+import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 
 // REVIEW ONLY: disposable local PostgreSQL CI. No Neon, real bank or Paddle.
 const source=process.env.PORTAL_LOCK_RACE_DATABASE_URL;
@@ -61,6 +62,21 @@ test('actual PostgreSQL bank staging rolls back failed audit and never enables a
    /review-bank-staging-reference-conflict/);
   assert.equal((await db.query('SELECT value_date::text AS d FROM public.bank_confirmations')).rows[0].d,
    evidence.valueDate);
+  // Two independent PostgreSQL connections must honor the same lock.
+  // This must fail CLOSED, without changing the existing bank confirmation.
+  const holder=await db.connect();
+  try{
+   await holder.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+   await holder.query(PILOT_LOCK_SQL,[tenant]);
+   await assert.rejects(stageBankConfirmationLockedReview(db,payment,evidence),
+    error=>error?.code==='55P03',
+    'locked concurrent bank staging must reject on timeout');
+  }finally{
+   await holder.query('ROLLBACK').catch(()=>{});
+   holder.release();
+  }
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.bank_confirmations')).rows[0].n,1);
+  assert.equal((await db.query('SELECT 1 AS n')).rows[0].n,1,'pool remains usable');
   assert.equal((await db.query('SELECT status FROM public.clients WHERE id=$1',[tenant])).rows[0].status,
    'payment-review');
   assert.equal((await db.query('SELECT status FROM public.payments WHERE id=$1',[payment])).rows[0].status,
