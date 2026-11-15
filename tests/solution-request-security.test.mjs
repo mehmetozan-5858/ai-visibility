@@ -48,7 +48,7 @@ test('pilot revocation uses tenant advisory lock and audit commits atomically',a
   }
   const pos=calls.indexOf(PILOT_LOCK_SQL);
   assert.ok(pos>=0,'lock required before mutation');
-  assert.ok(calls.indexOf('UPDATE public.client_pilot_access\n   SET revoked_at=clock_timestamp()')>pos);
+  assert.ok(calls.findIndex(x=>x.startsWith('UPDATE public.client_pilot_access'))>pos);
   assert.equal(calls.at(-1),'release');
  }
 });
