@@ -93,3 +93,27 @@ test('invalid signed event state is rejected before callback SQL',async()=>{
   /review-subscription-transition-invalid/);
  assert.equal(calls,0);
 });
+
+test('signed resume without accepted account activation rolls back current entity event',async()=>{
+ const f=fixture({linked:true,accessChanged:false});
+ await assert.rejects(dispatchSignedPaddleEventWithTenantLockReview({
+  ...signed('subscription.resumed','active','evt_reviewunverified123'),
+  pool:f.pool,write:applyOwnedPaddleSubscriptionTransitionReview
+ }),/review-resume-not-accepted-rollback-current-event/);
+ const statements=f.calls.map(c=>c.sql);
+ assert.ok(statements.includes(UPSERT_CURRENT_OWNED_SUBSCRIPTION_SQL));
+ assert.ok(statements.includes(RESUME_OWNED_ACCESS_SQL));
+ assert.equal(statements.includes(AUDIT_RESUME_SQL),false);
+ assert.equal(statements.at(-1),'ROLLBACK');
+ assert.equal(statements.includes('COMMIT'),false);
+ assert.equal(f.released,1);
+});
+test('cancellation can advance an already suspended subscription without falsely restoring access',async()=>{
+ const f=fixture({linked:true,accessChanged:false});
+ assert.deepEqual(await dispatchSignedPaddleEventWithTenantLockReview({
+  ...signed('subscription.canceled','canceled','evt_reviewalreadycanceled123'),
+  pool:f.pool,write:applyOwnedPaddleSubscriptionTransitionReview
+ }),{accessChanged:false,entityAdvanced:true});
+ assert.equal(f.calls.at(-1).sql,'COMMIT');
+ assert.equal(f.calls.some(c=>c.sql===AUDIT_CANCELLATION_SQL),false);
+});
