@@ -61,7 +61,7 @@ jobs:
       - name: Start exact commit
         run: |
           npm start > /tmp/aiv-smoke.log 2>&1 &
-          for i in {1..30}; do
+          for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:3000/ >/dev/null; then exit 0; fi
             sleep 1
           done
