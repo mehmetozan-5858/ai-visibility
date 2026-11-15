@@ -168,3 +168,17 @@ test('signed envelope never leaks arbitrary SQL JSON or unaudited provider field
   assert.equal(m.queries.at(-1).sql,'COMMIT');
  });
 });
+
+test('nonempty signed envelope with no safe provider evidence rolls back claim',async()=>{
+ await env(async()=>{
+  const token=await createClientToken(A);
+  const m=mock({response:[{authorized:true,tenantId:A,reports:[{
+   clientId:A,query:'Synthetic query',createdAt:'2026-11-15T00:00:00Z',
+   results:{} // malformed, not an authorized empty-report envelope
+  }]}]});
+  const gateway=createEnvelopeGatewayReview({reportPool:m.pool,entitlementAuthority:proof(A)});
+  await assert.rejects(gateway(token),/review-envelope-report-evidence-unverified/);
+  assert.equal(m.queries.at(-1).sql,'ROLLBACK');
+  assert.equal(m.released,1);
+ });
+});
