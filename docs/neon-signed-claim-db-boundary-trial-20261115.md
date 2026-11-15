@@ -76,6 +76,14 @@ A separate, **unwired** review alternative was drafted at `lib/portal-pilot-advi
 
 A collision between two advisory hash keys may serialize unrelated tenants, but should not itself grant access; the report function must always recheck signed tenant-specific entitlement and account state. Long waits/timeouts, rollback/connection-pool reuse, rogue writers and true overlapping two-connection trials remain mandatory. Keep both designs in review and do not automatically increase DB privileges or apply live changes.
 
+## 2026-11-15 follow-up: real PostgreSQL writer acceptance and exact-head CI failure
+
+CI run `43690488814` on exact commit `effb16e3f2e9b72f5e177dfde076faaae8254e6b` **FAILED** three review writer tests because an incomplete UUID regex rejected valid synthetic tenants **before SQL**. The latest review-branch source now contains the corrected version/variant UUID regex, but previous failing commits remain failing evidence. Do not mark a later commit successful until its exact-head CI passes.
+
+Created `tests/portal-pilot-writes-real-postgres.test.mjs` (commit `05f5b0a1496e5dcb52c58abdfc13b3affcab6aab`) to test the two *review-only* pilot writer functions on the disposable PostgreSQL 16 GitHub Actions service: pilot grant and audit insert commit; failed grant audit rolls back pilot creation; revoke and audit commit; duplicate revoke creates no duplicate activity. These are synthetic database writes on the ephemeral CI fixture **only**, not Neon/live customers. The existing independent two-backend advisory-lock test separately checks actual lock contention in that disposable PostgreSQL service, but does not prove a production function or all external writers obey this protocol.
+
+CI for commit `05f5b0a1` was pending at observation; its Browser workflow was cancelled by new review activity. Corrected-branch exact-head CI and all release gates remain required. No production migration, privilege GRANT, key, payment, deployment, merge or budget change.
+
 ## Mandatory blockers before anything can go live
 
 1. Review an auditable DB-verification function migration for production; avoid PUBLIC EXECUTE and exposed private schemas. Confirm the owner can read only the required data and no broader SECURITY DEFINER capabilities escape. Validate lock and rollback.
