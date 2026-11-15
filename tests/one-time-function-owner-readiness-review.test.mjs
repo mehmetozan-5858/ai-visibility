@@ -11,6 +11,8 @@ const role={
  ownerNonceInsert:true,ownerNonceIdSelect:true,
  ownerPaymentSelect:false,ownerCredentialSelect:false,
  securityDefiner:true,safeSearchPath:true,ownerPolicyCount:1,publicExecute:false,functionCount:1,
+ readerOwnerMember:false,readerOwnerUsage:false,readerOwnerSet:false,
+ readerAdminMember:false,readerAdminSet:false,
  readerExecute:true,readerRawSelect:false,readerPrivateSchema:false,
  readerSigningKeySelect:false,readerNonceSelect:false,readerNonceInsert:false
 };
@@ -24,6 +26,8 @@ test('trial function owner cannot log in, bypass RLS, read payments or expose ke
   ['ownerInherit',true],['ownerSchemaCreate',true],['ownerNonceIdSelect',false],
   ['ownerPaymentSelect',true],['ownerCredentialSelect',true],
   ['safeSearchPath',false],['ownerPolicyCount',0],['publicExecute',true],
+  ['readerOwnerMember',true],['readerOwnerUsage',true],['readerOwnerSet',true],
+  ['readerAdminMember',true],['readerAdminSet',true],
   ['readerRawSelect',true],['readerPrivateSchema',true],
   ['readerSigningKeySelect',true],['readerNonceInsert',true],
   ['readerExecute',false]
@@ -55,6 +59,8 @@ test('metadata SQL performs no database writes, secret retrieval or customer dat
  assert.match(ownerReadinessSql,/pg_proc/);
  assert.match(ownerReadinessSql,/pg_roles/);
  assert.match(ownerReadinessSql,/has_column_privilege/);
+ assert.match(ownerReadinessSql,/pg_has_role\(\$1::name,o\.oid,'SET'\)/);
+ assert.match(ownerReadinessSql,/pg_has_role\(\$1::name,'neondb_owner'::regrole,'MEMBER'\)/);
  assert.match(ownerReadinessSql,/aclexplode/);
  assert.match(ownerReadinessSql,/acl\.grantee=0 AND acl\.privilege_type='EXECUTE'/);
  assert.match(ownerReadinessSql,/pp\.polcmd='r'/);
