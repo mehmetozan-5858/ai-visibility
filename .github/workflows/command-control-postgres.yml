@@ -1,0 +1,52 @@
+name: Command Control PostgreSQL
+on:
+  pull_request:
+    paths:
+      - 'lib/agent-command-*.js'
+      - 'scripts/verify-neon-command-control.mjs'
+      - 'migrations/agent-command-*.sql'
+      - '.github/workflows/command-control-postgres.yml'
+permissions:
+  contents: read
+jobs:
+  postgres-transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: acceptance
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Install isolated schema and test identities
+        env:
+          PGPASSWORD: ci-only-password
+        run: |
+          psql -h localhost -U postgres -d acceptance -v ON_ERROR_STOP=1 -f migrations/agent-command-ledger.sql
+          psql -h localhost -U postgres -d acceptance -v ON_ERROR_STOP=1 -f migrations/agent-command-access.sql
+          psql -h localhost -U postgres -d acceptance -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE agent_test_writer_20261109 LOGIN PASSWORD 'ci-only-writer' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+          CREATE ROLE agent_test_reader_20261109 LOGIN PASSWORD 'ci-only-reader' NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+          GRANT agent_command_writer TO agent_test_writer_20261109;
+          GRANT agent_command_reader TO agent_test_reader_20261109;
+          SQL
+      - name: Verify signed handlers over real PostgreSQL connections
+        env:
+          AGENT_TEST_DATABASE_URL: postgres://agent_test_writer_20261109:ci-only-writer@localhost:5432/acceptance
+          AGENT_TEST_READER_PASSWORD: ci-only-reader
+          AGENT_TEST_ENVIRONMENT: github-postgres-service
+        run: node scripts/verify-neon-command-control.mjs

@@ -233,3 +233,11 @@
 .test-center button{max-width:100%;white-space:normal;min-height:44px;}
 .test-center small,.test-center .client-message{overflow-wrap:anywhere;}
 @media(max-width:720px){.settings>div{grid-template-columns:minmax(0,1fr);gap:8px;}.settings>div>span{text-align:left;}.test-center .section-title{flex-wrap:wrap;align-items:flex-start;}.test-center .section-title>div{min-width:0;flex:1 1 100%;}}
+
+/* Nov 6 review-only: safe mobile/readability refinement; no data, billing, or auth changes. */
+:where(button,a,input,textarea,select):focus-visible{outline:3px solid #75d9ff;outline-offset:3px}
+:where(button,[role="button"],.primary){min-height:44px}
+:where(.panel,.stat,.agent-card,.provider,.empty){overflow-wrap:anywhere}
+:where(img,svg,video,canvas){max-width:100%}
+@media(max-width:480px){main{padding-inline:14px}.section-title{flex-wrap:wrap;align-items:start}.stat,.panel{min-width:0}.quick,.agent-cards{gap:9px}.bottom-nav a{min-height:44px;justify-content:center}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
