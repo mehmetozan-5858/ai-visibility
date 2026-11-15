@@ -36,7 +36,15 @@ export async function confirmCardPaymentByMerchantOid(){return withPilotWriteLoc
 export async function markCardPaymentFailedByMerchantOid(){return withPilotWriteLockReview(x)}
 export async function addClientActivity(){}`;
  const reviewSource='withPilotWriteLockReview';
- const result=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
+ const reversalSource=`export async function reversePayment(){
+  await tx.query("BEGIN ISOLATION LEVEL READ COMMITTED");
+  const a='SELECT client_id AS "clientId" FROM payments WHERE id=$1';
+  await acquirePilotAdvisoryLockReview(tx,bound.clientId);
+  const b='SELECT * FROM payments WHERE id=$1 AND client_id=$2 FOR UPDATE';
+  const c="UPDATE clients SET status='payment-review'";
+  await tx.query("ROLLBACK");
+ }`;
+ const result=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource,reversalSource});
  assert.equal(result.ready,false,'source-only checks must not claim all writers verified');
  assert.equal(result.findings.length,0);
 });
@@ -144,4 +152,27 @@ test('card failure transition must join report tenant lock before changing payme
  assert.ok(audit.findings.some(f=>f.code==='account-activation-not-coordinated'&&
   f.method==='markCardPaymentFailedByMerchantOid'),
   'removing failed-card tenant lock must block acceptance');
+});
+
+test('bank reversal joins canonical writer audit and lock inversion stays blocked',async()=>{
+ const reversalSource=await read('lib/payment-reversal.js');
+ const pilotSource=await read('lib/pilot-access.js');
+ const repositorySource=await read('lib/repository.js');
+ const reviewSource=await read('lib/portal-pilot-writes-review.mjs');
+ const args={pilotSource,repositorySource,reviewSource,reversalSource};
+ const baseline=auditPortalEntitlementWriterCoverage(args);
+ assert.equal(baseline.ready,false,'unknown external writers are never certified');
+ assert.equal(baseline.findings.some(x=>x.code==='bank-payment-reversal-lock-order-unverified'),false);
+ assert.equal(baseline.findings.some(x=>x.code==='bank-payment-reversal'),false);
+ const removed=auditPortalEntitlementWriterCoverage({...args,
+  reversalSource:reversalSource.replace('await acquirePilotAdvisoryLockReview(tx,bound.clientId);','')});
+ assert.ok(removed.findings.some(x=>x.code==='bank-payment-reversal-lock-order-unverified'));
+ const inverted=auditPortalEntitlementWriterCoverage({...args,
+  reversalSource:reversalSource.replace('await acquirePilotAdvisoryLockReview(tx,bound.clientId);','')
+   .replace('if(!payment||payment.status',
+    'await acquirePilotAdvisoryLockReview(tx,bound.clientId);\n  if(!payment||payment.status')});
+ assert.ok(inverted.findings.some(x=>x.code==='bank-payment-reversal-lock-order-unverified'));
+ const missing=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
+ assert.ok(missing.findings.some(x=>x.code==='bank-payment-reversal'&&
+  x.reason==='source-or-required-writer-missing'));
 });
