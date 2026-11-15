@@ -32,6 +32,8 @@ test('read-only SQL inspection handles historical missing reasons and excludes a
  assert.equal(result.tasks[0].status,'provider-failed');assert.equal(result.tasks[0].failureReason,null);
  assert.equal(result.tasks[1].status,'not-observed');assert.equal(result.storage.failureReasonColumnAvailable,false);
  assert.equal(result.providerRequests,0);assert.equal(result.readOnly,true);assert.equal(result.storage.insertActuallyTested,false);
+ assert.equal(result.settings.emailVerificationSenderConfigured,false);
+ assert.equal(result.settings.invitationSigningConfigured,false);
  assert.equal(result.settings.providerAccessVerified,false);assert.equal(result.settings.providerQuotaVerified,false);
  assert.doesNotMatch(JSON.stringify(result),/PRIVATEKEY|private fixture|Other fixture|11111111|22222222/);
  // A write attempted on the same diagnostic transaction is rejected by PostgreSQL.
@@ -83,4 +85,13 @@ test('linked readiness remains unknown without identity or optional tables, neve
    pendingPaymentCount:null,paidLabelCount:null
   });
  }finally{await db.query("UPDATE clients SET name='Other fixture' WHERE id=$1",[other])}
+});
+
+test('missing or present signup infrastructure is shown only as booleans, never credentials',async()=>{
+ const env={RESEND_API_KEY:'PRIVATE_SENDER_KEY',EMAIL_FROM:'test@example.invalid',AUTH_SECRET:'PRIVATE_SIGNING_KEY'};
+ const status=diagnosticSettings(env);
+ assert.equal(status.emailVerificationSenderConfigured,true);
+ assert.equal(status.invitationSigningConfigured,true);
+ assert.doesNotMatch(JSON.stringify(status),/PRIVATE_SENDER_KEY|PRIVATE_SIGNING_KEY|test@example.invalid/);
+ assert.equal(diagnosticSettings({RESEND_API_KEY:'private-only'}).emailVerificationSenderConfigured,false);
 });
