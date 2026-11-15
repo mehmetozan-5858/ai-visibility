@@ -21,10 +21,11 @@ test('report and writer use identical advisory lock namespace and hash seed',()=
 });
 
 test('report locks before tenant and pilot reads and uses fresh expiration clock',()=>{
- const lock=reportFn.indexOf(REPORT_LOCK_SQL.trim());
- const clientRead=reportFn.indexOf('FROM public.clients c');
- const pilotRead=reportFn.indexOf('FROM public.client_pilot_access pilot');
- const reportRead=reportFn.indexOf('FROM public.ai_provider_comparisons');
+ const normalized=reportFn.replace(/\s+/g,' ');
+ const lock=normalized.indexOf(REPORT_LOCK_SQL.trim().replace(/\s+/g,' '));
+ const clientRead=normalized.indexOf('FROM public.clients c');
+ const pilotRead=normalized.indexOf('FROM public.client_pilot_access pilot');
+ const reportRead=normalized.indexOf('FROM public.ai_provider_comparisons');
  assert.ok(lock>=0 && clientRead>lock && pilotRead>clientRead && reportRead>pilotRead,
   'report must check current client/pilot entitlement after acquiring lock');
  assert.match(reportFn,/pilot\.expires_at>clock_timestamp\(\)/,
