@@ -8,13 +8,30 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fixture
+          POSTGRES_USER: fixture
+          POSTGRES_PASSWORD: fixture_ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fixture -d fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
       - run: npm install
-      - run: npm test
+      - name: Test including isolated two-backend PostgreSQL lock races
+        run: npm test
+        env:
+          PORTAL_LOCK_RACE_DATABASE_URL: postgresql://fixture:fixture_ci_only_password@localhost:5432/fixture
       - run: npm run build
       - name: Verify read-only diagnostics HTTP boundaries with synthetic auth
         run: node scripts/smoke-zera-diagnostics.mjs
