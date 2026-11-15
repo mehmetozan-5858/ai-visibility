@@ -76,7 +76,7 @@ test('preinstall stage is independent of migration-created tables and RPC',()=>{
 
 test('preinstall gate requires each owner and extension prerequisite; never relaxes',()=>{
  assert.equal(signedEnvelopePreinstallChecks.length,13);
- assert.equal(signedEnvelopePostinstallChecks.length,4);
+ assert.equal(signedEnvelopePostinstallChecks.length,5);
  assert.equal(new Set([...signedEnvelopePreinstallChecks,...signedEnvelopePostinstallChecks]).size,
   signedEnvelopeRequiredChecks.length);
  for(const key of signedEnvelopePreinstallChecks){
@@ -95,4 +95,18 @@ test('postinstall cannot pass if preinstall owner or HMAC disappears',()=>{
  const post=evaluateSignedEnvelopeStage(row,'postinstall');
  assert.equal(post.ready,false);
  assert.deepEqual(post.blocked,['ownerExists','approvedHmac']);
+});
+
+test('postinstall must verify SECURITY DEFINER owner, search_path and no PUBLIC EXECUTE',()=>{
+ const row=complete();
+ row.rpcSecureOwnerAndAcl=false;
+ const pre=evaluateSignedEnvelopeStage(row,'preinstall');
+ const post=evaluateSignedEnvelopeStage(row,'postinstall');
+ assert.equal(pre.ready,true,'RPC security is a postinstall requirement');
+ assert.equal(post.ready,false);
+ assert.deepEqual(post.blocked,['rpcSecureOwnerAndAcl']);
+ assert.match(signedEnvelopeReadinessSql,/p\.proowner=\(SELECT oid FROM expected\)/);
+ assert.match(signedEnvelopeReadinessSql,/p\.prosecdef=true/);
+ assert.match(signedEnvelopeReadinessSql,/search_path=pg_catalog/);
+ assert.match(signedEnvelopeReadinessSql,/acl\.grantee=0 AND acl\.privilege_type='EXECUTE'/);
 });
