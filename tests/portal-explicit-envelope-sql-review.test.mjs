@@ -40,9 +40,14 @@ test('SECURITY DEFINER migration cannot commit under privileged migration runner
  const firstDdl=s.indexOf('CREATE SCHEMA IF NOT EXISTS portal_authz');
  assert.ok(roleGate>0&&roleGate<firstDdl&&firstDdl<create&&create<alter&&alter<commit,
   'narrow owner preflight must run before ANY DDL; transfer must precede COMMIT');
- for(const flag of ['rolcanlogin=false','rolsuper=false','rolbypassrls=false',
-  'rolcreatedb=false','rolcreaterole=false','rolreplication=false'])
-  assert.ok(s.includes(flag),'owner privilege guard missing: '+flag);
+ for(const flag of ['rolcanlogin','rolsuper','rolbypassrls',
+  'rolcreatedb','rolcreaterole','rolreplication'])
+  assert.ok(s.includes('r.'+flag+'=false'),'owner privilege guard missing: '+flag);
+ assert.match(s,/NOT EXISTS \(SELECT 1 FROM pg_catalog\.pg_auth_members m WHERE m\.member=r\.oid\)/);
+ assert.match(s,/NOT has_database_privilege\(r\.oid,current_database\(\),'CREATE'\)/);
+ assert.match(s,/NOT has_schema_privilege\(r\.oid,'public','CREATE'\)/);
+ assert.match(s,/NOT has_table_privilege\(r\.oid,'public\.client_credentials','SELECT'\)/);
+ assert.match(s,/NOT has_table_privilege\(r\.oid,'public\.payments','SELECT'\)/);
  assert.match(s,/RAISE EXCEPTION 'review-report-function-owner-unverified'/);
  assert.match(s,/ALTER FUNCTION public\.portal_verified_one_time_envelope_review\(UUID,BIGINT,UUID,TEXT\)/);
  assert.doesNotMatch(s,/^\s*(?:CREATE|ALTER)\s+ROLE\s+portal_report_fn_owner/mi);
