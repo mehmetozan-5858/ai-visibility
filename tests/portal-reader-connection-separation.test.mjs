@@ -53,3 +53,29 @@ test('reader is wired ONLY to opt-in report evidence, not account/login/settleme
  }
  // Real role credentials, authenticated customer journeys and deployment remain blocked.
 });
+
+test('structurally valid tenant RLS must never authorize a forgeable session setting',async()=>{
+ const {evaluateComparisonRlsPolicy,inspectComparisonRlsPolicy}=await import('../lib/portal-report-rls-readiness.mjs');
+ const policy={policyname:'portal_verified_tenant_comparison_select',
+  permissive:'PERMISSIVE',cmd:'SELECT',roles:['public'],
+  qual:"(client_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid)"};
+ const table={enabled:true,forced:true};
+ assert.deepEqual(evaluateComparisonRlsPolicy({table,policies:[policy]}),
+  {ready:false,reason:'comparison-tenant-setting-forgeable'});
+ for(const candidate of [
+  {table:{enabled:false,forced:true},policies:[policy]},
+  {table:{enabled:true,forced:false},policies:[policy]},
+  {table,policies:[]},
+  {table,policies:[{...policy,qual:'true'}]},
+  {table,policies:[{...policy,roles:['public','authenticated']}]}
+ ]) assert.equal(evaluateComparisonRlsPolicy(candidate).ready,false);
+ const pool={query:async(sql)=>{
+  if(sql.includes('FROM pg_class'))return {rows:[table]};
+  if(sql.includes('FROM pg_policies'))return {rows:[policy]};
+  throw Error('unexpected query');
+ }};
+ assert.deepEqual(await inspectComparisonRlsPolicy(pool),
+  {ready:false,reason:'comparison-tenant-setting-forgeable'});
+ assert.deepEqual(await inspectComparisonRlsPolicy({query:async()=>{throw Error('offline')}}),
+  {ready:false,reason:'comparison-rls-inspection-unavailable'});
+});
