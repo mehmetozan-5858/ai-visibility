@@ -215,6 +215,21 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
      await db.query('DROP FUNCTION public.portal_unexpected_definer_ci()');
     }
 
+    // Real disposable PostgreSQL role-membership escalation check: reject
+    // report reader identity even when inherited privileges are not currently
+    // exercised. PG role memberships can permit future SET ROLE escalation.
+    const syntheticMemberRole='portal_reader_member_ci';
+    await admin.query('CREATE ROLE '+syntheticMemberRole+' NOLOGIN');
+    try{
+     await admin.query('GRANT '+syntheticMemberRole+' TO '+roleName);
+     await assert.rejects(
+      gateway(await createClientToken(A)),/review-envelope-role-unverified/,
+      'a report reader with alternate role membership must fail closed');
+    }finally{
+     await admin.query('REVOKE '+syntheticMemberRole+' FROM '+roleName).catch(()=>{});
+     await admin.query('DROP ROLE '+syntheticMemberRole).catch(()=>{});
+    }
+
     // Full review acceptance: the signed session MUST originate from
     // unchanged existing-password verification, not a direct test token.
     // All data is synthetic. No real user credential is read or reset.
