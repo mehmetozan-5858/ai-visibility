@@ -11,7 +11,9 @@ const ROLE='portal_gateway_reader_synthetic';
 const SECRET='synthetic-customer-report-claim-secret-not-production';
 const role={name:ROLE,login:true,superuser:false,bypassRls:false,
  createDb:false,createRole:false,replication:false,schemaUsage:true,
- schemaCreate:false,databaseCreate:false,envelopeExecute:true,rawSelect:false,credentialSelect:false,paymentSelect:false,settlementSelect:false,privateSchemaUsage:false};
+ schemaCreate:false,databaseCreate:false,envelopeExecute:true,
+ legacyReportExecute:false,legacyOneTimeExecute:false,
+ oldSignedReportExecute:false,oldAdvisoryReportExecute:false,rawSelect:false,credentialSelect:false,paymentSelect:false,settlementSelect:false,privateSchemaUsage:false};
 const proof=tenant=>async id=>({active:true,source:'verified-pilot',
  tenantId:tenant,checkedAt:Date.now()});
 async function env(fn){
@@ -95,7 +97,9 @@ test('unsafe reader role and lock timeout both fail closed and release connectio
 });
 test('reader can only execute envelope RPC and cannot be owner or raw-table reader',()=>{
  assert.equal(isEnvelopeReaderRoleReview(role,ROLE),true);
- for(const patch of [{envelopeExecute:false},{databaseCreate:true},{rawSelect:true},
+ for(const patch of [{envelopeExecute:false},{databaseCreate:true},
+  {legacyReportExecute:true},{legacyOneTimeExecute:true},
+  {oldSignedReportExecute:true},{oldAdvisoryReportExecute:true},{rawSelect:true},
   {credentialSelect:true},{paymentSelect:true},{settlementSelect:true},{privateSchemaUsage:true},
   {bypassRls:true},{name:'neondb_owner'}])
   assert.equal(isEnvelopeReaderRoleReview({...role,...patch},ROLE),false);
