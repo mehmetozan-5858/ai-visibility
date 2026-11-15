@@ -4,7 +4,7 @@ import {createHmac} from 'node:crypto';
 import {dispatchSignedPaddleEventWithTenantLockReview}
  from '../lib/portal-paddle-locked-dispatch-review.mjs';
 import {applyOwnedPaddleSubscriptionTransitionReview,
- UPSERT_CURRENT_OWNED_SUBSCRIPTION_SQL} from '../lib/portal-paddle-subscription-transition-review.mjs';
+ UPSERT_CURRENT_OWNED_SUBSCRIPTION_SQL,READ_CANCELLATION_NOOP_ACCOUNT_SQL} from '../lib/portal-paddle-subscription-transition-review.mjs';
 import {CANCEL_OWNED_ACCESS_SQL,AUDIT_CANCELLATION_SQL}
  from '../lib/portal-paddle-cancellation-write-review.mjs';
 import {RESUME_OWNED_ACCESS_SQL,AUDIT_RESUME_SQL}
@@ -20,12 +20,14 @@ function signed(type,status,id='evt_reviewtransition123'){
  const ts=Math.floor(Date.now()/1000);
  return {raw,secret,header:`ts=${ts};h1=${createHmac('sha256',secret).update(`${ts}:${raw}`).digest('hex')}`};
 }
-function fixture({linked=true,accessChanged=true,failAudit=false}={}){
+function fixture({linked=true,accessChanged=true,failAudit=false,accountStatus='payment-review'}={}){
  const calls=[];let released=0;
  const tx={async query(sql,args=[]){
   calls.push({sql,args});
   if(sql===UPSERT_CURRENT_OWNED_SUBSCRIPTION_SQL)
    return {rows:linked?[{entity_id:'sub_review123'}]:[]};
+  if(sql===READ_CANCELLATION_NOOP_ACCOUNT_SQL)
+   return {rows:accountStatus===null?[]:[{status:accountStatus}]};
   if(sql===CANCEL_OWNED_ACCESS_SQL||sql===RESUME_OWNED_ACCESS_SQL)
    return {rows:accessChanged?[{id:A}]:[]};
   if(failAudit&&(sql===AUDIT_CANCELLATION_SQL||sql===AUDIT_RESUME_SQL))
@@ -116,4 +118,20 @@ test('cancellation can advance an already suspended subscription without falsely
  }),{accessChanged:false,entityAdvanced:true});
  assert.equal(f.calls.at(-1).sql,'COMMIT');
  assert.equal(f.calls.some(c=>c.sql===AUDIT_CANCELLATION_SQL),false);
+});
+
+test('zero-row cancellation must rollback when account remains active or unverified',async()=>{
+ for(const accountStatus of ['active','suspended',null]){
+  const f=fixture({linked:true,accessChanged:false,accountStatus});
+  await assert.rejects(dispatchSignedPaddleEventWithTenantLockReview({
+   ...signed('subscription.canceled','canceled','evt_reviewzeroaudit123'),
+   pool:f.pool,write:applyOwnedPaddleSubscriptionTransitionReview
+  }),/review-cancellation-unaccepted-rollback-current-event/);
+  assert.ok(f.calls.some(c=>c.sql===UPSERT_CURRENT_OWNED_SUBSCRIPTION_SQL));
+  assert.ok(f.calls.some(c=>c.sql===READ_CANCELLATION_NOOP_ACCOUNT_SQL));
+  assert.equal(f.calls.at(-1).sql,'ROLLBACK');
+  assert.equal(f.calls.some(c=>c.sql==='COMMIT'),false);
+  assert.equal(f.calls.some(c=>c.sql===AUDIT_CANCELLATION_SQL),false);
+  assert.equal(f.released,1);
+ }
 });
