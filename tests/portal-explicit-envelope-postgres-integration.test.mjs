@@ -157,6 +157,11 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     try{
      const identity=(await auditConn.query('SELECT current_user AS name')).rows[0];
      assert.equal(identity.name,roleName);
+     const canCreate=(await auditConn.query(
+      "SELECT has_database_privilege(current_user,current_database(),'CREATE') AS allowed"
+     )).rows[0].allowed;
+     assert.equal(canCreate,false,
+      'RPC-only customer report reader cannot create schemas/functions in database');
      await auditConn.query('BEGIN');
      for(const query of [
       'SELECT 1 FROM public.ai_provider_comparisons LIMIT 1',
