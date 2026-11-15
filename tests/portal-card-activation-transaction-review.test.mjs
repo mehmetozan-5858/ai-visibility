@@ -71,6 +71,27 @@ test('already-paid repeat does not rewrite client activation',async()=>{
  assert.equal(f.state.clientActive,false);
  assert.equal(f.state.commit,true);
 });
+test('idempotent card confirmation refuses an unchanged non-paid row',async()=>{
+ const f=fixture({changed:true});
+ // A concurrent or unusual payment state can cause the conditional UPDATE
+ // to return no rows while the identity lookup still finds a pending record.
+ const original=f.pool.connect;
+ f.pool.connect=async()=>{
+  const tx=await original();
+  const query=tx.query;
+  tx.query=async(sql,args)=>{
+   if(sql.includes('FROM public.payments WHERE id='))
+    return {rows:[{id:PAYMENT,clientId:TENANT,status:'pending'}]};
+   return query(sql,args);
+  };
+  return tx;
+ };
+ await assert.rejects(confirmCardPaymentLockedReview(f.pool,OID),
+  /review-card-payment-changed/);
+ assert.equal(f.state.commit,false);
+ assert.equal(f.state.rollback,true);
+});
+
 test('malformed merchant ID rejects before database query',async()=>{
  const f=fixture();
  await assert.rejects(confirmCardPaymentLockedReview(f.pool,'not-valid!'),/review-card-confirmation-invalid/);
