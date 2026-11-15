@@ -25,12 +25,12 @@ test('credential verification reads without request-time schema DDL',async()=>{
  }
 });
 
-test('pilot access lookup skips schema initialization without changing pilot grant writes',async()=>{
+test('pilot access reads stay schema-free and pilot grant uses locked writer',async()=>{
  const src=await source('lib/pilot-access.js');
  assert.match(src,/async function pool\(\{ensureSchema=true\}=\{\}\)/);
  assert.match(src,/if\(ensureSchema\)await initializeSchema/);
  assert.match(src,/getPilotAccess\(clientId\)\{const p=await pool\(\{ensureSchema:false\}\)/);
- assert.match(between(src,'export async function grantPilot','export async function revokePilot'),/const p=await pool\(\)/);
+ assert.match(between(src,'export async function grantPilot','export async function revokePilot'),/grantPilotWithLockReview\(await pool\(\),clientId,email,days,reason\)/);
 });
 
 test('finding list queries are read-only and authorized writes remain separate',async()=>{
