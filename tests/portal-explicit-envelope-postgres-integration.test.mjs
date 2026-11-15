@@ -44,6 +44,17 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
  try{
   await admin.query('CREATE DATABASE '+dbName);created=true;
   db=new Pool({connectionString:target.toString(),max:4,connectionTimeoutMillis:2500,query_timeout:8000,statement_timeout:8000,idle_in_transaction_session_timeout:12000});
+  // Real PostgreSQL fail-before-DDL acceptance: the mandatory NOLOGIN owner
+  // must exist BEFORE this review migration may create its private schema.
+  const migration=await readFile(new URL('../migrations/portal-one-time-explicit-envelope-review.sql',import.meta.url),'utf8');
+  await assert.rejects(db.query(migration),error=>
+   error.message.includes('review-report-function-owner-unverified'));
+  const beforeAnyDdl=(await db.query(
+   "SELECT to_regnamespace('portal_authz') IS NOT NULL AS schema_exists, "+
+   "to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
+  )).rows[0];
+  assert.deepEqual(beforeAnyDdl,{schema_exists:false,rpc_exists:false},
+   'missing owner must leave no schema and no SECURITY DEFINER function');
   await db.query('CREATE SCHEMA portal_authz');
   await db.query('CREATE EXTENSION pgcrypto WITH SCHEMA portal_authz');
   await db.query('CREATE TABLE public.clients(id uuid PRIMARY KEY,status text NOT NULL)');
@@ -61,7 +72,6 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   // signing_keys/consumed_claims tables are made by the migration below;
   // grant their minimum required privileges only after it has completed.
 
-  const migration=await readFile(new URL('../migrations/portal-one-time-explicit-envelope-review.sql',import.meta.url),'utf8');
   await db.query(migration);
   await db.query(`GRANT SELECT ON TABLE portal_authz.signing_keys TO ${ownerName}`);
   await db.query(`GRANT INSERT ON TABLE portal_authz.consumed_claims TO ${ownerName}`);
