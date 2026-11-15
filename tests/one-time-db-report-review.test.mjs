@@ -60,7 +60,9 @@ test('verified customer A and B produce separate claims on one SQL connection ea
   const reader={connect:async()=>{acquired++;return {
    query:async(sql,args)=>{
     calls.push({sql,args});
-    if(sql==='BEGIN'||sql==='COMMIT')return {rows:[]};
+    if(sql==='BEGIN ISOLATION LEVEL READ COMMITTED'||sql==='COMMIT'||
+       sql==="SET LOCAL lock_timeout = '2500ms'"||
+       sql==="SET LOCAL statement_timeout = '10000ms'")return {rows:[]};
     if(sql.includes('current_user AS "name"'))return {rows:[safeRole]};
     assert.match(sql,/portal_trial_one_time_report\(\$1::uuid,\$2::bigint,\$3::uuid,\$4::text\)/);
     const [tenant,expires,claimId,mac]=args;
@@ -76,7 +78,9 @@ test('verified customer A and B produce separate claims on one SQL connection ea
   assert.deepEqual((await readOneTimeDbReportReview(reader,a,verified(A))).map(x=>x.query),['Synthetic A']);
   assert.deepEqual((await readOneTimeDbReportReview(reader,b,verified(B))).map(x=>x.query),['Synthetic B']);
   assert.equal(acquired,2);assert.equal(released,2);
-  assert.equal(calls.filter(x=>x.sql==='BEGIN').length,2);
+  assert.equal(calls.filter(x=>x.sql==='BEGIN ISOLATION LEVEL READ COMMITTED').length,2);
+  assert.equal(calls.filter(x=>x.sql==="SET LOCAL lock_timeout = '2500ms'").length,2);
+  assert.equal(calls.filter(x=>x.sql==="SET LOCAL statement_timeout = '10000ms'").length,2);
   assert.equal(calls.filter(x=>x.sql==='COMMIT').length,2);
   assert.equal(calls.filter(x=>x.sql.startsWith('SELECT "clientId",query,results,"createdAt" FROM public.portal_trial_one_time_report(')).length,2,'count real RPC SELECTs, not privilege-probe SQL');
  });
@@ -128,11 +132,18 @@ test('unsafe SQL role rolls back without RPC and always releases connection',asy
   const calls=[];let released=0;
   const pool={connect:async()=>({query:async sql=>{
    calls.push(sql);
-   if(sql==='BEGIN'||sql==='ROLLBACK')return {rows:[]};
+   if(sql==='BEGIN ISOLATION LEVEL READ COMMITTED'||sql==='ROLLBACK'||
+      sql==="SET LOCAL lock_timeout = '2500ms'"||
+      sql==="SET LOCAL statement_timeout = '10000ms'")return {rows:[]};
    if(sql.includes('current_user AS "name"'))return {rows:[{...safeRole,legacyReplayExecute:true}]};
    throw Error('unexpected-report-call');
   },release:()=>{released++}})};
   await assert.rejects(readOneTimeDbReportReview(pool,token,verified(A)),/one-time-reader-role-unverified/);
-  assert.equal(calls.length,3);assert.equal(calls[2],'ROLLBACK');assert.equal(released,1);
+  assert.deepEqual(calls.slice(0,3),[
+   'BEGIN ISOLATION LEVEL READ COMMITTED',
+   "SET LOCAL lock_timeout = '2500ms'",
+   "SET LOCAL statement_timeout = '10000ms'"
+  ]);
+  assert.equal(calls.length,5);assert.equal(calls[4],'ROLLBACK');assert.equal(released,1);
  });
 });
