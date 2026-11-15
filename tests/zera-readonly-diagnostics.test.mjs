@@ -32,6 +32,11 @@ test('read-only SQL inspection handles historical missing reasons and excludes a
  assert.equal(result.tasks[0].status,'provider-failed');assert.equal(result.tasks[0].failureReason,null);
  assert.equal(result.tasks[1].status,'not-observed');assert.equal(result.storage.failureReasonColumnAvailable,false);
  assert.equal(result.providerRequests,0);assert.equal(result.readOnly,true);assert.equal(result.storage.insertActuallyTested,false);
+ assert.equal(result.runtimeRole.inspected,true);
+ assert.equal(typeof result.runtimeRole.bypassesRls,'boolean');
+ assert.equal(typeof result.runtimeRole.hasElevatedPrivileges,'boolean');
+ assert.equal(result.runtimeRole.hasElevatedPrivileges,true); // PGlite admin fixture
+ assert.doesNotMatch(JSON.stringify(result.runtimeRole),/postgres|neondb_owner|password|database_url/i);
  assert.equal(result.settings.emailVerificationSenderConfigured,false);
  assert.equal(result.settings.invitationSigningConfigured,false);
  assert.equal(result.settings.providerAccessVerified,false);assert.equal(result.settings.providerQuotaVerified,false);
