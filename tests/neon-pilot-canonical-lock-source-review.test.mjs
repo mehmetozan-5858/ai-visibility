@@ -60,3 +60,20 @@ test('candidate report replacement blocks permissive TRUE owner RLS before any g
   assert.match(sql,/pol\.polroles=ARRAY\[0::oid\]/);
   assert.match(sql,/portal_report_fn_owner_trial_20261115/);
 });
+
+test('candidate tenant RLS is narrowed and signed RPC binds scoped GUC only after consumed claim',async()=>{
+  const [policy,rpc]=await Promise.all([
+    load('docs/security/neon-report-owner-rls-narrowing-review.sql'),
+    load('docs/security/neon-pilot-revocation-review.sql')
+  ]);
+  assert.match(policy,/ALTER POLICY portal_fn_owner_read_synthetic/);
+  assert.match(policy,/client_id\s*=\s*NULLIF\(pg_catalog\.current_setting\('app\.tenant_id',true\)/);
+  assert.match(policy,/DO NOT EXECUTE/);
+  const mac=rpc.indexOf('IF p_mac <> v_expected THEN RETURN');
+  const lock=rpc.indexOf('PERFORM pg_catalog.pg_advisory_xact_lock');
+  const consume=rpc.indexOf('INSERT INTO portal_authz_trial.consumed_claims');
+  const scope=rpc.indexOf("pg_catalog.set_config('app.tenant_id', p_tenant::text, true)");
+  const result=rpc.indexOf('RETURN QUERY',consume);
+  assert.ok(mac>=0&&lock>mac&&consume>lock&&scope>consume&&result>scope,
+    'signed claim must be validated, locked and consumed before RLS context is set');
+});
