@@ -382,6 +382,52 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query("UPDATE public.client_pilot_access SET revoked_at=clock_timestamp() WHERE client_id=$1",[A]);
   assert.deepEqual(await call(A),[],'revoked pilot must deny');
 
+  // Review-only, real disposable two-backend transaction: an account
+  // suspension writer taking the tenant lock must block a signed report
+  // and the reader must see committed suspension before using its nonce.
+  // Production confirmPayment/suspension writers are NOT yet coordinated.
+  await db.query("UPDATE public.client_pilot_access SET revoked_at=NULL WHERE client_id=$1",[A]);
+  const accountWriter=await db.connect();
+  const accountReader=await db.connect();
+  const accountObserver=await db.connect();
+  let accountWriting=false,accountReading=false;
+  try{
+   await accountWriter.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+   accountWriting=true;
+   await accountWriter.query(PILOT_LOCK_SQL,[A]);
+   await accountWriter.query("UPDATE public.clients SET status='payment-review' WHERE id=$1",[A]);
+   await accountReader.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+   accountReading=true;
+   await accountReader.query("SET LOCAL lock_timeout = '5000ms'");
+   const accountReaderPid=(await accountReader.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+   const accountNonce=randomUUID(),accountExpiry=Math.floor(Date.now()/1000)+60;
+   const accountPending=accountReader.query(rpc,[A,accountExpiry,accountNonce,
+    sign(A,accountExpiry,accountNonce)]);
+   accountPending.catch(()=>{});
+   let waitedOnAccountLock=false;
+   for(let i=0;i<120;i++){
+    const state=await accountObserver.query(
+     'SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',[accountReaderPid]);
+    if(state.rows[0]?.wait_event_type==='Lock'){waitedOnAccountLock=true;break}
+    await wait(25);
+   }
+   assert.equal(waitedOnAccountLock,true,
+    'signed report must wait for account-suspension tenant lock');
+   await accountWriter.query('COMMIT');accountWriting=false;
+   assert.deepEqual((await accountPending).rows,[],
+    'fresh post-lock account state must deny suspended tenant');
+   await accountReader.query('COMMIT');accountReading=false;
+   assert.equal((await accountObserver.query(
+    'SELECT count(*)::int AS n FROM portal_authz.consumed_claims WHERE claim_id=$1',
+    [accountNonce])).rows[0].n,0,
+    'a suspended account must not spend its signed one-use claim');
+  }finally{
+   if(accountWriting)await accountWriter.query('ROLLBACK').catch(()=>{});
+   if(accountReading)await accountReader.query('ROLLBACK').catch(()=>{});
+   accountWriter.release();accountReader.release();accountObserver.release();
+  }
+  await db.query("UPDATE public.clients SET status='active' WHERE id=$1",[A]);
+
   // New active pilot, but writer revokes it while the signed report waits:
   // the report must take the same tenant advisory lock and then see revocation.
   await db.query("UPDATE public.client_pilot_access SET revoked_at=NULL WHERE client_id=$1",[A]);
