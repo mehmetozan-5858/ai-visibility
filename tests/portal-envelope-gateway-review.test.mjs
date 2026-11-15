@@ -143,3 +143,28 @@ test('reader with forged role identity, overbroad credentials or missing RPC per
   }
  });
 });
+
+test('signed envelope never leaks arbitrary SQL JSON or unaudited provider fields',async()=>{
+ await env(async()=>{
+  const token=await createClientToken(A);
+  const m=mock({response:[{authorized:true,tenantId:A,reports:[{
+   clientId:A,query:'Synthetic query',createdAt:'2026-11-15T00:00:00Z',
+   sensitiveInternal:'do-not-expose',
+   results:[{provider:'gemini',status:'answer-received-unverified',
+    answer:'Synthetic answer',verified:false,
+    secret:'do-not-expose',usage:{cost:55}},
+   {provider:'unlisted-provider',status:'source-supported-answer',
+    answer:'untrusted output',verified:true}]
+  }]}]});
+  const gateway=createEnvelopeGatewayReview({reportPool:m.pool,entitlementAuthority:proof(A)});
+  const safe=await gateway(token);
+  assert.equal(safe.length,1);
+  assert.equal(safe[0].results.length,1);
+  assert.equal(safe[0].results[0].provider,'gemini');
+  assert.equal(safe[0].results[0].verified,false);
+  assert.equal(JSON.stringify(safe).includes('do-not-expose'),false);
+  assert.equal(JSON.stringify(safe).includes('unlisted-provider'),false);
+  assert.equal(JSON.stringify(safe).includes('cost'),false);
+  assert.equal(m.queries.at(-1).sql,'COMMIT');
+ });
+});
