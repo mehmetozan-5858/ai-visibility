@@ -4,6 +4,7 @@
 -- No customer identifiers, credentials, report rows, or secrets are retrieved.
 -- This audit intentionally performs no DDL, role grants or report RPC calls.
 BEGIN TRANSACTION READ ONLY;
+SET LOCAL statement_timeout = '5000ms';
 
 -- 1. Capture database identity and bounded role privilege inventory.
 SELECT current_database() AS database_name, current_user AS audit_user,
@@ -47,13 +48,19 @@ LEFT JOIN pg_catalog.pg_roles owner ON owner.oid=p.proowner
 LEFT JOIN reader ON true;
 
 -- 3. Find ANY other callable SECURITY DEFINER entry point in public.
+WITH reader AS (
+ SELECT oid FROM pg_catalog.pg_roles
+ WHERE rolname='portal_gateway_reader_trial_20261114'
+)
 SELECT p.oid::regprocedure::text AS callable_function,
        owner.rolname AS function_owner,
-       has_function_privilege('portal_gateway_reader_trial_20261114',
-                              p.oid,'EXECUTE') AS reader_can_execute
+       CASE WHEN reader.oid IS NULL THEN NULL
+            ELSE has_function_privilege(reader.oid,p.oid,'EXECUTE')
+       END AS reader_can_execute
 FROM pg_catalog.pg_proc p
 JOIN pg_catalog.pg_namespace n ON n.oid=p.pronamespace
 JOIN pg_catalog.pg_roles owner ON owner.oid=p.proowner
+LEFT JOIN reader ON true
 WHERE n.nspname='public' AND p.prosecdef
 ORDER BY callable_function;
 
@@ -64,7 +71,7 @@ FROM pg_catalog.pg_class c
 JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
 WHERE n.nspname='public' AND c.relname='ai_provider_comparisons';
 SELECT schemaname,tablename,policyname,permissive,roles,cmd,
-       qual IS NOT NULL AS has_using, with_check IS NOT NULL AS has_check
+       qual AS using_predicate, with_check AS check_predicate
 FROM pg_catalog.pg_policies
 WHERE schemaname='public' AND tablename='ai_provider_comparisons'
 ORDER BY policyname;
