@@ -54,7 +54,7 @@ BEGIN
   -- advisory lock BEFORE row DML, on the same transaction/connection.
   -- Does NOT protect uncoordinated owner/DDL/bulk write paths; HOLD until audited.
   PERFORM pg_catalog.pg_advisory_xact_lock(
-    pg_catalog.hashtextextended('portal-pilot-v1:' || p_tenant::text, 0)
+    pg_catalog.hashtextextended('portal-pilot-lock-v1:' || p_tenant::text, 0)
   );
 
   -- Recheck authoritative state AFTER obtaining the per-tenant lock.
