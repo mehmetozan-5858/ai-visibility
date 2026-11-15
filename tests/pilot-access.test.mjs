@@ -5,7 +5,20 @@ import fs from 'node:fs/promises';
 const source=(await fs.readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8')).replace(/^import .*;$/gm,'').replace(/export /g,'');
 let pilot=null,queries=[],failAudit=false;
 const p={connect:async()=>p,release(){},async query(sql,a){queries.push(sql);if(sql.startsWith('SELECT')){assert.match(sql,/revoked_at IS NULL AND expires_at>NOW\(\)/);return {rows:pilot?[pilot]:[]}}if(sql.includes('INSERT INTO client_activity')){assert.ok(a[3]);if(failAudit)throw Error('audit-failed')}return {rows:[]}}};
-const {customerAccess,grantPilot}=new Function('crypto','databasePool','getDatabaseUrl','initializeSchema',source+';return {customerAccess,grantPilot}')(crypto,()=>p,()=>'',async()=>{});
+const pilotWrites=[];
+const fakeGrant=async(p,id,email,days,reason)=>{
+ pilotWrites.push({type:'grant',id,email,days,reason});
+ if(failAudit)throw Error('audit-failed');
+ return {granted:true};
+};
+const fakeRevoke=async(p,id)=>{
+ pilotWrites.push({type:'revoke',id});return {revoked:true};
+};
+const {customerAccess,grantPilot,revokePilot}=new Function(
+ 'crypto','databasePool','getDatabaseUrl','initializeSchema','grantPilotWithLockReview','revokePilotWithLockReview',
+ source+';return {customerAccess,grantPilot,revokePilot}'
+)(crypto,()=>p,()=>'',async()=>{},fakeGrant,fakeRevoke);
+
 test('unpaid customer requires active pilot; revoked/expired pilot is denied',async()=>{const a={client:{id:'client',status:'active'},payments:[]};assert.equal((await customerAccess(a)).allowed,false);pilot={email:'owner@example.com',expiresAt:'2026-11-01'};assert.equal((await customerAccess(a)).kind,'pilot');pilot=null;assert.equal((await customerAccess(a)).allowed,false);assert.equal((await customerAccess({...a,payments:[{status:'paid'}]})).kind,'paid');assert.equal((await customerAccess({...a,client:{id:'client',status:'payment-review'},payments:[{status:'paid'}]})).allowed,false)});
 test('payment review overrides a preexisting active pilot without reading entitlement storage',async()=>{
  pilot={email:'owner@example.com',expiresAt:'2099-11-01'};
@@ -17,14 +30,38 @@ test('payment review overrides a preexisting active pilot without reading entitl
   }
  }finally{pilot=null}
 });
-test('pilot grant audits atomically without writing payments and validates limits',async()=>{queries=[];await grantPilot('client','owner@example.com',7,'Free analysis pilot');assert.ok(queries.includes('COMMIT'));assert.ok(!queries.some(s=>/INSERT INTO payments|UPDATE payments/.test(s)));failAudit=true;await assert.rejects(grantPilot('client','owner@example.com',7,'Free analysis pilot'),/audit-failed/);assert.ok(queries.includes('ROLLBACK'));await assert.rejects(grantPilot('client','owner@example.com',31,'Free analysis pilot'),/invalid-pilot/)});
+test('pilot grant/revoke use the vetted lock-aware writer rather than raw SQL',async()=>{
+ const tenant='11111111-1111-4111-8111-111111111111';
+ queries=[];pilotWrites.length=0;failAudit=false;
+ assert.deepEqual(await grantPilot(tenant,'owner@example.com',7,'Free analysis pilot'),{granted:true});
+ assert.deepEqual(pilotWrites.at(-1),{type:'grant',id:tenant,email:'owner@example.com',days:7,reason:'Free analysis pilot'});
+ assert.equal(queries.some(s=>/INSERT INTO payments|UPDATE payments|INSERT INTO client_pilot_access/.test(s)),false);
+ failAudit=true;
+ await assert.rejects(grantPilot(tenant,'owner@example.com',7,'Free analysis pilot'),/audit-failed/);
+ failAudit=false;
+ assert.deepEqual(await revokePilot(tenant),{revoked:true});
+ assert.deepEqual(pilotWrites.at(-1),{type:'revoke',id:tenant});
+ await assert.rejects(grantPilot(tenant,'owner@example.com',31,'Free analysis pilot'),/invalid-pilot/);
+});
+
+test('invalid tenant is rejected before pilot schema preparation and SQL',async()=>{
+ queries=[];
+ const prior=pilotWrites.length;
+ await assert.rejects(grantPilot('invalid','owner@example.com',7,'Free analysis pilot'),/invalid-pilot/);
+ await assert.rejects(revokePilot('invalid'),/invalid-pilot/);
+ assert.deepEqual(queries,[]);
+ assert.equal(pilotWrites.length,prior);
+});
 
 // Regression guard: an explicitly granted pilot must reach the same report
 // UI that the server-side customerAccess and PDF endpoint authorize.
 test('pilot report UI is reachable and paid implementation actions stay hidden',async()=>{
  const gate=await fs.readFile(new URL('../components/CustomerPortalGate.js',import.meta.url),'utf8');
  const portal=await fs.readFile(new URL('../components/CustomerPortal.js',import.meta.url),'utf8');
- assert.match(gate,/account\?\.access\?\.kind==="pilot"\|\|unlocked/);
+ assert.match(gate,/account\?\.access\?\.allowed===true/);
+ assert.match(gate,/account\.access\.kind==="pilot"\|\|unlocked/);
+ assert.match(gate,/access\?\.kind==="paid"/);
+ assert.doesNotMatch(gate,/account\?\.payments\|\|\[\]/);
  assert.match(portal,/account\?\.access\?\.kind==="paid"/);
  assert.match(portal,/account\?\.access\?\.kind==="pilot"\?<StatusPill/);
 });

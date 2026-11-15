@@ -10,11 +10,15 @@ function fixture({session={clientId:'own'},allowed=true,fails=false}={}){
 }
 test('portal exposes only own report readiness, never answer payloads',async()=>{
  const f=fixture(),r=await f.get(new Request('https://example.com/api/client-portal?clientId=other')),data=await r.json();
- assert.equal(r.status,200);assert.deepEqual(f.reads,['own']);assert.deepEqual(data.account.reportEvidence,{available:true,comparisonCount:1});
+ assert.equal(r.status,200);assert.deepEqual(f.reads,['own']);assert.deepEqual(data.account.reportEvidence,{available:true,comparisonCount:1,
+  evidenceClass:'historical',verifiedProviderEvidence:false});
+ assert.equal(data.reportPreview,null,'legacy unscoped report path must never reveal answer payloads');
  assert.doesNotMatch(JSON.stringify(data),/PRIVATE/);assert.match(r.headers.get('cache-control'),/private.*no-store/);
 });
 test('evidence read failure does not break portal or claim readiness; access rejection prevents reads',async()=>{
  const f=fixture({fails:true}),r=await f.get(new Request('https://example.com/api/client-portal'));assert.equal(r.status,200);
- assert.deepEqual((await r.json()).account.reportEvidence,{available:false,comparisonCount:0});
+ assert.deepEqual((await r.json()).account.reportEvidence,{available:false,comparisonCount:0,
+  evidenceClass:'unknown',verifiedProviderEvidence:false});
+
  for(const options of [{session:null},{allowed:false}]){const denied=fixture(options);assert.ok((await denied.get(new Request('https://example.com/api/client-portal'))).status>=400);assert.deepEqual(denied.reads,[])}
 });

@@ -8,13 +8,45 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fixture
+          POSTGRES_USER: fixture
+          POSTGRES_PASSWORD: fixture_ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fixture -d fixture"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
       - run: npm install
-      - run: npm test
+      - name: Existing customer password verification acceptance (synthetic only)
+        timeout-minutes: 2
+        run: timeout --signal=TERM --kill-after=5s 90s node --test tests/client-existing-password-scrypt-acceptance.test.mjs
+      - name: Synthetic existing-login to authorized report HTTP acceptance (fail fast)
+        timeout-minutes: 2
+        run: timeout --signal=TERM --kill-after=5s 90s node --test tests/portal-customer-login-report-http-acceptance-review.test.mjs
+      - name: Isolated signed-report PostgreSQL RPC acceptance (fail fast)
+        timeout-minutes: 3
+        run: timeout --signal=TERM --kill-after=5s 120s node --test tests/portal-explicit-envelope-postgres-integration.test.mjs
+        env:
+          PORTAL_LOCK_RACE_DATABASE_URL: postgresql://fixture:fixture_ci_only_password@localhost:5432/fixture
+      - name: Test including isolated two-backend PostgreSQL lock races
+        timeout-minutes: 12
+        # Node's default parallelism can allow disposable-DB tests to race
+        # with unrelated PostgreSQL teardown; limit cross-file concurrency
+        # without dropping any tests or weakening assertions.
+        run: timeout --signal=TERM --kill-after=5s 600s node --test --test-concurrency=4 tests/*.test.mjs
+        env:
+          PORTAL_LOCK_RACE_DATABASE_URL: postgresql://fixture:fixture_ci_only_password@localhost:5432/fixture
       - run: npm run build
       - name: Verify read-only diagnostics HTTP boundaries with synthetic auth
         run: node scripts/smoke-zera-diagnostics.mjs

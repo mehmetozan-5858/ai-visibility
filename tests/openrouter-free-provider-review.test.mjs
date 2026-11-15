@@ -1,0 +1,124 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {openRouterFreeConfig,runOpenRouterFreeReview} from '../lib/openrouter-free-provider-review.mjs';
+const key='synthetic-only-openrouter-key-1234567890';
+const enabled={OPENROUTER_FREE_ENABLED:'true',OPENROUTER_API_KEY:key,
+ OPENROUTER_FREE_MODEL:'openrouter/free'};
+const catalog={data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}}]};
+test('opt-in mandatory and any paid/ambiguous model fails before network',async()=>{
+ let called=0;const fetcher=async()=>{called++;throw Error('unexpected')};
+ for(const env of [
+  {...enabled,OPENROUTER_FREE_ENABLED:'false'},
+  {...enabled,OPENROUTER_FREE_MODEL:'openai/gpt-4.1-mini'},
+  {...enabled,OPENROUTER_FREE_MODEL:'anthropic/something'},
+  {...enabled,OPENROUTER_API_KEY:''}
+ ]){
+  assert.equal(openRouterFreeConfig(env).ready,false);
+  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env,fetcher}),/openrouter-free-/);
+ }
+ assert.equal(called,0);
+});
+test('free-only exact request and provider receipt parsing are synthetic',async()=>{
+ let calls=0;
+ const result=await runOpenRouterFreeReview('Synthetic analysis',{env:enabled,fetcher:async(url,opts)=>{
+  calls++;
+  if(url==='https://openrouter.ai/api/v1/models'){
+   assert.equal(opts.method,'GET');assert.equal(opts.body,undefined);
+   return {ok:true,json:async()=>catalog};
+  }
+  assert.equal(url,'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal(opts.method,'POST');assert.equal(opts.headers.authorization,'Bearer '+key);
+  assert.equal(opts.cache,'no-store');assert.equal(opts.redirect,'error');
+  const body=JSON.parse(opts.body);
+  assert.equal(body.model,'openrouter/free');
+  assert.equal(body.stream,false);
+  assert.ok(body.max_tokens<=900);
+  assert.deepEqual(body.messages,[{role:'user',content:'Synthetic analysis'}]);
+  return {ok:true,json:async()=>({id:'synthetic-generation-id',
+   model:'example/free-model:free',usage:{cost:0},
+   choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]})};
+ }});
+ assert.equal(calls,2);assert.equal(result.costVerified,true);
+ assert.equal(result.receiptId,'synthetic-generation-id');
+ assert.equal(result.content,'{"score":48}');
+ assert.ok(!JSON.stringify(result).includes(key));
+});
+test('missing, nonzero or mismatched catalog pricing prevents POST inference',async()=>{
+ for(const listing of [
+  {data:[]},
+  {data:[
+   {id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}},
+   {id:'openrouter/free',pricing:{prompt:'0.01',completion:'0',request:'0'}}
+  ]},
+  {data:[
+   {id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}},
+   {id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}}
+  ]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0.1',completion:'0'}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0'}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0.00001'}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:null}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',web_search:undefined}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:0,completion:0}}]}
+ ]){
+  let inference=0;
+  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{
+   env:enabled,fetcher:async url=>{
+    if(url.endsWith('/models'))return {ok:true,json:async()=>listing};
+    inference++;throw Error('unexpected completion');
+   }
+  }),/openrouter-free-catalog-zero-price-unverified/);
+  assert.equal(inference,0,'catalog denial must not call completion API');
+ }
+});
+
+test('missing model proof, billed responses, truncation and provider outages fail closed',async()=>{
+ const reply=(payload,ok=true)=>async(url)=>
+  url.endsWith('/models')?{ok:true,json:async()=>catalog}:{ok,json:async()=>payload};
+ const base={id:'synthetic-generation-id',model:'example/model:free',usage:{cost:0},
+  choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]};
+ for(const payload of [
+  {...base,model:'example/paid-model'},
+  {...base,usage:{cost:0.01}},
+  {...base,usage:{}},
+  {...base,usage:{cost:'0'}},
+  {...base,id:''},
+  {...base,id:null},
+  {...base,choices:[{finish_reason:'length',message:{content:'{"score":48}'}}]},
+  {...base,choices:[{finish_reason:'stop',message:{content:''}}]},
+  {...base,error:{message:'synthetic error'}}
+ ])await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env:enabled,fetcher:reply(payload)}));
+ await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env:enabled,fetcher:reply({},false)}));
+ await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{env:enabled,fetcher:async()=>{throw Error('secret '+key)}}),
+  /openrouter-free-catalog-unavailable/);
+});
+
+test('pinned catalog-zero free model rejects response routed to another free identity',async()=>{
+ const direct={...enabled,OPENROUTER_FREE_MODEL:'example/verified:free'};
+ const directCatalog={data:[{id:'example/verified:free',
+  pricing:{prompt:'0',completion:'0',request:'0'}}]};
+ for(const actual of ['example/other:free','openrouter/free']){
+  let posts=0;
+  await assert.rejects(runOpenRouterFreeReview('Synthetic prompt',{
+   env:direct,fetcher:async url=>{
+    if(url.endsWith('/models'))return {ok:true,json:async()=>directCatalog};
+    posts++;
+    return {ok:true,json:async()=>({
+     id:'synthetic-route-mismatch',model:actual,usage:{cost:0},
+     choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]
+    })};
+   }
+  }),/openrouter-free-model-not-proven/);
+  assert.equal(posts,1);
+ }
+ const good=await runOpenRouterFreeReview('Synthetic prompt',{
+  env:direct,fetcher:async url=>url.endsWith('/models')
+   ?{ok:true,json:async()=>directCatalog}
+   :{ok:true,json:async()=>({
+    id:'synthetic-pinned-receipt',model:'example/verified:free',usage:{cost:0},
+    choices:[{finish_reason:'stop',message:{content:'{"score":48}'}}]
+   })}
+ });
+ assert.equal(good.model,'example/verified:free');
+ assert.equal(good.costVerified,true);
+});

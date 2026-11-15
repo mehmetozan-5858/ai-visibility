@@ -1,6 +1,11 @@
 import {readCustomerComparisonReport} from '../../../lib/customer-comparison-report.mjs';
+import {withVerifiedClientTenantRead} from '../../../lib/verified-tenant-transaction-review.mjs';
+import {inspectPortalReaderPrivileges} from '../../../lib/portal-role-readiness.mjs';
+import {inspectComparisonRlsPolicy} from '../../../lib/portal-report-rls-readiness.mjs';
+import {strictReportEntitlementReady} from '../../../lib/portal-report-entitlement.mjs';
+import {strictCustomerSettlementEnabled} from '../../../lib/customer-settlement-proof.mjs';
 import {databasePool} from '../../../lib/database-runtime';
-import {getDatabaseUrl} from '../../../lib/db';
+import {getDatabaseUrl,getPortalReadDatabaseUrl,portalReadDatabaseEnabled} from '../../../lib/db';
 import {customerAccess} from "../../../lib/pilot-access";
 import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../lib/admin-auth";
@@ -21,15 +26,44 @@ export async function GET(req){
     if(!account)return privateJson({error:en?"Customer account not found.":"Müşteri hesabı bulunamadı."},404);
     const access=await customerAccess(account);
     if(!access.allowed)return privateJson({error:en?"Customer access is not active. Contact support if you have a paid account or an active pilot.":"Müşteri erişimi aktif değil. Ödemeniz onaylıysa veya pilot erişiminiz varsa destek ekibiyle iletişime geçin."},403);
-    let reportEvidence={available:false,comparisonCount:0};
-    try{
-      const rows=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId);
-      reportEvidence={available:true,comparisonCount:rows.length};
-    }catch{} // Keep the existing portal usable; do not claim evidence is ready on a read failure.
+    // Reading comparisons is not proof of a live provider response or receipt.
+    let reportEvidence={available:false,comparisonCount:0,
+      evidenceClass:'unknown',verifiedProviderEvidence:false};
+    // Strict reader path only: expose bounded, tenant-filtered historical rows.
+    // Never return legacy broad-reader rows or call this verified live AI proof.
+    let reportPreview=null;
+    if(process.env.PORTAL_TENANT_RLS_ENABLED==='true'){
+      // Refuse legacy paid labels in secure mode; customerAccess() verifies
+      // independent settlement only when the strict launch flag is enabled.
+      if(!strictReportEntitlementReady(access,strictCustomerSettlementEnabled()))
+        return privateJson({error:'Verified customer entitlement is required.'},503);
+      // Optional, fail-closed: never silently downgrade to a broad writer.
+      // Existing default below is unchanged until a separate reviewed rollout.
+      if(!portalReadDatabaseEnabled())
+        return privateJson({error:'Dedicated portal reader is required.'},503);
+      try{
+        const reader=databasePool(getPortalReadDatabaseUrl());
+        const privileges=await inspectPortalReaderPrivileges(reader);
+        if(!privileges.ready)return privateJson({error:'Portal reader privileges are not verified.'},503);
+        const rls=await inspectComparisonRlsPolicy(reader);
+        if(!rls.ready)return privateJson({error:'Customer report RLS policy is not verified.'},503);
+        const rows=await withVerifiedClientTenantRead(reader,store.get("ai_client")?.value||'',
+          (tx,tenantId)=>readCustomerComparisonReport(tx,tenantId));
+        reportEvidence={available:true,comparisonCount:rows.length,
+          evidenceClass:'historical',verifiedProviderEvidence:false};
+        reportPreview={evidenceClass:'historical',verifiedProviderEvidence:false,reports:rows};
+      }catch{return privateJson({error:'Verified customer report could not be loaded.'},503)}
+    }else{
+      try{
+        const rows=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId);
+        reportEvidence={available:true,comparisonCount:rows.length,
+          evidenceClass:'historical',verifiedProviderEvidence:false};
+      }catch{} // Keep the existing portal usable; do not claim evidence is ready on a read failure.
+    }
     const profile=await getClientProfile(session.clientId).catch(()=>null);
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;
     const locale=language==="en"?"en-US":"tr-TR";
-    return privateJson({account:{...account,access,profile,reportEvidence,service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
+    return privateJson({account:{...account,access,profile,reportEvidence,service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},reportPreview,language});
   }catch{return privateJson({error:en?"The customer portal could not be loaded.":"Müşteri paneli yüklenemedi."},500)}
 }

@@ -1,0 +1,102 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {Pool} from 'pg';
+import {grantPilotWithLockReview,revokePilotWithLockReview,changePilotExpiryWithLockReview,
+ suspendClientWithLockReview,suspendAndRevokeClientWithLockReview}
+ from '../lib/portal-pilot-writes-review.mjs';
+
+// Disposable PostgreSQL 16 GitHub CI service ONLY: never use a Neon, customer,
+// production or remotely-provided URL. Synthetic tenants and audit events.
+// This is a SQL writer acceptance probe, not a real customer-path release test.
+const url=process.env.PORTAL_LOCK_RACE_DATABASE_URL;
+// Fail closed before opening a connection or running public-table DDL.
+// These destructive synthetic fixtures must NEVER be pointed at Neon/production.
+if(url){
+ const target=new URL(url);
+ if(!['postgres:','postgresql:'].includes(target.protocol)||
+  !['localhost','127.0.0.1'].includes(target.hostname)||
+  target.pathname!=='/fixture'||decodeURIComponent(target.username)!=='fixture')
+  throw Error('disposable-ci-postgres-only');
+}
+const A='11111111-1111-4111-8111-111111111111';
+const B='22222222-2222-4222-8222-222222222222';
+test('real PostgreSQL pilot writer commits grant/revoke and rolls back failed audit',{
+ skip:!url?'requires disposable CI PostgreSQL service':false,timeout:25000
+},async()=>{
+ const db=new Pool({connectionString:url,max:3,connectionTimeoutMillis:2500});
+ try{
+  await db.query('CREATE TABLE public.clients (id uuid PRIMARY KEY,status text NOT NULL)');
+  await db.query('INSERT INTO public.clients(id,status) VALUES($1,$2),($3,$4)',[A,'active',B,'active']);
+  await db.query('CREATE TABLE public.client_pilot_access (client_id uuid PRIMARY KEY,email text NOT NULL,reason text NOT NULL,expires_at timestamptz NOT NULL,revoked_at timestamptz)');
+  await db.query('CREATE TABLE public.client_activity (id uuid PRIMARY KEY,client_id uuid NOT NULL,event_type text NOT NULL,title text NOT NULL,detail text NOT NULL,metadata jsonb NOT NULL,CONSTRAINT test_deny_bad_grant CHECK (client_id <> \'22222222-2222-4222-8222-222222222222\'::uuid OR event_type <> \'pilot-granted\'))');
+
+  // An audit failure must roll back the grant itself; no partially active pilot.
+  await assert.rejects(grantPilotWithLockReview(db,B,'synthetic@example.com',7,'Synthetic pilot audit failure'));
+  const denied=(await db.query('SELECT 1 FROM public.client_pilot_access WHERE client_id=$1',[B])).rows;
+  assert.equal(denied.length,0);
+  assert.equal((await db.query('SELECT 1 FROM public.client_activity WHERE client_id=$1',[B])).rows.length,0);
+
+  assert.deepEqual(await grantPilotWithLockReview(db,A,'SYNTHETIC@example.com',7,'Synthetic report pilot'),{granted:true});
+  let state=(await db.query('SELECT email,revoked_at,expires_at>clock_timestamp() AS valid FROM public.client_pilot_access WHERE client_id=$1',[A])).rows;
+  assert.equal(state.length,1);
+  assert.equal(state[0].email,'synthetic@example.com');
+  assert.equal(state[0].revoked_at,null);
+  assert.equal(state[0].valid,true);
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM public.client_activity WHERE client_id=$1 AND event_type='pilot-granted'",[A])).rows[0].n,1);
+
+  // SQL acceptance: a shortened deadline commits, an extension must be denied.
+  const originalExpiry=(await db.query('SELECT expires_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows[0].expires_at;
+  const shortened=new Date(originalExpiry.getTime()-60_000).toISOString();
+  const extended=new Date(originalExpiry.getTime()+60_000).toISOString();
+  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,shortened),{changed:true});
+  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,extended),{changed:false});
+  const shortState=(await db.query('SELECT expires_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows[0];
+  assert.equal(new Date(shortState.expires_at).toISOString(),shortened);
+  assert.ok(originalExpiry>shortState.expires_at);
+
+  // Actual disposable PG account suspension: no customer deletion occurs.
+  // The same tenant advisory lock is held by the trusted writer transaction.
+  assert.deepEqual(await suspendClientWithLockReview(db,A),{suspended:true});
+  let account=(await db.query('SELECT status FROM public.clients WHERE id=$1',[A])).rows[0];
+  assert.equal(account.status,'payment-review');
+  assert.deepEqual(await suspendClientWithLockReview(db,A),{suspended:false},
+   'a repeated suspension must be idempotent');
+  assert.equal((await db.query('SELECT status FROM public.clients WHERE id=$1',[B])).rows[0].status,
+   'active','other tenant must remain unchanged');
+
+  assert.deepEqual(await revokePilotWithLockReview(db,A),{revoked:true});
+  state=(await db.query('SELECT revoked_at FROM public.client_pilot_access WHERE client_id=$1',[A])).rows;
+  assert.ok(state[0].revoked_at,'revoked pilot must be marked in committed SQL');
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM public.client_activity WHERE client_id=$1 AND event_type='pilot-revoked'",[A])).rows[0].n,1);
+  assert.deepEqual(await changePilotExpiryWithLockReview(db,A,'2026-11-14T15:00:00.000Z'),{changed:false},
+   'expiry change must not revive or edit a revoked pilot');
+  assert.deepEqual(await revokePilotWithLockReview(db,A),{revoked:false});
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM public.client_activity WHERE client_id=$1 AND event_type='pilot-revoked'",[A])).rows[0].n,1);
+
+  // One atomic, non-destructive retirement on synthetic B; no external
+  // payment, provider, customer, or production resources touched.
+  await db.query(`INSERT INTO public.client_pilot_access
+   (client_id,email,reason,expires_at) VALUES
+   ($1,'b@example.test','Synthetic retirement verification',clock_timestamp()+interval '1 day')`,[B]);
+  assert.deepEqual(await suspendAndRevokeClientWithLockReview(db,B),{
+   accountPresent:true,suspended:true,pilotRevoked:true
+  });
+  const retired=(await db.query(`SELECT c.status,p.revoked_at
+   FROM public.clients c JOIN public.client_pilot_access p ON p.client_id=c.id
+   WHERE c.id=$1`,[B])).rows[0];
+  assert.equal(retired.status,'payment-review');
+  assert.ok(retired.revoked_at);
+  assert.deepEqual(await suspendAndRevokeClientWithLockReview(db,B),{
+   accountPresent:true,suspended:false,pilotRevoked:false
+  },'repeated retirement must never reauthorize pilot access');
+  assert.deepEqual(await suspendAndRevokeClientWithLockReview(db,
+   '33333333-3333-4333-8333-333333333333'),{
+   accountPresent:false,suspended:false,pilotRevoked:false
+  },'missing account must be denied without a new pilot');
+ }finally{
+  await db.query('DROP TABLE IF EXISTS public.client_activity').catch(()=>{});
+  await db.query('DROP TABLE IF EXISTS public.client_pilot_access').catch(()=>{});
+  await db.query('DROP TABLE IF EXISTS public.clients').catch(()=>{});
+  await db.end();
+ }
+});

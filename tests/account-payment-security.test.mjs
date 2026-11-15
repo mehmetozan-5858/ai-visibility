@@ -9,9 +9,21 @@ const credentialPool={query:async(sql,args)=>{
  if(sql.includes('SELECT'))return {rows:stored?[stored]:[]};
  throw new Error('Unexpected query');
 }};
-globalThis.__credentialTest={withDb:fn=>fn(credentialPool),crypto};
-const moduleSource='const {withDb,crypto}=globalThis.__credentialTest;\n'+credentialSource.slice(credentialSource.indexOf('function hashPassword'));
+const credentialVerifier=await import('../lib/client-password-verifier.mjs');
+globalThis.__credentialTest={withDb:fn=>fn(credentialPool),...credentialVerifier};
+const credentialStart=credentialSource.indexOf('export async function createClientCredential(');
+assert.ok(credentialStart>=0,'credential creation export is required');
+const credentialBody=credentialSource.slice(credentialStart);
+assert.match(credentialBody,/export async function createClientCredential\(/);
+assert.match(credentialBody,/export async function verifyClientCredential\(/);
+// Keep the real function bodies, but declare explicit test-module exports
+// rather than relying on data-URL export discovery through source slicing.
+const moduleSource='const {withDb,hashPassword,verifyHash}=globalThis.__credentialTest;\n'
+  +credentialBody.replaceAll('export async function ','async function ')
+  +'\nexport {createClientCredential,verifyClientCredential};\n';
 const credentials=await import('data:text/javascript;base64,'+Buffer.from(moduleSource).toString('base64'));
+assert.equal(typeof credentials.createClientCredential,'function');
+assert.equal(typeof credentials.verifyClientCredential,'function');
 test('reusing setup cannot replace an existing credential',async()=>{
  await credentials.createClientCredential('client-id','owner@example.com','original-password');
  await assert.rejects(credentials.createClientCredential('client-id','attacker@example.com','replacement-password'),/credential-already-exists/);
@@ -22,12 +34,45 @@ test('reusing setup cannot replace an existing credential',async()=>{
 const repository=await readFile(new URL('../lib/repository.js',import.meta.url),'utf8');
 const confirmSource=repository.slice(repository.indexOf('export async function confirmPayment('),repository.indexOf('export async function upsertSalesOpportunity'));
 let failClient=false,paid=false,committed=false,rolledBack=false;
-const tx={query:async(sql,args)=>{if(sql==='BEGIN'){committed=false;rolledBack=false;return {rows:[]}}if(sql.includes('UPDATE payments')){assert.ok(sql.includes("status='customer-reported'"));assert.ok(!sql.includes('setup_amount='));paid=true;return {rows:[{id:args[0],clientId:'client',plan:'Diagnosis',setupAmount:4990,monthlyAmount:0,currency:'TRY'}]}}if(sql.includes('UPDATE clients')){if(failClient)throw new Error('client-update-failed');return {rows:[]}}if(sql==='COMMIT')committed=true;if(sql==='ROLLBACK'){rolledBack=true;paid=false}return {rows:[]}},release(){}};
-globalThis.__paymentTest={withDb:fn=>fn({connect:async()=>tx})};
-const {confirmPayment}=await import('data:text/javascript;base64,'+Buffer.from('const {withDb}=globalThis.__paymentTest;\n'+confirmSource).toString('base64'));
-test('one-time payment confirmation preserves invoice amounts and activates atomically',async()=>{
- const row=await confirmPayment('payment',{setupAmount:0,monthlyAmount:0});assert.equal(row.setupAmount,4990);assert.equal(row.monthlyAmount,0);assert.equal(committed,true);
- failClient=true;await assert.rejects(confirmPayment('payment'),/client-update-failed/);assert.equal(rolledBack,true);assert.equal(paid,false);
+let locks=0,connections=0;
+const tx={query:async(sql,args)=>{
+ if(sql.startsWith('BEGIN')){committed=false;rolledBack=false;return {rows:[]}}
+ if(sql.startsWith('SELECT client_id AS "clientId" FROM payments'))return {rows:[{clientId:'client'}]};
+ if(sql.includes('UPDATE payments')){
+  assert.ok(sql.includes("status='customer-reported'"));
+  assert.ok(!sql.includes('setup_amount='));
+  assert.equal(locks,connections,'tenant lock must precede payment update');
+  paid=true;
+  return {rows:[{id:args[0],clientId:'client',plan:'Diagnosis',setupAmount:4990,monthlyAmount:0,currency:'TRY'}]};
+ }
+ if(sql.includes('UPDATE clients')){
+  if(failClient)throw new Error('client-update-failed');
+  return {rows:[]};
+ }
+ if(sql==='COMMIT')committed=true;
+ if(sql==='ROLLBACK'){rolledBack=true;paid=false}
+ return {rows:[]};
+},release(){}};
+globalThis.__paymentTest={
+ withDb:fn=>fn({connect:async()=>{connections++;return tx}}),
+ acquirePilotAdvisoryLockReview:async(_tx,tenant)=>{
+  assert.equal(_tx,tx);assert.equal(tenant,'client');locks++;
+ }
+};
+const {confirmPayment}=await import('data:text/javascript;base64,'+Buffer.from(
+ 'const {withDb,acquirePilotAdvisoryLockReview}=globalThis.__paymentTest;\n'+confirmSource
+).toString('base64'));
+test('one-time payment confirmation preserves invoice amounts and activates atomically under tenant lock',async()=>{
+ const row=await confirmPayment('payment',{setupAmount:0,monthlyAmount:0});
+ assert.equal(row.setupAmount,4990);
+ assert.equal(row.monthlyAmount,0);
+ assert.equal(committed,true);
+ assert.equal(locks,1);
+ failClient=true;
+ await assert.rejects(confirmPayment('payment'),/client-update-failed/);
+ assert.equal(rolledBack,true);
+ assert.equal(paid,false);
+ assert.equal(locks,2);
 });
 const intentSource=repository.slice(repository.indexOf('export async function getOrCreatePaymentIntent'),repository.indexOf('export async function recordPaymentConsent'));
 globalThis.__intentTest={crypto,withDb:async fn=>fn({query:async(sql,args)=>{

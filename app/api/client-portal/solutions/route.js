@@ -1,8 +1,8 @@
 import {customerAccess} from "../../../../lib/pilot-access";
 import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../../lib/admin-auth";
-import {listFindingsForClient,requestSolution,syncFindingsFromScan} from "../../../../lib/findings";
-import {getLatestCompletedScan,getClientAccount} from "../../../../lib/repository";
+import {listFindingsForClient,requestSolution} from "../../../../lib/findings";
+import {getClientAccount} from "../../../../lib/repository";
 import {resolveRequestLanguage} from "../../../../lib/localized-ai";
 import {enforceSameOrigin,checkRateLimit} from "../../../../lib/api-security";
 
@@ -14,11 +14,7 @@ export async function GET(req){
     if(!session)return Response.json({error:en?"Your customer session is invalid.":"Müşteri oturumu geçersiz."},{status:401});
     const account=await getClientAccount(session.clientId);
     if(!(await customerAccess(account)).allowed)return Response.json({error:en?"Customer access is not active.":"Müşteri erişimi aktif değil."},{status:403});
-    let findings=await listFindingsForClient(session.clientId);
-    if(!findings.length){
-      const latest=await getLatestCompletedScan(session.clientId);
-      if(latest?.id){await syncFindingsFromScan(session.clientId,latest);findings=await listFindingsForClient(session.clientId);}
-    }
+    const findings=await listFindingsForClient(session.clientId);
     return Response.json({findings,language});
   }catch{return Response.json({error:en?"Solution records could not be loaded.":"Çözüm kayıtları yüklenemedi."},{status:500})}
 }
