@@ -11,9 +11,19 @@ const credentialPool={query:async(sql,args)=>{
 }};
 const credentialVerifier=await import('../lib/client-password-verifier.mjs');
 globalThis.__credentialTest={withDb:fn=>fn(credentialPool),...credentialVerifier};
+const credentialStart=credentialSource.indexOf('export async function createClientCredential(');
+assert.ok(credentialStart>=0,'credential creation export is required');
+const credentialBody=credentialSource.slice(credentialStart);
+assert.match(credentialBody,/export async function createClientCredential\(/);
+assert.match(credentialBody,/export async function verifyClientCredential\(/);
+// Keep the real function bodies, but declare explicit test-module exports
+// rather than relying on data-URL export discovery through source slicing.
 const moduleSource='const {withDb,hashPassword,verifyHash}=globalThis.__credentialTest;\n'
-  +credentialSource.slice(credentialSource.indexOf('export async function createClientCredential'));
+  +credentialBody.replaceAll('export async function ','async function ')
+  +'\nexport {createClientCredential,verifyClientCredential};\n';
 const credentials=await import('data:text/javascript;base64,'+Buffer.from(moduleSource).toString('base64'));
+assert.equal(typeof credentials.createClientCredential,'function');
+assert.equal(typeof credentials.verifyClientCredential,'function');
 test('reusing setup cannot replace an existing credential',async()=>{
  await credentials.createClientCredential('client-id','owner@example.com','original-password');
  await assert.rejects(credentials.createClientCredential('client-id','attacker@example.com','replacement-password'),/credential-already-exists/);
