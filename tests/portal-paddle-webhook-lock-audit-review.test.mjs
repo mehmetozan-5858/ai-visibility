@@ -36,3 +36,19 @@ await tx.query('INSERT INTO public.verified_customer_settlements');
  const result=auditPaddleWebhookLockReview(src);
  assert.equal(result.ready,false);
 });
+
+test('full webhook handler body is scanned; transaction without tenant lock remains blocked',()=>{
+ const source=`const ALLOWED_EVENTS=new Set(['transaction.completed']);
+const UUID=/uuid/;
+async function applyTransaction(){await tx.query("UPDATE clients SET status='active'")}
+async function applySubscriptionAccess(){await tx.query("UPDATE clients SET status='payment-review'")}
+export async function recordPaddleLiveEvent(event){
+ const tx=await pool.connect();
+ await tx.query('BEGIN');
+ await applyTransaction(tx,event);
+ await tx.query('COMMIT');
+}`;
+ const audit=auditPaddleWebhookLockReview(source);
+ assert.ok(audit.findings.some(f=>f.code==='webhook-tenant-lock-missing'),
+  'missing lock in the full body of recordPaddleLiveEvent must not be lost');
+});
