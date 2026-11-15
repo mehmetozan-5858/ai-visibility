@@ -26,7 +26,9 @@ export async function GET(req){
     if(!account)return privateJson({error:en?"Customer account not found.":"Müşteri hesabı bulunamadı."},404);
     const access=await customerAccess(account);
     if(!access.allowed)return privateJson({error:en?"Customer access is not active. Contact support if you have a paid account or an active pilot.":"Müşteri erişimi aktif değil. Ödemeniz onaylıysa veya pilot erişiminiz varsa destek ekibiyle iletişime geçin."},403);
-    let reportEvidence={available:false,comparisonCount:0};
+    // Reading comparisons is not proof of a live provider response or receipt.
+    let reportEvidence={available:false,comparisonCount:0,
+      evidenceClass:'unknown',verifiedProviderEvidence:false};
     if(process.env.PORTAL_TENANT_RLS_ENABLED==='true'){
       // Refuse legacy paid labels in secure mode; customerAccess() verifies
       // independent settlement only when the strict launch flag is enabled.
@@ -44,12 +46,14 @@ export async function GET(req){
         if(!rls.ready)return privateJson({error:'Customer report RLS policy is not verified.'},503);
         const rows=await withVerifiedClientTenantRead(reader,store.get("ai_client")?.value||'',
           (tx,tenantId)=>readCustomerComparisonReport(tx,tenantId));
-        reportEvidence={available:true,comparisonCount:rows.length};
+        reportEvidence={available:true,comparisonCount:rows.length,
+          evidenceClass:'historical',verifiedProviderEvidence:false};
       }catch{return privateJson({error:'Verified customer report could not be loaded.'},503)}
     }else{
       try{
         const rows=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId);
-        reportEvidence={available:true,comparisonCount:rows.length};
+        reportEvidence={available:true,comparisonCount:rows.length,
+          evidenceClass:'historical',verifiedProviderEvidence:false};
       }catch{} // Keep the existing portal usable; do not claim evidence is ready on a read failure.
     }
     const profile=await getClientProfile(session.clientId).catch(()=>null);
