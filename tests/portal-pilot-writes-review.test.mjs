@@ -44,6 +44,8 @@ test('revoke locks same tenant before update and writes audit iff pilot was acti
   assert.deepEqual(m.calls[3].args,[TENANT]);
   assert.match(m.calls[4].sql,/UPDATE public\.client_pilot_access/);
   assert.deepEqual(m.calls[4].args,[TENANT]);
+  assert.doesNotMatch(m.calls[4].sql,/\\$2(?:\\b|::)/,
+   'pilot revocation SQL must not require an unbound second parameter');
   assert.equal(m.calls.some(c=>c.sql.includes('INSERT INTO public.client_activity')),returnRevokeRow);
   assert.equal(m.calls.at(-1).sql,'COMMIT');
   assert.equal(m.releases,1);
