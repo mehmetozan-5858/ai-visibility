@@ -51,6 +51,14 @@ BEGIN
   -- Account status can change after issuance; recheck at query time.
   IF NOT EXISTS(SELECT 1 FROM public.clients c
                 WHERE c.id=p_tenant AND c.status='active') THEN RETURN; END IF;
+  -- Review-only pilot gate: the DB must recheck expiry/revocation immediately
+  -- before consuming the nonce. No old paid label or caller boolean unlocks
+  -- this draft function. Missing pilot table/policy must fail closed.
+  IF NOT EXISTS(SELECT 1 FROM public.client_pilot_access pilot
+    WHERE pilot.client_id=p_tenant AND pilot.revoked_at IS NULL
+      AND pilot.expires_at>clock_timestamp()) THEN RETURN; END IF;
+  -- A separate approved migration is required for signed Paddle settlement
+  -- entitlement, and for atomic revocation semantics (lock coordination).
   -- Unique key arbitrates competing claims; return no rows on replay.
   INSERT INTO portal_authz.consumed_claims(claim_id,tenant_id,expires_at)
     VALUES(p_claim_id,p_tenant,p_expires)
@@ -66,7 +74,7 @@ REVOKE ALL ON FUNCTION public.portal_verified_one_time_report(UUID,BIGINT,UUID,T
 -- Deliberately no reader role or EXECUTE GRANT in this review migration.
 -- A distinct, audited role and a narrowly reviewed explicit grant are separate
 -- mandatory steps. The owner currently bypasses RLS in the trial environment:
--- function ownership and all SECURITY DEFINER privileges must be reviewed.
+-- function ownership and all SECURITY DEFINER privileges must be reviewed;\n-- the definer must also have narrowly scoped SELECT on client_pilot_access.
 -- Explicitly separate nonce replay from account/session revocation, refunds,
 -- pilot expiration, entitlement checks, signing key rotation and ledger cleanup.
 COMMIT;
