@@ -230,6 +230,29 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
     else process.env[key]=original[key];
    }
   }
+  // Secret rotation is a separate production approval gate. Prove the SQL
+  // verifier rejects an old, otherwise valid signature after rotation,
+  // without burning its one-time nonce. Entirely disposable CI key/DB.
+  const rotatedSecret='different-synthetic-rotated-key-for-ci-only';
+  const rotationNonce=randomUUID(),rotationExpiry=Math.floor(Date.now()/1000)+60;
+  const oldMac=sign(A,rotationExpiry,rotationNonce);
+  await db.query("UPDATE portal_authz.signing_keys SET secret=$1 WHERE key_id='review-v1'",
+   [rotatedSecret]);
+  assert.deepEqual((await db.query(rpc,[A,rotationExpiry,rotationNonce,oldMac])).rows,[],
+   'old signature must fail after isolated key rotation');
+  assert.equal((await db.query(
+   'SELECT count(*)::int AS n FROM portal_authz.consumed_claims WHERE claim_id=$1',
+   [rotationNonce])).rows[0].n,0,
+   'a rotated-out claim must not consume the nonce');
+  const newMac=createHmac('sha256',rotatedSecret)
+   .update('portal-one-time-report-v1|'+A+'|'+rotationExpiry+'|'+rotationNonce).digest('hex');
+  assert.equal((await db.query(rpc,[A,rotationExpiry,rotationNonce,newMac])).rows.length,1,
+   'new signing secret must authorize exactly one envelope');
+  assert.deepEqual((await db.query(rpc,[A,rotationExpiry,rotationNonce,newMac])).rows,[],
+   'new signed claim remains one-use');
+  await db.query("UPDATE portal_authz.signing_keys SET secret=$1 WHERE key_id='review-v1'",
+   [SECRET]);
+
   const empty=await call(A);
   assert.deepEqual(decodeAuthorizedReportEnvelopeReview(empty,A),{authorized:true,reports:[]});
   await db.query("INSERT INTO public.ai_provider_comparisons(client_id,query,results) VALUES($1,'Synthetic report A','[]'::jsonb)",[A]);
