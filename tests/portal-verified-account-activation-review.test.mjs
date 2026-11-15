@@ -35,7 +35,9 @@ test('trusted account activation rechecks signed settlement AFTER the tenant loc
  assert.equal(f.released,1);
  assert.match(VERIFIED_PADDLE_SETTLEMENT_SQL,/p\.status='paid' AND p\.method='paddle'/);
  assert.match(VERIFIED_PADDLE_SETTLEMENT_SQL,/s\.payment_id/);
- assert.match(LOCKED_ACCOUNT_ACTIVATION_SQL,/status='payment-review'/);
+ assert.match(LOCKED_ACCOUNT_ACTIVATION_SQL,/c\.status='payment-review'/);
+ assert.match(LOCKED_ACCOUNT_ACTIVATION_SQL,/AND EXISTS\(/);
+ assert.match(LOCKED_ACCOUNT_ACTIVATION_SQL,/p\.status='paid' AND p\.method='paddle'/);
 });
 test('missing signed settlement cannot write account state',async()=>{
  for(const proof of [false,null,undefined]){
@@ -103,4 +105,17 @@ test('settlement evidence must not be a historical paid label or bank transfer',
  assert.match(VERIFIED_PADDLE_SETTLEMENT_SQL,/s\.client_id=\$1::uuid/);
  assert.match(VERIFIED_PADDLE_SETTLEMENT_SQL,/p\.status='paid' AND p\.method='paddle'/);
  assert.doesNotMatch(VERIFIED_PADDLE_SETTLEMENT_SQL,/bank|card|customer-reported|bank-transfer/i);
+});
+
+test('settlement vanishes before conditional UPDATE: no activation credited',async()=>{
+ // Even if the preceding SELECT saw signed settlement, the conditional
+ // UPDATE must re-evaluate current paid Paddle proof. A zero-row response
+ // is NOT a successful activation.
+ const f=fixture({proof:true,changed:false});
+ assert.deepEqual(await activateVerifiedPaddleAccountReview(f.pool,A),{activated:false});
+ const statements=f.calls.map(x=>x.sql);
+ assert.ok(statements.indexOf(VERIFIED_PADDLE_SETTLEMENT_SQL)<
+  statements.indexOf(LOCKED_ACCOUNT_ACTIVATION_SQL));
+ assert.match(LOCKED_ACCOUNT_ACTIVATION_SQL,/AND EXISTS\(/);
+ assert.equal(f.calls.at(-1).sql,'COMMIT');
 });
