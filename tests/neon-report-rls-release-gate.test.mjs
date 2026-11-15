@@ -31,3 +31,13 @@ test('preflight inventories legacy SECURITY DEFINER owner RLS bypass and execute
  assert.match(sql,/public_can_execute/);
  assert.match(sql,/explicit_acl/);
 });
+
+test('gateway acceptance requires a real independent authenticated connection',async()=>{
+ const sql=await readFile(new URL('../docs/security/neon-pilot-readonly-preflight.sql',import.meta.url),'utf8');
+ assert.match(sql,/current_user='portal_gateway_reader_trial_20261114' AS authenticated_gateway_identity/);
+ assert.match(sql,/session_user AS session_as/);
+ assert.match(sql,/current_role_can_execute/);
+ assert.match(sql,/raw_comparisons_blocked/);
+ assert.match(sql,/signing_key_read_blocked/);
+ assert.match(sql,/Do not run SET ROLE from owner/);
+});
