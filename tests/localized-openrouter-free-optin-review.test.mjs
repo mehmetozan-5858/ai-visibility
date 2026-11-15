@@ -111,3 +111,38 @@ test('free-only mode never fans out to paid OpenAI, Vercel AI Gateway, Gemini or
   assert.deepEqual(result.errors,[]);
  });
 });
+
+test('zero-cost receipt cannot elevate malformed or forged AI report to a customer score',async()=>{
+ await withEnv({OPENROUTER_FREE_ENABLED:'true',
+  OPENROUTER_API_KEY:'synthetic-placeholder-key-longer-than-20',
+  OPENROUTER_FREE_MODEL:'openrouter/free'},async()=>{
+  const malformedReports=[
+   {provider:'OpenRouter',providerEvidence:{status:'receipt-cost-zero'},score:100},
+   {...report,score:'100'},
+   {...report,visibility:{...report.visibility,confidence:999}},
+   {...report,findings:[]}
+  ];
+  for(const [index,bad] of malformedReports.entries()){
+   let completions=0;
+   globalThis.fetch=async url=>{
+    if(url==='https://openrouter.ai/api/v1/models')return {ok:true,json:async()=>({
+     data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0'}}]
+    })};
+    if(url==='https://openrouter.ai/api/v1/chat/completions'){
+     completions++;
+     return {ok:true,json:async()=>({
+      id:'synthetic-zero-cost-'+index,model:'synthetic/model:free',usage:{cost:0},
+      choices:[{finish_reason:'stop',message:{content:JSON.stringify(bad)}}]
+     })};
+    }
+    throw Error('unexpected-provider');
+   };
+   const response=await runLocalizedProviderChecks(business,'tr');
+   assert.equal(completions,1);
+   assert.deepEqual(response.results,[],'invalid score must never reach customer result');
+   assert.equal(response.errors.length,1);
+   assert.equal(response.errors[0].provider,'OpenRouter');
+   assert.match(response.errors[0].error,/openrouter-free-report-schema-unverified/);
+  }
+ });
+});
