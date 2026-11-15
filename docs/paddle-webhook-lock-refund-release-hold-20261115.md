@@ -12,6 +12,18 @@ Observed source at parent PR #269 commit `cede0cfc5e8640e2bbaefabde1e8f6cea37cf1
 
 The accompanying `tests/portal-paddle-live-release-hold-audit-review.test.mjs` intentionally records unresolved blockers: **a passing test signals the blocker inventory remains accurate, NOT that the blockers were solved**. Refresh these checks against new parent commit hashes; parent #269 changes independently.
 
+
+## Paddle official adjustment semantics (verified 2026-11-15)
+
+Paddle Billing documents **`adjustment.created`** and **`adjustment.updated`** for refunds, not a `transaction.refunded` webhook. An approved refund may be reported immediately in `adjustment.created`, without any later `adjustment.updated`; approval-required refunds start as `pending_approval`. The `action` can be `refund`, `credit`, `chargeback` etc. `status` can be `approved`, `pending_approval`, `rejected`, `reversed`. `type` distinguishes `full` and `partial`. Never auto-revoke an entire customer entitlement for pending approval or a partial refund, and never treat a credit or chargeback as a confirmed full refund.
+
+Official references:
+- https://developer.paddle.com/webhooks/adjustments/adjustment-created/
+- https://developer.paddle.com/webhooks/adjustments/adjustment-updated/
+- https://developer.paddle.com/build/transactions/create-transaction-adjustments/
+
+Review-only classifier `lib/portal-paddle-adjustment-classifier-review.mjs` and tests are **not** connected to the production webhook. Even a classified approved full refund must prove its transaction belongs to the expected tenant, payment and subscription, use tenant-first lock and atomic audited persistence, enforce currency/amount and block delayed completion/reinstatement. A real signed event is not reproduced by a synthetic classifier.
+
 ## Safety
 
 No merge, deploy, production Neon DDL/DML/GRANT, Paddle checkout, real customer payment, password reset, budget change or secret inspection. Production HOLD. ZERA remains test-only.
