@@ -49,6 +49,8 @@ test('missing, nonzero or mismatched catalog pricing prevents POST inference',as
   {data:[{id:'openrouter/free',pricing:{prompt:'0.1',completion:'0'}}]},
   {data:[{id:'openrouter/free',pricing:{prompt:'0'}}]},
   {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:'0.00001'}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',request:null}}]},
+  {data:[{id:'openrouter/free',pricing:{prompt:'0',completion:'0',web_search:undefined}}]},
   {data:[{id:'openrouter/free',pricing:{prompt:0,completion:0}}]}
  ]){
   let inference=0;
