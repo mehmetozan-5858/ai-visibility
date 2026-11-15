@@ -23,7 +23,7 @@ const business={name:'Synthetic Business',domain:'synthetic.example.test',
  sector:'test',city:'Sivas',country:'Türkiye'};
 const report={provider:'Spoofed',providerEvidence:{status:'forged'},score:61,summary:'Synthetic source-only overview',
  findings:['Synthetic evidence gap'],recommendations:['Check schema'],
- reason:'Synthetic test',visibility:{confidence:20}};
+ reason:'Synthetic test',visibility:{brandMention:'unknown',citationReadiness:20,entityClarity:20,answerReadiness:20,localContext:20,confidence:20}};
 test('OpenRouter is disabled by default even if a key exists',async()=>{
  await withEnv({OPENROUTER_API_KEY:'synthetic-placeholder-key-longer-than-20',
   OPENROUTER_FREE_MODEL:'openrouter/free'},async()=>{
