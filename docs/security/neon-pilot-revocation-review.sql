@@ -1,0 +1,92 @@
+-- REVIEW ONLY. DO NOT APPLY TO PRODUCTION OR DEFAULT BRANCH.
+-- Target: isolated Neon branch br-plain-poetry-b2u7f7a6.
+-- Requires explicit approval, isolated synthetic fixture and gateway credentials
+-- before executing this function replacement.
+-- This file is intentionally outside migrations/ and is not auto-deployed.
+--
+-- Purpose: fail closed when a pilot has been revoked, expired or not granted.
+-- Keep the preexisting HMAC, single-use claim and active-account checks.
+CREATE OR REPLACE FUNCTION public.portal_trial_one_time_report(
+  p_tenant uuid, p_expires bigint, p_claim_id uuid, p_mac text
+)
+RETURNS TABLE("clientId" uuid, query text, results jsonb, "createdAt" timestamptz)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'pg_catalog'
+AS $function$
+DECLARE
+  v_secret text;
+  v_expected text;
+  v_now bigint;
+  v_payload text;
+  v_consumed uuid;
+BEGIN
+  IF p_tenant IS NULL OR p_expires IS NULL OR p_claim_id IS NULL OR p_mac IS NULL
+     OR p_mac !~ '^[0-9a-f]{64}$' THEN
+    RETURN;
+  END IF;
+
+  v_now := floor(extract(epoch FROM clock_timestamp()))::bigint;
+  IF p_expires < v_now OR p_expires > v_now + 300 THEN RETURN; END IF;
+
+  SELECT k.secret INTO v_secret
+    FROM portal_authz_trial.signing_keys k
+   WHERE k.key_id = 'trial-v1';
+  IF v_secret IS NULL THEN RETURN; END IF;
+
+  v_payload := 'portal-one-time-report-v1|' || p_tenant::text || '|'
+               || p_expires::text || '|' || p_claim_id::text;
+  v_expected := encode(
+    portal_authz_trial.hmac(convert_to(v_payload, 'UTF8'),
+                            convert_to(v_secret, 'UTF8'), 'sha256'),
+    'hex'
+  );
+  IF p_mac <> v_expected THEN RETURN; END IF;
+
+  -- Fail closed on account suspension AND pilot-access revocation/expiry.
+  IF NOT EXISTS (
+    SELECT 1 FROM public.clients c
+    WHERE c.id = p_tenant AND c.status = 'active'
+  ) THEN RETURN; END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.client_pilot_access a
+    WHERE a.client_id = p_tenant
+      AND a.revoked_at IS NULL
+      AND a.expires_at > clock_timestamp()
+  ) THEN RETURN; END IF;
+
+  -- A primary key on claim_id ensures no replay, including concurrent requests.
+  INSERT INTO portal_authz_trial.consumed_claims(claim_id, tenant_id, expires_at)
+  VALUES (p_claim_id, p_tenant, p_expires)
+  ON CONFLICT (claim_id) DO NOTHING
+  RETURNING claim_id INTO v_consumed;
+  IF v_consumed IS NULL THEN RETURN; END IF;
+
+  RETURN QUERY
+    SELECT c.client_id, c.query, c.results, c.created_at
+    FROM public.ai_provider_comparisons c
+    WHERE c.client_id = p_tenant
+    ORDER BY c.created_at DESC
+    LIMIT 20;
+END;
+$function$;
+
+-- Must retain SECURITY DEFINER ownership by the restricted function owner.
+-- CREATE OR REPLACE on the existing function preserves ownership, but validate
+-- this after deployment. Never grant EXECUTE to PUBLIC.
+--
+-- Acceptance gates on isolated synthetic tenant/fixture, all must pass:
+-- (1) no grant -> empty; (2) revoked -> empty; (3) expired -> empty;
+-- (4) suspended account -> empty; (5) bad/expired HMAC -> empty;
+-- (6) valid first claim -> own rows; (7) same claim -> empty;
+-- (8) concurrent identical claims -> at most one successful consumption;
+-- (9) cross-tenant claim -> empty; (10) gateway-only EXECUTE;
+-- (11) no ability to SELECT signing_keys or consumed_claims as gateway.
+-- For each failure check that consumed_claims count does not change.
+-- For revocation between issue and consumption, perform revocation then call
+-- with the already-signed claim: it must return zero rows.
+--
+-- IMPORTANT: authorizations changing between the access check and report read
+-- need a separately reviewed locking/transaction design for strict
+-- linearizable revocation semantics. This patch alone does not prove that.
