@@ -312,6 +312,20 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   const nonce=randomUUID();
   assert.equal((await call(A,{nonce})).length,1);
   assert.deepEqual(await call(A,{nonce}),[],'replay must not produce a second envelope');
+  // Two independent connections racing the SAME nonce may authorize once,
+  // never twice. The second concurrent request sees the consumed claim.
+  const simultaneousNonce=randomUUID(),simultaneousExpires=Math.floor(Date.now()/1000)+60;
+  const simultaneousMac=sign(A,simultaneousExpires,simultaneousNonce);
+  const raced=await Promise.all([
+   db.query(rpc,[A,simultaneousExpires,simultaneousNonce,simultaneousMac]),
+   db.query(rpc,[A,simultaneousExpires,simultaneousNonce,simultaneousMac])
+  ]);
+  assert.deepEqual(raced.map(x=>x.rows.length).sort(),[0,1],
+   'concurrent same-nonce requests must yield one envelope only');
+  assert.equal((await db.query(
+   'SELECT count(*)::int AS n FROM portal_authz.consumed_claims WHERE claim_id=$1',
+   [simultaneousNonce])).rows[0].n,1,'one-time claim ledger must remain unique');
+
   await db.query("UPDATE public.clients SET status='payment-review' WHERE id=$1",[A]);
   assert.deepEqual(await call(A),[],'suspended account must deny');
   await db.query("UPDATE public.clients SET status='active' WHERE id=$1",[A]);
