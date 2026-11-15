@@ -142,3 +142,30 @@ ORDER BY p.proname;
 -- login session; has_function_privilege metadata cannot replace that evidence.
 -- Privileged legacy owner with BYPASSRLS remains a REVIEW BLOCKER until every
 -- reachable legacy entrypoint and privileged maintenance path is audited.
+
+-- ACTUAL CONNECTION IDENTITY GATE (READ ONLY).
+-- Verified isolated inspector is currently neondb_owner and cannot EXECUTE
+-- portal_trial_one_time_report; the gateway role's ACL grant does not prove
+-- its real login, password/TLS setup or its end-to-end execution.
+-- Expected on the restricted gateway's independently authenticated session:
+--   inspected_as = portal_gateway_reader_trial_20261114,
+--   current_role_can_execute = true, and raw SELECT privileges remain false.
+-- Do not run SET ROLE from owner and call that independent login proof.
+SELECT current_user AS inspected_as,
+       session_user AS session_as,
+       current_user='portal_gateway_reader_trial_20261114' AS authenticated_gateway_identity,
+       has_function_privilege(current_user,
+         'public.portal_trial_one_time_report(uuid,bigint,uuid,text)',
+         'EXECUTE') AS current_role_can_execute,
+       NOT has_table_privilege(current_user,'public.ai_provider_comparisons','SELECT')
+         AS raw_comparisons_blocked,
+       NOT has_table_privilege(current_user,'portal_authz_trial.signing_keys','SELECT')
+         AS signing_key_read_blocked;
+
+-- After independent gateway login, a malformed signature (no DML) should
+-- return zero rows, not permission denied. This negative test alone is NOT
+-- positive HMAC, tenant isolation, claim consumption or replay acceptance.
+-- Execute it only using the gateway's real scoped credentials, never owner.
+-- SELECT count(*) FROM public.portal_trial_one_time_report(
+--   '00000000-0000-0000-0000-000000000001'::uuid, 0,
+--   '00000000-0000-0000-0000-000000000002'::uuid, 'invalid');
