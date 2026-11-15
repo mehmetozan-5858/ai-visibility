@@ -19,10 +19,15 @@ BEGIN;
 DO $owner_gate$
 BEGIN
  IF NOT EXISTS (
-   SELECT 1 FROM pg_catalog.pg_roles
-   WHERE rolname='portal_report_fn_owner'
-     AND rolcanlogin=false AND rolsuper=false AND rolbypassrls=false
-     AND rolcreatedb=false AND rolcreaterole=false AND rolreplication=false
+   SELECT 1 FROM pg_catalog.pg_roles r
+   WHERE r.rolname='portal_report_fn_owner'
+     AND r.rolcanlogin=false AND r.rolsuper=false AND r.rolbypassrls=false
+     AND r.rolcreatedb=false AND r.rolcreaterole=false AND r.rolreplication=false
+     AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid)
+     AND NOT has_database_privilege(r.oid,current_database(),'CREATE')
+     AND NOT has_schema_privilege(r.oid,'public','CREATE')
+     AND NOT has_table_privilege(r.oid,'public.client_credentials','SELECT')
+     AND NOT has_table_privilege(r.oid,'public.payments','SELECT')
  ) THEN
    RAISE EXCEPTION 'review-report-function-owner-unverified';
  END IF;
