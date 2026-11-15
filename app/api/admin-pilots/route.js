@@ -53,6 +53,10 @@ export async function POST(req){
    if(credential.email.toLowerCase()!==email)
     return Response.json({error:'Pilot e-postası mevcut müşteri hesabıyla eşleşmeli.'},{status:409});
   }
+  // The invitation HMAC key must exist BEFORE any entitlement write.
+  // Without it a pilot could be granted with no usable signed link.
+  if(!process.env.AUTH_SECRET)
+   return Response.json({error:'Güvenli davet imzası yapılandırılmadı; pilot erişimi açılmadı.'},{status:503});
   await grantPilot(b.clientId,email,Number(b.days),String(b.reason||'').trim());
   const token=await createPaymentAccessToken(
    b.clientId,Math.min(Number(b.days)*86400,604800),'pilot-diagnosis');
