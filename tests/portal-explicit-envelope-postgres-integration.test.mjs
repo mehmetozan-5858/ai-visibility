@@ -235,6 +235,8 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
    const readerPid=(await reader.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
    const nextNonce=randomUUID(),expires=Math.floor(Date.now()/1000)+60;
    const pending=reader.query(rpc,[A,expires,nextNonce,sign(A,expires,nextNonce)]);
+   // Observe failure even if an earlier assertion exits before awaiting.
+   pending.catch(()=>{});
    let blocked=false;
    for(let i=0;i<120;i++){
     const q=await observer.query("SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1",[readerPid]);
@@ -248,8 +250,10 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
    const ledger=await observer.query('SELECT count(*)::int AS n FROM portal_authz.consumed_claims WHERE claim_id=$1',[nextNonce]);
    assert.equal(ledger.rows[0].n,0,'revoked report must not consume signed claim');
   }finally{
-   if(reading)await reader.query('ROLLBACK').catch(()=>{});
+   // The reader may be waiting for the writer's advisory lock. Release the
+   // writer FIRST, otherwise a failed assertion can deadlock test cleanup.
    if(writing)await writer.query('ROLLBACK').catch(()=>{});
+   if(reading)await reader.query('ROLLBACK').catch(()=>{});
    writer.release();reader.release();observer.release();
   }
  }finally{
