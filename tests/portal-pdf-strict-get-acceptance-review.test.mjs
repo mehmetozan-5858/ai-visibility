@@ -19,7 +19,10 @@ function fixture({session=true,allowed=true,entitled=true,reader=true,
  const deps={
   cookies:async()=>({get:()=>({value:'synthetic-session-cookie'})}),
   verifyClientToken:async()=>session?{clientId:A}:null,
-  getClientAccount:async()=>({client:{id:A},scans:[]}),
+  getClientAccount:async()=>({client:{id:A},scans:[
+   {id:'synthetic-unverified-legacy-scan',clientId:A,status:'completed',
+    score:98,results:[{summary:'Synthetic unverified legacy data'}]}
+  ]}),
   customerAccess:async()=>({allowed,kind:'pilot'}),
   databasePool:url=>{if(url==='legacy'){calls.legacy++;return {kind:'legacy'}}calls.reader++;return {kind:'reader'}},
   getDatabaseUrl:()=> 'legacy',
@@ -83,6 +86,8 @@ test('valid strict PDF uses only verified tenant reader and non-cacheable respon
  const body=await response.json();
  assert.equal(body.clientId,A);
  assert.deepEqual(body.comparisons.map(x=>x.clientId),[A]);
+ assert.deepEqual(body.allScans,[],
+  'strict PDF must not package scans sourced from unreviewed broad-reader account lookup');
 });
 
 test('foreign tenant comparison rejects PDF even after narrow-reader success',async()=>{
