@@ -11,7 +11,7 @@ const ROLE='portal_gateway_reader_synthetic';
 const SECRET='synthetic-customer-report-claim-secret-not-production';
 const role={name:ROLE,login:true,superuser:false,bypassRls:false,
  createDb:false,createRole:false,replication:false,schemaUsage:true,
- schemaCreate:false,envelopeExecute:true,rawSelect:false,credentialSelect:false,paymentSelect:false,privateSchemaUsage:false};
+ schemaCreate:false,envelopeExecute:true,rawSelect:false,credentialSelect:false,paymentSelect:false,settlementSelect:false,privateSchemaUsage:false};
 const proof=tenant=>async id=>({active:true,source:'verified-pilot',
  tenantId:tenant,checkedAt:Date.now()});
 async function env(fn){
@@ -95,7 +95,7 @@ test('unsafe reader role and lock timeout both fail closed and release connectio
 test('reader can only execute envelope RPC and cannot be owner or raw-table reader',()=>{
  assert.equal(isEnvelopeReaderRoleReview(role,ROLE),true);
  for(const patch of [{envelopeExecute:false},{rawSelect:true},
-  {credentialSelect:true},{paymentSelect:true},{privateSchemaUsage:true},
+  {credentialSelect:true},{paymentSelect:true},{settlementSelect:true},{privateSchemaUsage:true},
   {bypassRls:true},{name:'neondb_owner'}])
   assert.equal(isEnvelopeReaderRoleReview({...role,...patch},ROLE),false);
 });
@@ -129,6 +129,7 @@ test('reader with forged role identity, overbroad credentials or missing RPC per
    {...role,bypassRls:true},
    {...role,credentialSelect:true},
    {...role,paymentSelect:true},
+   {...role,settlementSelect:true},
    {...role,envelopeExecute:false}
   ]){
    const m=mock({roleOverride});
