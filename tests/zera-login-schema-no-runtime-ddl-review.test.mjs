@@ -7,6 +7,7 @@ import {readFile} from 'node:fs/promises';
 const credential=await readFile(new URL('../lib/client-credentials.js',import.meta.url),'utf8');
 const verification=await readFile(new URL('../lib/email-verification.js',import.meta.url),'utf8');
 const pilot=await readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8');
+const repository=await readFile(new URL('../lib/repository.js',import.meta.url),'utf8');
 
 test('customer credential routes never run request-time schema creation',()=>{
  assert.match(credential,/async function withDb\(fn\)/);
@@ -30,4 +31,10 @@ test('pilot grant and revoke also use provisioned schema without CREATE',()=>{
  assert.doesNotMatch(pilot,/initializeSchema/);
  assert.match(pilot,/grantPilotWithLockReview\(pool\(\),clientId,email,days,reason\)/);
  assert.match(pilot,/revokePilotWithLockReview\(pool\(\),clientId\)/);
+});
+
+test('admin listClients read path bypasses repository schema initialization',()=>{
+ const code=repository.slice(repository.indexOf('export async function listClients'),repository.indexOf('export async function addClient'));
+ assert.match(code,/\{ensureSchema:false\}/);
+ assert.doesNotMatch(code,/CREATE\s+(?:TABLE|INDEX)|ALTER\s+TABLE/i);
 });
