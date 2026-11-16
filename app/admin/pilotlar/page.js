@@ -17,6 +17,6 @@ export default async function AdminPilotsPage() {
     <Link href="/admin">← Yönetici paneline dön</Link>
     <h1>Ücretsiz pilot yönetimi</h1>
     <p>ZERA gibi mevcut test müşterilerinin erişimini yönetin. Bu işlem ödeme veya gelir kaydı oluşturmaz. Pilot hesap oluşturma bağlantısını yalnızca yetkili kullanıcıyla paylaşın.</p>
-    <PilotAccessManager/>
+    <PilotAccessManager readonlyPreview={process.env.VERCEL_ENV === "preview"}/>
   </main>;
 }
