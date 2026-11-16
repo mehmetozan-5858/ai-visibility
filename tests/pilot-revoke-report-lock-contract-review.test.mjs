@@ -21,8 +21,8 @@ test('review report locks exactly the same pilot row that revokePilot updates',a
  // FOR SHARE is an alternative uninstalled draft. The current pilot writer
  // uses advisory locks; the two designs must not be considered compatible
  // or production ready until a matching report function is installed.
- assert.match(pilot,/grantPilotWithLockReview\(await pool\(\),clientId,email,days,reason\)/);
- assert.match(pilot,/revokePilotWithLockReview\(await pool\(\),clientId\)/);
+ assert.match(pilot,/grantPilotWithLockReview\(pool\(\),clientId,email,days,reason\)/);
+ assert.match(pilot,/revokePilotWithLockReview\(pool\(\),clientId\)/);
  assert.match(reader,/BEGIN ISOLATION LEVEL READ COMMITTED/);
  assert.match(reader,/SET LOCAL lock_timeout = '2500ms'/);
  assert.match(reader,/SET LOCAL statement_timeout = '10000ms'/);
