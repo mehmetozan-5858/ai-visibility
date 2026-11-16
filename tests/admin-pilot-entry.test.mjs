@@ -19,6 +19,8 @@ test("pilot management API remains admin-only and requires same-origin for chang
   assert.match(route, /GET\(req\)\{const denied=await requireAdmin\(req\)/);
   assert.match(route, /POST\(req\)\{const denied=await requireAdmin\(req\)/);
   assert.match(route, /const origin=enforceSameOrigin\(req\)/);
+  assert.match(route, /process.env.VERCEL_ENV===\x27preview\x27/);
+  assert.match(route, /const blocked=previewDenied\(\);if\(blocked\)return blocked;/);
   assert.match(route, /getClientCredential\(b.clientId\)/);
   assert.match(route, /credential.email.toLowerCase\(\)!==/);
   assert.match(route, /grantPilot\(/);
