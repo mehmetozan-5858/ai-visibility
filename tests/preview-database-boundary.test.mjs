@@ -17,6 +17,12 @@ test("Preview never inherits Production database credentials", () => {
     assert.equal(getDatabaseUrl(), "", "Preview must fail closed without dedicated database");
     process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://preview-user:placeholder@preview.example/neondb";
     assert.equal(getDatabaseUrl(), process.env.ZERA_PREVIEW_DATABASE_URL);
+    process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://different-role:another-secret@prod.example/neondb?sslmode=require";
+    assert.equal(getDatabaseUrl(), "", "Different credentials cannot bypass identical production database identity");
+    process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://preview-user:placeholder@prod.example/other_database";
+    assert.equal(getDatabaseUrl(), process.env.ZERA_PREVIEW_DATABASE_URL, "Distinct database identity may be used");
+    process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://preview-user:placeholder@preview.example/neondb";
+
     process.env.VERCEL_ENV = "production";
     assert.equal(getDatabaseUrl(), process.env.DATABASE_URL);
   } finally {
