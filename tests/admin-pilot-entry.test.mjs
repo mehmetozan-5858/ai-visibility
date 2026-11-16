@@ -9,6 +9,7 @@ test("admin dashboard links to dedicated pilot access page", async () => {
   const page = await read("../app/admin/pilotlar/page.js");
   assert.match(dashboard, /href="\/admin\/pilotlar"/);
   assert.match(page, /PilotAccessManager/);
+  assert.match(page, /readonlyPreview=\{process.env.VERCEL_ENV === "preview"\}/);
   assert.match(page, /await verifyAdminToken\(cookieStore.get\("ai_admin"\)/);
   assert.match(page, /if \(!authorized\) redirect\("\/login"\)/);
   assert.match(page, /robots:\s*\{\s*index:\s*false/);
@@ -25,4 +26,13 @@ test("pilot management API remains admin-only and requires same-origin for chang
   assert.match(route, /credential.email.toLowerCase\(\)!==/);
   assert.match(route, /grantPilot\(/);
   assert.doesNotMatch(route, /INSERT INTO payments|UPDATE payments/);
+});
+
+
+test("preview pilot interface never requests the real customer list or enables grants",async()=>{
+  const component=await read("../components/PilotAccessManager.js");
+  assert.match(component, /if\(!readonlyPreview\)load\(\)/);
+  assert.match(component, /if\(readonlyPreview\)return;/);
+  assert.match(component, /if\(readonlyPreview\)return <section/);
+  assert.match(component, /Önizleme: pilot işlemleri kapalı/);
 });
