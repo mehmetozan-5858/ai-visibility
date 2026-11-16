@@ -9,6 +9,8 @@ test("admin dashboard links to dedicated pilot access page", async () => {
   const page = await read("../app/admin/pilotlar/page.js");
   assert.match(dashboard, /href="\/admin\/pilotlar"/);
   assert.match(page, /PilotAccessManager/);
+  assert.match(page, /await verifyAdminToken\(cookieStore.get\("ai_admin"\)/);
+  assert.match(page, /if \(!authorized\) redirect\("\/login"\)/);
   assert.match(page, /robots:\s*\{\s*index:\s*false/);
 });
 
