@@ -12,6 +12,18 @@ export function authorizedAgentCycle(req){
 
 export async function proxy(req){
   const {pathname}=req.nextUrl;
+  // Defense-in-depth for the actual Vercel deployment hostname. This check
+  // runs in the request proxy before the Next.js login page or auth handler;
+  // environment variables and application database credentials are irrelevant.
+  const forwardedHost=(req.headers.get("x-forwarded-host")||req.headers.get("host")||"").toLowerCase().split(":")[0];
+  const deploymentHost=(req.nextUrl.hostname||"").toLowerCase();
+  const previewHost=deploymentHost.endsWith(".vercel.app")||forwardedHost.endsWith(".vercel.app");
+  if(previewHost && pathname==="/login"){
+    const html=`<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Önizleme güvenliği | AI Visibility</title></head><body style="background:#071520;color:#f5f8ff;font:18px system-ui,sans-serif;max-width:640px;margin:10vh auto;padding:24px"><main><h1>Önizleme: yönetici girişi kapalı</h1><p>Bu Vercel önizlemesinde yönetici şifresi kabul edilmez. Mevcut şifreniz değişmedi.</p><p>Canlı yönetici paneline resmi alan adından giriş yapabilirsiniz.</p><a style="color:#79d8ff" href="https://www.aivisibilityworks.com/login">Canlı yönetici girişine git</a></main></body></html>`;
+    return new NextResponse(html,{status:200,headers:{"content-type":"text/html; charset=utf-8","cache-control":"no-store","x-ai-preview-login":"blocked"}});
+  }
+  if(previewHost && pathname==="/api/auth/login" && req.method==="POST")
+    return Response.json({error:"Vercel önizlemesinde yönetici girişi kapalıdır."},{status:503,headers:{"cache-control":"no-store","x-ai-preview-login":"blocked"}});
   const sandboxPreview=process.env.PADDLE_SANDBOX_ENABLED==="true"&&process.env.PADDLE_ENVIRONMENT==="sandbox"&&["preview","development"].includes(process.env.VERCEL_ENV);
   const paddleSandboxPath=pathname==="/paddle-sandbox"||pathname==="/api/webhooks/paddle-sandbox"||pathname==="/api/paddle-sandbox/checkout-intents"||pathname==="/api/paddle-sandbox/account"||pathname==="/api/paddle-sandbox/test-session";
   // Sandbox previews expose only checkout and signature-verified billing events.
