@@ -21,7 +21,14 @@ test("Preview never inherits Production database credentials", () => {
     assert.equal(getDatabaseUrl(), "", "Different credentials cannot bypass identical production database identity");
     process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://preview-user:placeholder@prod.example/other_database";
     assert.equal(getDatabaseUrl(), process.env.ZERA_PREVIEW_DATABASE_URL, "Distinct database identity may be used");
-    process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://preview-user:placeholder@preview.example/neondb";
+    process.env.DATABASE_URL = "postgres://owner:secret@ep-plain-meadow-123.eu-central-1.aws.neon.tech/neondb";
+    process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://different-user:different-secret@ep-plain-meadow-123-pooler.eu-central-1.aws.neon.tech/neondb";
+    assert.equal(getDatabaseUrl(), "", "Neon pooler address must not bypass a direct production endpoint");
+    process.env.DATABASE_URL = "postgres://owner:secret@ep-plain-meadow-123-pooler.eu-central-1.aws.neon.tech/neondb";
+    process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://different-user:different-secret@ep-plain-meadow-123.eu-central-1.aws.neon.tech/neondb";
+    assert.equal(getDatabaseUrl(), "", "Neon direct address must not bypass a pooled production endpoint");
+    process.env.ZERA_PREVIEW_DATABASE_URL = "postgres://preview-user:placeholder@ep-safe-example-789.eu-central-1.aws.neon.tech/neondb";
+    assert.equal(getDatabaseUrl(), process.env.ZERA_PREVIEW_DATABASE_URL);
 
     process.env.VERCEL_ENV = "production";
     assert.equal(getDatabaseUrl(), process.env.DATABASE_URL);
