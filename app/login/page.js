@@ -1,6 +1,8 @@
 import LoginForm from "../../components/LoginForm";
 import {getDatabaseUrl} from "../../lib/db";
 export const metadata={title:"Giriş | AI Visibility"};
+// Preview/Production environment must be evaluated per request, not prerendered at build.
+export const dynamic = "force-dynamic";
 export default function Page(){
   if(process.env.VERCEL_ENV==="preview" && !getDatabaseUrl())
     return <main style={{maxWidth:600,margin:"64px auto",padding:"24px"}}>
