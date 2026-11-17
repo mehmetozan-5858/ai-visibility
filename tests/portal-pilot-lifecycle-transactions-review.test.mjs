@@ -100,3 +100,28 @@ test('invalid tenant never acquires database connection on lifecycle writers',as
  await assert.rejects(changePilotExpiryWithLockReview(f.pool,'not-uuid','2026-11-19T00:00:00.000Z'),/review-pilot-expiry-invalid/);
  assert.equal(f.connects,0);
 });
+
+test('previously suspended account still revokes its active pilot within the same lock',async()=>{
+ const f=fixture(sql=>{
+  if(sql.includes('UPDATE public.clients'))return {rows:[]};
+  if(sql.includes('SELECT id FROM public.clients'))return {rows:[{id:TENANT}]};
+  if(sql.includes('UPDATE public.client_pilot_access'))return {rows:[{client_id:TENANT}]};
+  return {rows:[]};
+ });
+ assert.deepEqual(await suspendAndRevokeClientWithLockReview(f.pool,TENANT),
+  {accountPresent:true,suspended:false,pilotRevoked:true});
+ assertLockedTransaction(f);
+ assert.equal(f.calls.filter(x=>x.sql.includes('UPDATE public.client_pilot_access')).length,1);
+});
+test('pilot expiry SQL failure rolls back and releases tenant lock',async()=>{
+ const when='2026-11-19T00:00:00.000Z';
+ const f=fixture(sql=>{
+  if(sql.includes('UPDATE public.client_pilot_access'))throw Error('synthetic expiry write failure');
+  return {rows:[]};
+ });
+ await assert.rejects(changePilotExpiryWithLockReview(f.pool,TENANT,when),/synthetic expiry write failure/);
+ assert.deepEqual(f.calls[3],{sql:PILOT_LOCK_SQL,args:[TENANT]});
+ assert.equal(f.calls.at(-1).sql,'ROLLBACK');
+ assert.equal(f.calls.some(x=>x.sql==='COMMIT'),false);
+ assert.equal(f.releases,1);
+});
