@@ -65,6 +65,11 @@ jobs:
           done
           cat /tmp/aiv-smoke.log
           exit 1
+      - name: Verify request-proxy protection on Vercel preview host
+        run: |
+          curl -fsS -H 'Host: ai-visibility-ci-guard.vercel.app' http://127.0.0.1:3000/login | grep -F 'Önizleme: yönetici girişi kapalı'
+          test "$(curl -sS -o /tmp/aiv-preview-login-response -w '%{http_code}' -H 'Host: ai-visibility-ci-guard.vercel.app' -H 'Content-Type: application/json' -X POST --data '{"password":"synthetic-fixture"}' http://127.0.0.1:3000/api/auth/login)" = 503
+          grep -F 'Vercel önizlemesinde yönetici girişi kapalıdır.' /tmp/aiv-preview-login-response
       - name: Start isolated preview mode without any database URL
         run: |
           env -u DATABASE_URL -u DATABASE_URL_UNPOOLED -u POSTGRES_URL -u STORAGE_URL -u ZERA_PREVIEW_DATABASE_URL VERCEL_ENV=preview PORT=3001 npm start > /tmp/aiv-preview-smoke.log 2>&1 &
