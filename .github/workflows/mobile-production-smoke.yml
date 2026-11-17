@@ -13,6 +13,7 @@ on:
       - 'package-lock.json'
       - 'tests/mobile-production-smoke.spec.js'
       - 'tests/admin-pilot-browser.spec.js'
+      - 'tests/preview-login-browser.spec.js'
       - 'tests/mobile-onboarding-location.spec.js'
       - 'tests/web-production-smoke.spec.js'
       - '.github/workflows/mobile-production-smoke.yml'
@@ -64,6 +65,19 @@ jobs:
           done
           cat /tmp/aiv-smoke.log
           exit 1
+      - name: Start isolated preview mode without any database URL
+        run: |
+          env -u DATABASE_URL -u DATABASE_URL_UNPOOLED -u POSTGRES_URL -u STORAGE_URL -u ZERA_PREVIEW_DATABASE_URL VERCEL_ENV=preview PORT=3001 npm start > /tmp/aiv-preview-smoke.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3001/login >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/aiv-preview-smoke.log
+          exit 1
+      - name: Verify preview safety screen with browser and no real database
+        env:
+          SMOKE_BASE_URL: http://127.0.0.1:3001
+        run: npx playwright test tests/preview-login-browser.spec.js --reporter=line
       - name: Test public web and customer app surfaces
         env:
           SMOKE_BASE_URL: http://127.0.0.1:3000
