@@ -36,6 +36,13 @@ test("isolated synthetic pilot contract: zero-charge, expiry and revocation", as
       WHERE client_id=$1 AND revoked_at IS NULL AND expires_at > NOW()
     `, [fakeId]);
     assert.equal(active.rows[0].n, 1);
+    await db.query("UPDATE client_pilot_access SET expires_at=NOW() - interval '1 second' WHERE client_id=$1", [fakeId]);
+    const expired = await db.query(`
+      SELECT COUNT(*)::int AS n FROM client_pilot_access
+      WHERE client_id=$1 AND revoked_at IS NULL AND expires_at > NOW()
+    `, [fakeId]);
+    assert.equal(expired.rows[0].n, 0, "Expired pilot access must be rejected");
+    await db.query("UPDATE client_pilot_access SET expires_at=NOW() + interval '7 days' WHERE client_id=$1", [fakeId]);
     await db.query("UPDATE client_pilot_access SET revoked_at=NOW() WHERE client_id=$1", [fakeId]);
     const revoked = await db.query(`
       SELECT COUNT(*)::int AS n FROM client_pilot_access
