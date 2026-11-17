@@ -8,7 +8,9 @@ export async function POST(req){
     // Preview has no verified isolated database. Do not attempt a production
     // admin credential lookup and do not misreport infrastructure errors as
     // incorrect passwords.
-    if(process.env.VERCEL_ENV==="preview" && !getDatabaseUrl())
+    const host=(req.headers.get("x-forwarded-host")||req.headers.get("host")||"").toLowerCase().split(":")[0];
+    const previewHost=host.endsWith(".vercel.app");
+    if((previewHost && !process.env.ZERA_PREVIEW_DATABASE_URL) || (process.env.VERCEL_ENV==="preview" && !getDatabaseUrl()))
       return Response.json({error:"Bu önizlemede yönetici girişi güvenlik nedeniyle kapalıdır. Mevcut şifreniz değişmedi; işlemleri canlı yönetici panelinden yönetin."},{status:503});
     if(!authConfigured())return Response.json({error:"Yönetici girişi henüz yapılandırılmadı."},{status:503});
     const originError=enforceSameOrigin(req);if(originError)return originError;
