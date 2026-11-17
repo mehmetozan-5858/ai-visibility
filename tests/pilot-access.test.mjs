@@ -19,7 +19,7 @@ const {customerAccess,grantPilot,revokePilot}=new Function(
  source+';return {customerAccess,grantPilot,revokePilot}'
 )(crypto,()=>p,()=>'',async()=>{},fakeGrant,fakeRevoke);
 
-test('unpaid customer requires active pilot; revoked/expired pilot is denied',async()=>{const a={client:{id:'client',status:'active'},payments:[]};assert.equal((await customerAccess(a)).allowed,false);pilot={email:'owner@example.com',expiresAt:'2026-11-01'};assert.equal((await customerAccess(a)).kind,'pilot');pilot=null;assert.equal((await customerAccess(a)).allowed,false);assert.equal((await customerAccess({...a,payments:[{status:'paid'}]})).kind,'paid');assert.equal((await customerAccess({...a,client:{id:'client',status:'payment-review'},payments:[{status:'paid'}]})).allowed,false)});
+test('unpaid customer requires active pilot; revoked/expired pilot is denied',async()=>{const a={client:{id:'client',status:'active'},payments:[]};assert.equal((await customerAccess(a)).allowed,false);pilot={email:'owner@example.com',expiresAt:'2026-11-01'};assert.equal((await customerAccess(a)).kind,'pilot');pilot=null;assert.equal((await customerAccess(a)).allowed,false);assert.deepEqual(await customerAccess({...a,payments:[{status:'paid'}]}),{allowed:false,kind:'payment-review',reason:'independent-settlement-proof-required'});assert.equal((await customerAccess({...a,client:{id:'client',status:'payment-review'},payments:[{status:'paid'}]})).allowed,false)});
 test('payment review overrides a preexisting active pilot without reading entitlement storage',async()=>{
  pilot={email:'owner@example.com',expiresAt:'2099-11-01'};
  try{
