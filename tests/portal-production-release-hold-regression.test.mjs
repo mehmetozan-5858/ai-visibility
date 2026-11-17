@@ -33,7 +33,7 @@ test('production portal report errors cannot silently assert fresh report availa
  assert.match(portal,/if\(!rls.ready\)/);
 });
 
-test('legacy paid labels and unverified external entitlement writers remain hard blockers',async()=>{
+test('paid labels fail closed in review, while external entitlement writers remain blockers',async()=>{
  const [pilot,repository,auditSource]=await Promise.all([
   read('lib/pilot-access.js'),
   read('lib/repository.js'),
@@ -48,6 +48,7 @@ test('legacy paid labels and unverified external entitlement writers remain hard
  assert.equal(report.findings.some(x=>x.code==='account-activation-not-coordinated'),false);
  assert.ok(report.unresolvedExternal.includes('external-payment-webhooks'));
  assert.ok(report.unresolvedExternal.includes('account-suspension-and-deletion'));
- assert.ok(report.findings.some(x=>x.code==='legacy-paid-label-entitlement-unverified'));
+ assert.equal(report.findings.some(x=>x.code==='legacy-paid-label-entitlement-unverified'),false);
+ assert.match(pilot,/await customerHasVerifiedSettlement\(account\.client\.id\)/);
  assert.match(auditSource,/external-entitlement-writers-not-exhaustively-verified/);
 });
