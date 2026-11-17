@@ -80,7 +80,7 @@ test('customer login only establishes an authenticated session, not paid settlem
 test('legacy paid label is distinguished from verified Paddle settlement',async()=>{
  const src=await source('lib/pilot-access.js');
  const proof=await source('lib/customer-settlement-proof.mjs');
- assert.match(src,/CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
+ assert.doesNotMatch(src,/CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
  assert.match(src,/customerHasVerifiedSettlement\(account\.client\.id\)/);
  assert.match(proof,/verified_customer_settlements/);
  assert.match(proof,/p\.method='paddle'/);
