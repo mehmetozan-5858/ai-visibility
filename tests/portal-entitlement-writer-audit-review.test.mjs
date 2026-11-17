@@ -15,7 +15,8 @@ test('locked pilot and payment writers remain NO-GO without verified external en
  const names=audit.findings.map(f=>f.code+':'+(f.method||''));
  assert.equal(names.some(x=>x.startsWith('account-activation-not-coordinated:')),false);
  assert.equal(names.some(x=>x.startsWith('legacy-pilot-write-unlocked:')),false);
- assert.ok(names.includes('legacy-paid-label-entitlement-unverified:customerAccess'));
+ assert.equal(names.includes('legacy-paid-label-entitlement-unverified:customerAccess'),false);
+ assert.match(pilotSource,/await customerHasVerifiedSettlement\(account\.client\.id\)/);
  assert.ok(audit.unresolvedExternal.includes('direct-admin-sql'));
  assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'));
 });
