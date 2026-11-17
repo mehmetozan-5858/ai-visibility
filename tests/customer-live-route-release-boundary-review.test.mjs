@@ -56,12 +56,12 @@ test('review-only envelope cannot be mistaken for currently deployed customer re
  assert.match(pdf,/readCustomerComparisonReport\(databasePool\(getDatabaseUrl\(\)\),session\.clientId\)/);
 });
 
-test('legacy paid labels remain a separate unverified production acceptance blocker',async()=>{
+test('review branch requires independent proof for paid labels; production release still gated',async()=>{
  const [pilot,strict]=await Promise.all([
   read('lib/pilot-access.js'),
   read('lib/portal-report-entitlement.mjs')
  ]);
- assert.match(pilot,/CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
+ assert.doesNotMatch(pilot,/CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
  assert.match(pilot,/return \{allowed:true,kind:'paid'\}/);
  assert.match(pilot,/customerHasVerifiedSettlement\(account\.client\.id\)/);
  assert.match(strict,/strictReportEntitlementReady/);
