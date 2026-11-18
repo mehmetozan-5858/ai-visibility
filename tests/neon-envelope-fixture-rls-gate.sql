@@ -30,5 +30,7 @@ SELECT current_database() AS inspected_database,
          'rlsEnabled',rls_enabled,'rlsForced',rls_forced,
          'policyCount',policy_count) ORDER BY name) AS table_evidence,
        bool_and(oid IS NOT NULL AND rls_enabled AND
-         (NOT sensitive OR rls_forced)) AS rls_schema_precondition_pass
+         (NOT sensitive OR rls_forced)) AS rls_schema_precondition_pass,
+       bool_and(oid IS NOT NULL AND policy_count > 0) AS tenant_policy_provisioned,
+       false AS tenant_positive_negative_behavior_verified
 FROM inventory;
