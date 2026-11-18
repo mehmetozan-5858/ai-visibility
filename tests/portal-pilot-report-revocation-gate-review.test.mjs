@@ -34,3 +34,8 @@ test('tenant-scoped bounded report query',()=>{
  assert.match(sql,/WHERE r\.client_id=p_tenant/);
  assert.match(sql,/ORDER BY r\.created_at DESC LIMIT 20/);
 });
+
+test('review RPC explicitly revokes PostgreSQL default PUBLIC execute privilege',()=>{
+ assert.match(sql,/REVOKE ALL ON FUNCTION public\.portal_trial_one_time_report_pilot_review\(uuid,bigint,uuid,text\) FROM PUBLIC;/);
+ assert.match(sql,/CREATE and REVOKE atomically/);
+});
