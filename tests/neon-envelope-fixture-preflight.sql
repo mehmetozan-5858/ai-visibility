@@ -34,3 +34,29 @@ SELECT current_database() AS inspected_database,
        metadata.report_rpc_present AS report_rpc_present,
        NOT metadata.report_rpc_present AS expected_preinstall_hold
 FROM context CROSS JOIN metadata;
+
+
+-- Separate from metadata 16/18: deny overly broad privileges BEFORE any RPC.
+-- This must not be mistaken for confirmation that the proposed function exists.
+WITH scope AS (
+ SELECT current_database()='portal_acceptance_fixture_20261118' AS exact_fixture,
+        NOT has_schema_privilege('public','portal_authz','USAGE') AS public_schema_not_readable,
+        NOT has_schema_privilege('public','portal_authz','CREATE') AS public_schema_not_writable,
+        NOT has_table_privilege('public','portal_authz.signing_keys','SELECT') AS keys_not_public,
+        NOT has_table_privilege('public','portal_authz.consumed_claims','INSERT') AS claims_not_public_writable,
+        NOT has_table_privilege('public','portal_authz.consumed_claims','SELECT') AS claims_not_public_readable,
+        NOT has_schema_privilege('portal_report_fn_owner','portal_authz','CREATE') AS owner_cannot_create_private,
+        NOT has_table_privilege('portal_report_fn_owner','portal_authz.signing_keys','INSERT') AS owner_cannot_insert_keys,
+        NOT has_table_privilege('portal_report_fn_owner','portal_authz.consumed_claims','DELETE') AS owner_cannot_delete_claims,
+        NOT has_table_privilege('portal_report_fn_owner','portal_authz.consumed_claims','UPDATE') AS owner_cannot_update_claims,
+        NOT has_table_privilege('portal_report_fn_owner','portal_authz.consumed_claims','SELECT') AS owner_cannot_read_full_claim_ledger
+)
+SELECT current_database() AS inspected_database,
+       exact_fixture,
+       public_schema_not_readable AND public_schema_not_writable
+        AND keys_not_public AND claims_not_public_writable AND claims_not_public_readable
+        AS no_public_secret_or_nonce_access,
+       owner_cannot_create_private AND owner_cannot_insert_keys
+        AND owner_cannot_delete_claims AND owner_cannot_update_claims
+        AND owner_cannot_read_full_claim_ledger AS owner_has_no_surplus_secret_or_nonce_privileges
+FROM scope;
