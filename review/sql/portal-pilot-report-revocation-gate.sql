@@ -39,4 +39,8 @@ BEGIN
  FROM public.ai_provider_comparisons r WHERE r.client_id=p_tenant
  ORDER BY r.created_at DESC LIMIT 20;
 END $$;
+-- PostgreSQL grants EXECUTE to PUBLIC by default on new functions.
+-- Deny that implicit permission explicitly; do not grant to the gateway yet.
+REVOKE ALL ON FUNCTION public.portal_trial_one_time_report_pilot_review(uuid,bigint,uuid,text) FROM PUBLIC;
+-- Migration must run CREATE and REVOKE atomically in a single transaction.
 -- Intentionally no GRANT EXECUTE or production route wiring.
