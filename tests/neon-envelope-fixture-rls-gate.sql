@@ -32,5 +32,9 @@ SELECT current_database() AS inspected_database,
        bool_and(oid IS NOT NULL AND rls_enabled AND
          (NOT sensitive OR rls_forced)) AS rls_schema_precondition_pass,
        bool_and(oid IS NOT NULL AND policy_count > 0) AS tenant_policy_provisioned,
-       false AS tenant_positive_negative_behavior_verified
+       false AS tenant_positive_negative_behavior_verified,
+       EXISTS(SELECT 1 FROM pg_catalog.pg_roles r WHERE r.rolname=current_user AND r.rolbypassrls) AS inspection_role_bypasses_rls,
+       EXISTS(SELECT 1 FROM pg_catalog.pg_roles r WHERE r.rolname='portal_report_fn_owner'
+         AND NOT r.rolbypassrls AND NOT r.rolsuper AND NOT r.rolcanlogin) AS target_function_owner_rls_restricted,
+       false AS actual_restricted_role_rls_runtime_verified
 FROM inventory;
