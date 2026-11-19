@@ -18,8 +18,9 @@ test('existing webhook still bypasses isolated signed tenant-lock router',async(
  assert.doesNotMatch(live,/routeSignedPaddleEntitlementReview|dispatchSignedPaddleEventWithTenantLockReview/);
  const audit=auditPaddleWebhookLockReview(live);
  assert.equal(audit.ready,false);
- for(const code of ['webhook-tenant-lock-missing',
-  'transaction-completion-direct-activation',
+ assert.equal(audit.findings.some(x=>x.code==='webhook-tenant-lock-missing'),false,
+  'linked webhook must take tenant advisory lock before access writes');
+ for(const code of ['transaction-completion-direct-activation',
   'subscription-direct-activation',
   'refund-reversal-event-coverage-unverified'])
   assert.ok(audit.findings.some(x=>x.code===code),'must preserve blocker '+code);

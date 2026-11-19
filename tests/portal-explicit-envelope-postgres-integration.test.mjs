@@ -11,6 +11,7 @@ import {createPortalReportHttpReview} from '../lib/portal-report-http-review.mjs
 import {createReviewReportEntitlementAuthority} from '../lib/one-time-report-authority-review.mjs';
 import {PILOT_LOCK_SQL} from '../lib/portal-pilot-advisory-lock-review.mjs';
 import {decodeAuthorizedReportEnvelopeReview} from '../lib/portal-explicit-report-envelope-review.mjs';
+import {signedEnvelopeReadinessSql,evaluateSignedEnvelopeStage,signedEnvelopeRequiredChecks} from '../lib/portal-neon-envelope-readiness-review.mjs';
 
 // DDL is restricted to a new disposable LOCAL PostgreSQL 16 CI database.
 // Never connect this destructive fixture to Neon, staging or production.
@@ -71,6 +72,26 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   await db.query('GRANT SELECT ON public.clients,public.client_pilot_access,public.ai_provider_comparisons TO '+ownerName);
   // signing_keys/consumed_claims tables are made by the migration below;
   // grant their minimum required privileges only after it has completed.
+  // Even with a safe NOLOGIN owner, a missing sensitive fixture relation
+  // must reject the migration before it creates any SECURITY DEFINER RPC.
+  await db.query('DROP TABLE public.payments');
+  await assert.rejects(db.query(migration),error=>
+   error.message.includes('review-report-function-owner-unverified'));
+  assert.equal((await db.query(
+   "SELECT to_regprocedure('public.portal_verified_one_time_envelope_review(uuid,bigint,uuid,text)') IS NOT NULL AS rpc_exists"
+  )).rows[0].rpc_exists,false,'missing payments must not install report RPC');
+  await db.query('CREATE TABLE public.payments(id uuid PRIMARY KEY)');
+
+  // Execute the exact production-readiness catalog SELECT against the real
+  // disposable PostgreSQL fixture. This verifies positive preinstall metadata
+  // without reading any customer data, using a synthetic-only local database.
+  const beforeReadiness=(await db.query(signedEnvelopeReadinessSql)).rows[0];
+  const preinstall=evaluateSignedEnvelopeStage(beforeReadiness,'preinstall');
+  assert.deepEqual(preinstall.blocked,[],
+   'synthetic preinstall metadata must prove approved narrow owner and HMAC');
+  assert.equal(preinstall.ready,true);
+  assert.equal(evaluateSignedEnvelopeStage(beforeReadiness,'postinstall').ready,false,
+   'missing RPC and claim ledgers must keep postinstall HOLD');
 
   await db.query(migration);
   await db.query(`GRANT SELECT ON TABLE portal_authz.signing_keys TO ${ownerName}`);
@@ -78,6 +99,18 @@ test('real isolated SQL RPC differentiates denial, authorized empty, replay, exp
   // RETURNING claim_id on a one-use INSERT needs read access to that column;
   // do not grant unrestricted table SELECT to the function owner.
   await db.query(`GRANT SELECT (claim_id) ON TABLE portal_authz.consumed_claims TO ${ownerName}`);
+  // Real positive postinstall verification for every one of the 18 required
+  // metadata gates, including SECURITY DEFINER, pinned search_path, owner ACL
+  // and absence of PUBLIC EXECUTE. This is LOCAL fixture evidence, never Neon.
+  const installedReadiness=(await db.query(signedEnvelopeReadinessSql)).rows[0];
+  assert.deepEqual(Object.keys(installedReadiness).sort(),
+   [...signedEnvelopeRequiredChecks].sort());
+  const postinstall=evaluateSignedEnvelopeStage(installedReadiness,'postinstall');
+  assert.deepEqual(postinstall.blocked,[],
+   'all signed-envelope metadata prerequisites must pass in isolated CI');
+  assert.equal(postinstall.ready,true);
+  assert.equal(installedReadiness.rpcSecureOwnerAndAcl,true);
+
 
   // Role is synthetic and cluster-scoped to this disposable CI PostgreSQL.
   // Grant EXECUTE only; no direct SELECT on report or private claim ledger.

@@ -36,8 +36,8 @@ test('pilot writers are connected but the report and account writers are not yet
  const pilot=await readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8');
  assert.match(migration,/FOR SHARE/);
  assert.match(alt,/pg_advisory_xact_lock/);
- assert.match(pilot,/grantPilotWithLockReview\(await pool\(\),clientId,email,days,reason\)/);
- assert.match(pilot,/revokePilotWithLockReview\(await pool\(\),clientId\)/);
+ assert.match(pilot,/grantPilotWithLockReview\(pool\(\),clientId,email,days,reason\)/);
+ assert.match(pilot,/revokePilotWithLockReview\(pool\(\),clientId\)/);
  // Pilot writes alone cannot protect an old live report reader or
  // legacy account status/payment/admin writers. Release is still HOLD.
 });

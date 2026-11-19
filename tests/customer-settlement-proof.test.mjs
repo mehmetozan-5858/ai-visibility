@@ -35,9 +35,9 @@ test('webhook records proof only after validated signed transaction completion',
  assert.match(source,/paymentResult.paymentStatus==='paid'&&!isPaddleRenewal\(item\)/);
  assert.match(source,/throw Error\('settlement-proof-conflict'\)/);
 });
-test('portal access is strict-gated but unchanged by default',async()=>{
+test('review paid portal access always requires settlement proof, with a separate pilot exception',async()=>{
  const source=await readFile(new URL('../lib/pilot-access.js',import.meta.url),'utf8');
- assert.match(source,/CUSTOMER_SETTLEMENT_PROOF_ENABLED!=='true'/);
+ assert.doesNotMatch(source,/CUSTOMER_SETTLEMENT_PROOF_ENABLED!=='true'/);
  assert.match(source,/await customerHasVerifiedSettlement\(account.client.id\)/);
  assert.match(source,/const pilot=await getPilotAccess\(account.client.id\)/);
  assert.match(source,/independent-settlement-proof-required/);

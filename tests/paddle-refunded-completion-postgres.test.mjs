@@ -19,8 +19,8 @@ test('full webhook refuses refunded completion before creating subscription link
   await db.query("INSERT INTO payments(id,client_id,status,currency,plan,setup_amount,monthly_amount) VALUES($1,$2,'refunded','EUR','pilot',0,49)",[payment,client]);
   const connection={query:(sql,args=[])=>db.query(sql,args),release(){}};
   const pool={query:(sql,args=[])=>db.query(sql,args),connect:async()=>connection};
-  const record=new Function('databasePool','getDatabaseUrl','randomUUID',source+';return recordPaddleLiveEvent;')(
-    ()=>pool,()=> 'postgres://offline-test-only',randomUUID);
+  const record=new Function('databasePool','getDatabaseUrl','randomUUID','acquirePilotAdvisoryLockReview',source+';return recordPaddleLiveEvent;')(
+    ()=>pool,()=> 'postgres://offline-test-only',randomUUID,async()=>{});
   const result=await record({
    event_id:'evt_refunded123',event_type:'transaction.completed',
    occurred_at:'2026-11-01T08:02:00Z',

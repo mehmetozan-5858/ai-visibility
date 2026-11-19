@@ -22,8 +22,8 @@ test('full live webhook processor: early subscription, activation, settlement, r
   await db.query("INSERT INTO payments(id,client_id,status,currency,plan,setup_amount,monthly_amount) VALUES($1,$2,'pending','EUR','pilot',0,49)",[paymentId,clientId]);
   const connection={query:(sql,args=[])=>db.query(sql,args),release(){}};
   const pool={query:(sql,args=[])=>db.query(sql,args),connect:async()=>connection};
-  const record=new Function('databasePool','getDatabaseUrl','randomUUID',source+';return recordPaddleLiveEvent;')(
-   ()=>pool,()=> 'postgres://isolated-only',randomUUID);
+  const record=new Function('databasePool','getDatabaseUrl','randomUUID','acquirePilotAdvisoryLockReview',source+';return recordPaddleLiveEvent;')(
+   ()=>pool,()=> 'postgres://isolated-only',randomUUID,async()=>{});
   const created=event('evt_createdabc','subscription.created',
    {id:subscriptionId,status:'active',transaction_id:transactionId},'2026-11-01T08:00:00Z');
   const activated=event('evt_activatedabc','subscription.activated',

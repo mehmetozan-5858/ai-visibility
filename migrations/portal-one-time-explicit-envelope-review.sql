@@ -26,8 +26,20 @@ BEGIN
      AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member=r.oid)
      AND NOT has_database_privilege(r.oid,current_database(),'CREATE')
      AND NOT has_schema_privilege(r.oid,'public','CREATE')
-     AND NOT has_table_privilege(r.oid,'public.client_credentials','SELECT')
-     AND NOT has_table_privilege(r.oid,'public.payments','SELECT')
+     -- The SECURITY DEFINER owner MUST already have exactly the data reads
+     -- that the signed tenant/active pilot/envelope checks require.
+     -- Do not implicitly grant privileges to make migration green.
+     AND to_regclass('public.clients') IS NOT NULL
+     AND has_table_privilege(r.oid,to_regclass('public.clients'),'SELECT')
+     AND to_regclass('public.client_pilot_access') IS NOT NULL
+     AND has_table_privilege(r.oid,to_regclass('public.client_pilot_access'),'SELECT')
+     AND to_regclass('public.ai_provider_comparisons') IS NOT NULL
+     AND has_table_privilege(r.oid,to_regclass('public.ai_provider_comparisons'),'SELECT')
+     -- Missing fixture relations must fail closed, not throw 42P01 during owner preflight.
+     AND to_regclass('public.client_credentials') IS NOT NULL
+     AND NOT has_table_privilege(r.oid,to_regclass('public.client_credentials'),'SELECT')
+     AND to_regclass('public.payments') IS NOT NULL
+     AND NOT has_table_privilege(r.oid,to_regclass('public.payments'),'SELECT')
  ) THEN
    RAISE EXCEPTION 'review-report-function-owner-unverified';
  END IF;

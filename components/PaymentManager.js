@@ -12,7 +12,7 @@ function money(amount,currency,lang){
   try{return new Intl.NumberFormat(locale,{style:"currency",currency,maximumFractionDigits:0}).format(Number(amount)||0)}catch{return `${Number(amount)||0} ${currency}`}
 }
 
-export default function PaymentManager({token}){
+export default function PaymentManager({token,pilotOnly=false}){
   const {lang}=useLanguage();const c=copy[lang]||copy.tr;
   const [d,setD]=useState(null),[err,setErr]=useState(""),[copied,setCopied]=useState(false),[reporting,setReporting]=useState(false),[reported,setReported]=useState(false),[cardBusy,setCardBusy]=useState(false),[iframeUrl,setIframeUrl]=useState(""),[consent,setConsent]=useState(false),[cardForm,setCardForm]=useState({name:"",email:"",phone:"",address:""}),[setupBusy,setSetupBusy]=useState(false),[setupForm,setSetupForm]=useState({email:"",password:""}),[code,setCode]=useState(""),[codeSent,setCodeSent]=useState(false),[emailVerified,setEmailVerified]=useState(false),[verifyBusy,setVerifyBusy]=useState(false),[verifyMsg,setVerifyMsg]=useState("");
   useEffect(()=>{fetch("/api/payment?token="+encodeURIComponent(token),{cache:"no-store",headers:{"accept-language":lang}}).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error||c.loadError);return j}).then(setD).catch(e=>setErr(e.message))},[token,lang]);
@@ -20,6 +20,9 @@ export default function PaymentManager({token}){
   const firstPayment=useMemo(()=>d?money(d.plan?.firstPayment||0,currency,lang):"",[d,currency,lang]);
   if(err)return <section className="panel"><p className="client-message">{err}</p></section>;
   if(!d)return <section className="panel"><p>{c.loading}</p></section>;
+  // A signed free-pilot invitation must NEVER degrade to paid checkout
+  // when entitlement is missing, revoked, or the API result is unexpected.
+  if(pilotOnly&&!d.pilot)return <section className="panel"><p role="alert">Ücretsiz pilot erişimi doğrulanamadı. Ödeme ekranı açılmadı.</p></section>;
   const ref=d.payment?.referenceCode||("AIV-"+d.client.id.slice(0,8)).toUpperCase();
   const rawIban=String(d.bank?.iban||"").replace(/\s+/g,"");
   const maskedIban=rawIban?("TR** **** **** **** **** **"+rawIban.slice(-4)):"";

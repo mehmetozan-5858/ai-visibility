@@ -13,24 +13,27 @@ const between=(src,start,end)=>{
 
 test('credential verification reads without request-time schema DDL',async()=>{
  const src=await source('lib/client-credentials.js');
- assert.match(src,/async function withDb\(fn,\{ensureSchema=true\}=\{\}\)/);
- assert.match(src,/if\(ensureSchema\)await pool\.query\(`CREATE TABLE/);
+ assert.match(src,/async function withDb\(fn\)/);
+ assert.doesNotMatch(src,/CREATE\s+(?:TABLE|INDEX)|ALTER\s+TABLE/i);
+ assert.match(src,/try\{return await fn\(pool\)\}finally\{await pool\.end\(\)\}/);
  for(const [start,end] of [
   ['export async function verifyClientCredential','export async function getClientCredential('],
   ['export async function getClientCredential(','export async function getClientCredentialByEmail('],
   ['export async function getClientCredentialByEmail(','// Server-only connection wrapper']
  ]){
   const body=between(src,start,end);
-  assert.match(body,/ensureSchema:false/);
+  assert.match(body,/withDb\(/);
+  assert.doesNotMatch(body,/ensureSchema|\bCREATE\b|\bALTER\b/);
  }
 });
 
 test('pilot access reads stay schema-free and pilot grant uses locked writer',async()=>{
  const src=await source('lib/pilot-access.js');
- assert.match(src,/async function pool\(\{ensureSchema=true\}=\{\}\)/);
- assert.match(src,/if\(ensureSchema\)await initializeSchema/);
- assert.match(src,/getPilotAccess\(clientId\)\{const p=await pool\(\{ensureSchema:false\}\)/);
- assert.match(between(src,'export async function grantPilot','export async function revokePilot'),/grantPilotWithLockReview\(await pool\(\),clientId,email,days,reason\)/);
+ assert.match(src,/function pool\(\)\{return databasePool\(getDatabaseUrl\(\)\)\}/);
+ assert.doesNotMatch(src,/initializeSchema|CREATE\s+(?:TABLE|INDEX)/i);
+ assert.match(src,/getPilotAccess\(clientId\)\{const p=pool\(\)/);
+ assert.match(between(src,'export async function grantPilot','export async function revokePilot'),/grantPilotWithLockReview\(pool\(\),clientId,email,days,reason\)/);
+ assert.match(src,/revokePilotWithLockReview\(pool\(\),clientId\)/);
 });
 
 test('finding list queries are read-only and authorized writes remain separate',async()=>{
@@ -77,7 +80,7 @@ test('customer login only establishes an authenticated session, not paid settlem
 test('legacy paid label is distinguished from verified Paddle settlement',async()=>{
  const src=await source('lib/pilot-access.js');
  const proof=await source('lib/customer-settlement-proof.mjs');
- assert.match(src,/CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
+ assert.doesNotMatch(src,/CUSTOMER_SETTLEMENT_PROOF_ENABLED/);
  assert.match(src,/customerHasVerifiedSettlement\(account\.client\.id\)/);
  assert.match(proof,/verified_customer_settlements/);
  assert.match(proof,/p\.method='paddle'/);

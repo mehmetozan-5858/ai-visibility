@@ -30,9 +30,9 @@ async function harness(){
  };
  const source=(await readFile(new URL("../lib/paddle-live.js",import.meta.url),"utf8"))
   .replace(/^import .*;\s*$/gm,"").replace(/^export /gm,"");
- const functions=new Function("createHmac","timingSafeEqual","randomUUID","databasePool","getDatabaseUrl",
+ const functions=new Function("createHmac","timingSafeEqual","randomUUID","databasePool","getDatabaseUrl","acquirePilotAdvisoryLockReview",
   source+";return {verifyPaddleLiveSignature,recordPaddleLiveEvent};")(
-  createHmac,timingSafeEqual,randomUUID,()=>pool,()=>"isolated-pglite");
+  createHmac,timingSafeEqual,randomUUID,()=>pool,()=>"isolated-pglite",async()=>{});
  return {db,...functions};
 }
 const client="11111111-1111-4111-8111-111111111111",payment="22222222-2222-4222-8222-222222222222";

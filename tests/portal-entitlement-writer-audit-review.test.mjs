@@ -15,7 +15,8 @@ test('locked pilot and payment writers remain NO-GO without verified external en
  const names=audit.findings.map(f=>f.code+':'+(f.method||''));
  assert.equal(names.some(x=>x.startsWith('account-activation-not-coordinated:')),false);
  assert.equal(names.some(x=>x.startsWith('legacy-pilot-write-unlocked:')),false);
- assert.ok(names.includes('legacy-paid-label-entitlement-unverified:customerAccess'));
+ assert.equal(names.includes('legacy-paid-label-entitlement-unverified:customerAccess'),false);
+ assert.match(pilotSource,/await customerHasVerifiedSettlement\(account\.client\.id\)/);
  assert.ok(audit.unresolvedExternal.includes('direct-admin-sql'));
  assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'));
 });
@@ -33,9 +34,18 @@ export async function revokePilot(){return revokePilotWithLockReview(x)}`;
  const repositorySource=`export async function confirmPayment(){return withPilotWriteLockReview(x)}
 export async function upsertSalesOpportunity(){}
 export async function confirmCardPaymentByMerchantOid(){return withPilotWriteLockReview(x)}
-export async function markCardPaymentFailedByMerchantOid(){}`;
+export async function markCardPaymentFailedByMerchantOid(){return withPilotWriteLockReview(x)}
+export async function addClientActivity(){}`;
  const reviewSource='withPilotWriteLockReview';
- const result=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
+ const reversalSource=`export async function reversePayment(){
+  await tx.query("BEGIN ISOLATION LEVEL READ COMMITTED");
+  const a='SELECT client_id AS "clientId" FROM payments WHERE id=$1';
+  await acquirePilotAdvisoryLockReview(tx,bound.clientId);
+  const b='SELECT * FROM payments WHERE id=$1 AND client_id=$2 FOR UPDATE';
+  const c="UPDATE clients SET status='payment-review'";
+  await tx.query("ROLLBACK");
+ }`;
+ const result=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource,reversalSource});
  assert.equal(result.ready,false,'source-only checks must not claim all writers verified');
  assert.equal(result.findings.length,0);
 });
@@ -119,4 +129,51 @@ test('reintroducing an unlocked payment activation writer is rejected without li
   assert.ok(audit.unresolvedExternal.includes('external-payment-webhooks'),
    'known writer coverage must never certify unrelated external payment writers');
  }
+});
+
+test('card failure transition must join report tenant lock before changing payment state',async()=>{
+ const [pilotSource,repositorySource,reviewSource]=await Promise.all([
+  read('lib/pilot-access.js'),read('lib/repository.js'),
+  read('lib/portal-pilot-writes-review.mjs')
+ ]);
+ const start=repositorySource.indexOf('export async function markCardPaymentFailedByMerchantOid(');
+ const end=repositorySource.indexOf('export async function addClientActivity(',start);
+ assert.ok(start>=0&&end>start);
+ const body=repositorySource.slice(start,end);
+ assert.match(body,/BEGIN ISOLATION LEVEL READ COMMITTED/);
+ assert.match(body,/acquirePilotAdvisoryLockReview\(tx,bound\.clientId\)/);
+ assert.match(body,/UPDATE payments SET status='failed'/);
+ const modified=body.replace('await acquirePilotAdvisoryLockReview(tx,bound.clientId)',
+  '/* regression: card failure loses report lock */');
+ assert.notEqual(body,modified);
+ const candidate=repositorySource.slice(0,start)+modified+repositorySource.slice(end);
+ const audit=auditPortalEntitlementWriterCoverage({pilotSource,
+  repositorySource:candidate,reviewSource});
+ assert.equal(audit.ready,false);
+ assert.ok(audit.findings.some(f=>f.code==='account-activation-not-coordinated'&&
+  f.method==='markCardPaymentFailedByMerchantOid'),
+  'removing failed-card tenant lock must block acceptance');
+});
+
+test('bank reversal joins canonical writer audit and lock inversion stays blocked',async()=>{
+ const reversalSource=await read('lib/payment-reversal.js');
+ const pilotSource=await read('lib/pilot-access.js');
+ const repositorySource=await read('lib/repository.js');
+ const reviewSource=await read('lib/portal-pilot-writes-review.mjs');
+ const args={pilotSource,repositorySource,reviewSource,reversalSource};
+ const baseline=auditPortalEntitlementWriterCoverage(args);
+ assert.equal(baseline.ready,false,'unknown external writers are never certified');
+ assert.equal(baseline.findings.some(x=>x.code==='bank-payment-reversal-lock-order-unverified'),false);
+ assert.equal(baseline.findings.some(x=>x.code==='bank-payment-reversal'),false);
+ const removed=auditPortalEntitlementWriterCoverage({...args,
+  reversalSource:reversalSource.replace('await acquirePilotAdvisoryLockReview(tx,bound.clientId);','')});
+ assert.ok(removed.findings.some(x=>x.code==='bank-payment-reversal-lock-order-unverified'));
+ const inverted=auditPortalEntitlementWriterCoverage({...args,
+  reversalSource:reversalSource.replace('await acquirePilotAdvisoryLockReview(tx,bound.clientId);','')
+   .replace('if(!payment||payment.status',
+    'await acquirePilotAdvisoryLockReview(tx,bound.clientId);\n  if(!payment||payment.status')});
+ assert.ok(inverted.findings.some(x=>x.code==='bank-payment-reversal-lock-order-unverified'));
+ const missing=auditPortalEntitlementWriterCoverage({pilotSource,repositorySource,reviewSource});
+ assert.ok(missing.findings.some(x=>x.code==='bank-payment-reversal'&&
+  x.reason==='source-or-required-writer-missing'));
 });
