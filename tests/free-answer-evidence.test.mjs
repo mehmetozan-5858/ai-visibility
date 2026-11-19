@@ -62,3 +62,36 @@ test('injected unrecognized limit hints cannot enter the evidence record',async(
  const result=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{env,request:async()=>({ok:false,reason:'provider-request-failed',status:429,limitSource:'private-data',retryAfterSeconds:999999}),recordCost:async()=>{throw Error('not called')}});
  assert.equal(result.errors[0].limitSource,undefined);assert.equal(result.errors[0].retryAfterSeconds,undefined);assert.doesNotMatch(JSON.stringify(result),/private-data/);
 });
+
+test('empty OpenRouter responses retain only safe completion diagnostics in the evidence record', async () => {
+ const model = {id: env.OPENROUTER_FREE_MODEL, pricing: {prompt: 0, completion: 0}};
+ for (const [finishReason, reasoningTokens, expected] of [
+  ['length', 350, {finishReason: 'length', reasoningTokens: 350}],
+  ['private-provider-value', '350', {}],
+ ]) {
+  const fetcher = async url => ({
+   ok: true,
+   json: async () => url.endsWith('/models') ? {data: [model]} : {
+    model: model.id,
+    choices: [{finish_reason: finishReason, message: {content: null, reasoning: 'private-reasoning'}}],
+    usage: {cost: 0, completion_tokens_details: {reasoning_tokens: reasoningTokens}},
+   },
+  });
+  let costCalls = 0;
+  const result = await collectFreeAnswerEvidence(entity, {queries: [queries[0]]}, {
+   env,
+   request: args => runFreeBridgeTask({...args, fetcher}),
+   recordCost: async () => { costCalls++; },
+  });
+  assert.deepEqual(result.observations, []);
+  assert.equal(costCalls, 0);
+  assert.equal(result.errors.length, 1);
+  assert.deepEqual(result.errors[0], {
+   provider: 'OpenRouter',
+   query: queries[0],
+   reason: 'empty-response',
+   ...expected,
+   error: 'Ücretsiz sağlayıcı çağrısı tamamlanamadı; ücretli sağlayıcı denenmedi.',
+  });
+ }
+});
