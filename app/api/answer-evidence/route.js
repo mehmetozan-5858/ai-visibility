@@ -1,4 +1,4 @@
-import {freeMeasurementStatus,collectFreeAnswerEvidence} from '../../../lib/free-answer-evidence.mjs';
+import {freeMeasurementStatus,collectFreeAnswerEvidence,ZERA_ALTERNATE_FREE_MODEL} from '../../../lib/free-answer-evidence.mjs';
 import {clientBaselineOptions} from '../../../lib/answer-evidence-baseline';
 import {answerEvidenceStatus} from '../../../lib/answer-evidence-status';
 import {repeatEvidenceOptions} from '../../../lib/answer-evidence-comparison';
@@ -22,7 +22,16 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
   const profile=body.entityType==='client'?await getClientProfile(body.entityId):null,entity={...row,...(profile?{sector:profile.sector,city:profile.city,country:profile.country}:{}),entityType:body.entityType};
   if(body.freeOnly!==undefined&&typeof body.freeOnly!=='boolean')return Response.json({error:'Geçersiz ücretsiz ölçüm seçimi.'},{status:400});
   if(body.freeOnly===true&&(body.baseline!==undefined||body.repeatRunId!==undefined))return Response.json({error:'Ücretsiz ölçüm yeni ve ayrı bir tur olmalıdır.'},{status:400});
-  if(body.freeOnly===true&&!freeMeasurementStatus().ready)return Response.json({error:'Ücretsiz ölçüm bağlantısı hazır değil.',freeMeasurement:freeMeasurementStatus()},{status:503,headers:{'cache-control':'no-store'}});
+  const alternate=body.zeraAlternateFreeModel===true;
+  if(body.zeraAlternateFreeModel!==undefined&&(!alternate||body.freeOnly!==true||body.entityType!=='client'
+   ||row.name!=='ZERA Clothing'||row.plan!=='Pilot'||row.status!=='active'
+   ||!Array.isArray(body.queries)||body.queries.length!==1||typeof body.queries[0]!=='string'||!body.queries[0].trim()))
+   return Response.json({error:'Alternatif ücretsiz model yalnızca aktif ZERA pilotunda tek açık sorgu için kullanılabilir.'},{status:400});
+  const model=alternate?ZERA_ALTERNATE_FREE_MODEL:undefined;
+  if(body.freeOnly===true){
+   const freeStatus=freeMeasurementStatus(process.env,model);
+   if(!freeStatus.ready)return Response.json({error:'Ücretsiz ölçüm bağlantısı hazır değil.',freeMeasurement:freeStatus},{status:503,headers:{'cache-control':'no-store'}});
+  }
   const language=body.language==='en'?'en':'tr';let queries;try{queries=body.repeatRunId!==undefined?[]:evidenceQueries(entity,body.queries??[],language).map(x=>x.query)}catch{return Response.json({error:'En fazla 2 sorgu yazın (8–500 karakter). Otomatik sorgu için sektör ve konum gerekli.'},{status:400})}
   let options={queries,language};
   if(body.baseline===true){try{options=clientBaselineOptions(entity,queries,language,answerProviders())}catch{return Response.json({error:'Başlangıç ölçümü için markayı/alan adını içermeyen tek sorgu ve bağlı sağlayıcı gerekir.'},{status:400})}}
@@ -32,5 +41,6 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
    try{options=repeatEvidenceOptions(entity,previous,answerProviders())}catch{return Response.json({error:'İşletme kimliği veya sağlayıcı yapılandırması değişmiş; bu tur aynı koşullarda tekrarlanamıyor.'},{status:409})}
   }
   options.measurementOrigin='admin';
-  const run=await measureAnswerEvidence(entity,options,body.freeOnly===true?{collect:collectFreeAnswerEvidence}:{});return Response.json({run},{status:run.skipped?409:200});
+  const collector=body.freeOnly===true?{collect:alternate?((entity,options)=>collectFreeAnswerEvidence(entity,options,{model})):collectFreeAnswerEvidence}:{};
+  const run=await measureAnswerEvidence(entity,options,collector);return Response.json({run},{status:run.skipped?409:200});
  }catch{return Response.json({error:'Yanıt kanıtı turu tamamlanamadı. Yapılandırmayı kontrol edip tekrar deneyin.'},{status:503})}}
