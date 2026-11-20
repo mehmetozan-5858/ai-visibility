@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {runFreeBridgeTask,selectFreeModel} from "../lib/ai-bridge-free-inference.mjs";
+import {runFreeBridgeTask,selectFreeModel,ZERA_ALTERNATE_FREE_MODEL} from "../lib/ai-bridge-free-inference.mjs";
 const id="cohere/north-mini-code:free";
 const model={id,pricing:{prompt:"0",completion:"0"}};
-const mock=(calls)=>(async (url,opts)=>{
+const mock=(calls, candidate = model)=>(async (url,opts)=>{
   calls.push({url,opts});
-  return url.endsWith("/models")?{ok:true,json:async()=>({data:[model]})}:
-    {ok:true,json:async()=>({model:id,choices:[{message:{content:"Reviewed safely."}}],usage:{cost:0}})};
+  return url.endsWith("/models")?{ok:true,json:async()=>({data:[candidate]})}:
+    {ok:true,json:async()=>({model:candidate.id,choices:[{message:{content:"Reviewed safely."}}],usage:{cost:0}})};
 });
 test("disabled by default makes no network requests",async()=>{
  const calls=[];const r=await runFreeBridgeTask({modelId:id,prompt:"hi",apiKey:"test",fetcher:mock(calls)});
@@ -23,6 +23,21 @@ test("successful request uses verified catalog and exactly one inference call",a
  assert.equal(r.ok,true);assert.equal(calls.length,2);
  assert.equal(calls[1].opts.method,"POST");
  assert.equal(JSON.parse(calls[1].opts.body).max_tokens,350);
+ assert.equal(JSON.parse(calls[1].opts.body).reasoning,undefined);
+});
+test("Nemotron pilot requests a final answer with reasoning disabled within the same free output limit", async () => {
+ const calls = [];
+ const candidate = {...model, id: ZERA_ALTERNATE_FREE_MODEL};
+ const result = await runFreeBridgeTask({
+  modelId: candidate.id, prompt: "One short answer", apiKey: "test", enabled: true, fetcher: mock(calls, candidate),
+ });
+ assert.equal(result.ok, true);
+ assert.equal(calls.length, 2);
+ const body = JSON.parse(calls[1].opts.body);
+ assert.deepEqual(body.reasoning, {enabled: false});
+ assert.equal(body.max_tokens, 350);
+ assert.equal(body.provider.allow_fallbacks, false);
+ assert.ok(Object.values(body.provider.max_price).every(price => price === 0));
 });
 test("free suffix does not bypass nonzero pricing",async()=>{
  const calls=[];
