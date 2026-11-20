@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {PGlite} from '@electric-sql/pglite';
-import {PDFDocument} from 'pdf-lib';
+import {PDFDocument,decodePDFRawStream,PDFRawStream} from 'pdf-lib';
 import {comparisonReportRows,readCustomerComparisonReport} from '../lib/customer-comparison-report.mjs';
 import {buildReportResponse} from '../lib/report-pdf.js';
 const id='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
@@ -64,5 +64,16 @@ test('customer report includes only its complete zero-price OpenRouter observati
   assert.equal(rows[0].results[0].answer,'Own response');
   assert.equal(rows[0].results[0].supported,false);
   assert.equal(rows[0].results[0].provider,'openrouter');
+  assert.deepEqual(comparisonReportRows(rows,id),[]);
+  const response=await buildReportResponse({clientId:id,clients:[{id,name:'ZERA TEST'}],allScans:[],comparisons:rows,pilot:true});
+  const pdf=await PDFDocument.load(await response.arrayBuffer());
+  const streams=pdf.context.enumerateIndirectObjects()
+   .map(([,object])=>object).filter(object=>object instanceof PDFRawStream)
+   .filter(stream=>String(stream.dict.get(pdf.context.obj('Subtype'))) !== '/Image')
+   .map(stream=>Buffer.from(decodePDFRawStream(stream).decode()).toString('ascii')).join('\n');
+  const encoded=text=>Buffer.from(text).toString('hex').toUpperCase();
+  assert.ok(streams.includes(encoded('AI yaniti (alinti): Own response')));
+  assert.ok(streams.includes(encoded('OpenRouter - Dogrulanmamis AI yaniti')));
+  assert.ok(!streams.includes(encoded('AI yaniti (alinti): Another customer')));
  }finally{await db.close()}
 });
