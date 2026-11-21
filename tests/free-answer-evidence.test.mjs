@@ -95,3 +95,21 @@ test('empty OpenRouter responses retain only safe completion diagnostics in the 
   });
  }
 });
+
+test('free pilot switches on an upstream pool limit and stops on account quota',async()=>{
+ const fallbackModels=['test/backup:free','paid/model'];
+ for(const limitSource of ['upstream_provider_shared_pool','openrouter_free_tier_per_day']){
+  const calls=[];
+  const result=await collectFreeAnswerEvidence(entity,{queries:[queries[0]]},{
+   env,fallbackModels,recordCost:async()=>({id:'zero-cost'}),
+   request:async({modelId})=>{
+    calls.push(modelId);
+    return calls.length===1?{ok:false,status:429,reason:'provider-request-failed',limitSource}:
+     {ok:true,modelId,usage:{cost:0},verifiedZeroPriceAtRequest:true,answer:'Fixture answer',complete:true,responseId:'fixture'};
+   },
+  });
+  assert.equal(calls.length,limitSource==='upstream_provider_shared_pool'?2:1);
+  assert.equal(result.observations[0]?.model,calls.length===2?fallbackModels[0]:undefined);
+  assert.equal(result.fallbackAttempts?.[0]?.limitSource,calls.length===2?limitSource:undefined);
+ }
+});
