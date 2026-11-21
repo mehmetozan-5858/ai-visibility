@@ -51,14 +51,14 @@ test('customer report includes only its complete zero-price OpenRouter observati
  try{
   await db.exec('CREATE TABLE answer_evidence_runs(entity_type TEXT,entity_id UUID,result JSONB,created_at TIMESTAMPTZ)');
   const observation={provider:'OpenRouter',mode:'openrouter-free-api-no-search',model:'test/model:free',responseId:'fixture-id',
-   usage:{cost:{total_cost:0}},truncated:false,brandPrompted:false,query:'Neutral prompt',text:'Fixture response'};
+   usage:{cost:{total_cost:0}},truncated:false,brandPrompted:false,brandMentioned:false,query:'Neutral prompt',text:'Fixture response'};
   for(const [type,owner,text,extra] of [
    ['client',id,'Own response',{}],['client',other,'Another customer',{}],
    ['prospect',id,'Prospect response',{}],['client',id,'Incomplete response',{truncated:true}],
    ['client',id,'Paid response',{usage:{cost:{total_cost:1}}}],
    ['client',id,'Unidentified response',{responseId:''}]
   ])await db.query('INSERT INTO answer_evidence_runs VALUES($1,$2,$3::jsonb,NOW())',
-   [type,owner,JSON.stringify({measurementPolicy:'verified-zero-price-only',observations:[{...observation,text,...extra}]})]);
+   [type,owner,JSON.stringify({measurementPolicy:'verified-zero-price-only',automationKind:'pilot-first',measurementOrigin:'scheduler',observations:[{...observation,text,...extra}]})]);
   const rows=await readCustomerComparisonReport(db,id);
   assert.equal(rows.length,1);
   assert.equal(rows[0].results[0].answer,'Own response');
@@ -74,6 +74,7 @@ test('customer report includes only its complete zero-price OpenRouter observati
   const encoded=text=>Buffer.from(text).toString('hex').toUpperCase();
   assert.ok(streams.includes(encoded('AI yaniti (alinti): Own response')));
   assert.ok(streams.includes(encoded('OpenRouter - Dogrulanmamis AI yaniti')));
+  assert.ok(streams.includes(encoded('Otomatik pilot olcumu - ucretsiz OpenRouter API sorgusu.')));
   assert.ok(!streams.includes(encoded('AI yaniti (alinti): Another customer')));
  }finally{await db.close()}
 });
