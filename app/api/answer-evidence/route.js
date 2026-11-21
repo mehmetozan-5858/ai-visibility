@@ -6,14 +6,14 @@ import {requireAdmin,enforceSameOrigin} from '../../../lib/api-security';
 import {getClient} from '../../../lib/repository';
 import {getClientProfile} from '../../../lib/client-profile';
 import {getProspect} from '../../../lib/prospects';
-import {answerProviders} from '../../../lib/answer-evidence-providers';
+import {answerProviders,boardAnswerProviders} from '../../../lib/answer-evidence-providers';
 import {evidenceQueries} from '../../../lib/answer-evidence-rules';
 import {listAnswerEvidence,measureAnswerEvidence,getAnswerEvidenceRun} from '../../../lib/answer-evidence-store';
 export const runtime='nodejs';
 export const maxDuration=60;
 const uuid=value=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export async function GET(req){const denied=await requireAdmin(req);if(denied)return denied;
- try{const params=new URL(req.url).searchParams,entityType=params.get('entityType'),entityId=params.get('entityId');if((entityType&&!['prospect','client'].includes(entityType))||(entityId&&!uuid(entityId)))return Response.json({error:'Geçersiz kayıt filtresi.'},{status:400});const [history,automation]=await Promise.allSettled([listAnswerEvidence({entityType,entityId}),answerEvidenceStatus({entityType,entityId})]);if(history.status!=='fulfilled')throw Error('history-unavailable');return Response.json({runs:history.value,status:automation.status==='fulfilled'?automation.value:{supported:true,error:'Otomatik ölçüm durumu alınamadı; bekleyen sayısı bilinmiyor.'},providers:answerProviders(),freeMeasurement:freeMeasurementStatus()},{headers:{'cache-control':'no-store'}})}catch{return Response.json({error:'Yanıt kanıtları alınamadı.'},{status:503})}}
+ try{const params=new URL(req.url).searchParams,entityType=params.get('entityType'),entityId=params.get('entityId');if((entityType&&!['prospect','client'].includes(entityType))||(entityId&&!uuid(entityId)))return Response.json({error:'Geçersiz kayıt filtresi.'},{status:400});const [history,automation]=await Promise.allSettled([listAnswerEvidence({entityType,entityId}),answerEvidenceStatus({entityType,entityId})]);if(history.status!=='fulfilled')throw Error('history-unavailable');return Response.json({runs:history.value,status:automation.status==='fulfilled'?automation.value:{supported:true,error:'Otomatik ölçüm durumu alınamadı; bekleyen sayısı bilinmiyor.'},providers:boardAnswerProviders(),freeMeasurement:freeMeasurementStatus()},{headers:{'cache-control':'no-store'}})}catch{return Response.json({error:'Yanıt kanıtları alınamadı.'},{status:503})}}
 export async function POST(req){const denied=await requireAdmin(req);if(denied)return denied;const origin=enforceSameOrigin(req);if(origin)return origin;
  try{
   const body=await req.json();if(!['prospect','client'].includes(body.entityType)||!uuid(body.entityId))return Response.json({error:'Geçerli bir işletme seçin.'},{status:400});
@@ -41,6 +41,7 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
    try{options=repeatEvidenceOptions(entity,previous,answerProviders())}catch{return Response.json({error:'İşletme kimliği veya sağlayıcı yapılandırması değişmiş; bu tur aynı koşullarda tekrarlanamıyor.'},{status:409})}
   }
   options.measurementOrigin='admin';
+  if(!body.freeOnly&&!body.baseline&&!body.repeatRunId)options.includeBoardModels=true;
   const collector=body.freeOnly===true?{collect:alternate?((entity,options)=>collectFreeAnswerEvidence(entity,options,{model})):collectFreeAnswerEvidence}:{};
   const run=await measureAnswerEvidence(entity,options,collector);return Response.json({run},{status:run.skipped?409:200});
  }catch{return Response.json({error:'Yanıt kanıtı turu tamamlanamadı. Yapılandırmayı kontrol edip tekrar deneyin.'},{status:503})}}
