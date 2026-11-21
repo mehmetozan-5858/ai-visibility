@@ -49,11 +49,18 @@ test('comparison provenance is saved in the same transaction as the new raw answ
 test('automatic repeat rechecks the 24-hour cooldown under the entity lock before spending',async()=>{const f=dbFixture({recent:true});const r=await measureAnswerEvidence(entity,{automaticRepeat:true},f.deps);assert.equal(r.skipped,'recent-run');assert.equal(f.state.collect,0);assert.equal(f.state.calls.find(x=>x.sql.startsWith('SELECT id FROM')).p[2],1440);const g=dbFixture({recent:true});await measureAnswerEvidence(entity,{},g.deps);assert.equal(g.state.calls.find(x=>x.sql.startsWith('SELECT id FROM')).p[2],15)});
 test('baseline candidate label persists without inventing work linkage or rewriting measurement date',async()=>{const f=dbFixture();await measureAnswerEvidence({...entity,entityType:'client'},{measurementPurpose:'implementation-baseline-candidate',measurementOrigin:'admin'},f.deps);const inserted=f.state.calls.find(x=>x.sql.startsWith('INSERT')),saved=JSON.parse(inserted.p[5]);assert.equal(saved.measurementPurpose,'implementation-baseline-candidate');assert.equal(saved.measurementOrigin,'admin');assert.equal(saved.implementationContext,undefined);assert.ok(!inserted.sql.includes('created_at)'));assert.equal(saved.summary.neutralComplete,0)});
 
-test('board measures eight distinct models while the existing standard collector stays at three',async()=>{
+test('board measures fourteen distinct models while the existing standard collector stays at three',async()=>{
  const env={OPENAI_API_KEY:'fixture',GEMINI_API_KEY:'fixture',PERPLEXITY_API_KEY:'fixture',OPENROUTER_API_KEY:'fixture',APPLICANT_FREE_MEASUREMENT_ENABLED:'true'};
  const opts={env,queries:['Suggest machining providers in Berlin.'],recordCost:async()=>{},request:async provider=>({text:'Fixture',model:provider,complete:true,citations:[]})};
  const report=await collectAnswerEvidence(entity,{...opts,includeBoardModels:true});
- assert.equal(new Set(report.observations.map(x=>x.model)).size,8);
- assert.equal(report.observations.filter(x=>x.model.endsWith(':free')).length,5);
+ assert.equal(new Set(report.observations.map(x=>x.model)).size,14);
+ assert.equal(report.observations.filter(x=>x.model.endsWith(':free')).length,11);
+ const secondQuery='Suggest tooling manufacturers in Munich.';
+ const twoQueries=await collectAnswerEvidence(entity,{...opts,includeBoardModels:true,queries:[...opts.queries,secondQuery]});
+ assert.equal(twoQueries.observations.filter(x=>x.query===opts.queries[0]).length,14);
+ assert.equal(twoQueries.observations.filter(x=>x.query===secondQuery).length,8);
+ const mixed=await collectAnswerEvidence(entity,{...opts,includeBoardModels:true,queries:['Would you recommend Acme Precision in Berlin?',secondQuery]});
+ assert.equal(mixed.observations.filter(x=>x.query===secondQuery).length,14);
+ assert.equal(mixed.observations.filter(x=>x.brandPrompted&&x.model.endsWith(':free')).length,0);
  assert.equal((await collectAnswerEvidence(entity,opts)).observations.length,3);
 });
