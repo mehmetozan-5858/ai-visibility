@@ -30,6 +30,6 @@ export async function GET(req){
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;
     const locale=language==="en"?"en-US":"tr-TR";
-    return privateJson({account:{...account,access,profile,reportEvidence,service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
+    return privateJson({account:{...account,access,profile,reportEvidence,showZeraChannelReport:access.kind==="pilot"&&session.clientId===process.env.ZERA_CHANNEL_REPORT_CLIENT_ID&&account.client.name==="ZERA Clothing"&&account.client.plan==="Pilot",service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
   }catch{return privateJson({error:en?"The customer portal could not be loaded.":"Müşteri paneli yüklenemedi."},500)}
 }
