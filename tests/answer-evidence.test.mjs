@@ -1,3 +1,4 @@
+import {FREE_MODEL_FALLBACKS,freeMeasurementStatus,ZERA_ALTERNATE_FREE_MODEL} from '../lib/free-answer-evidence.mjs';
 import {implementationAnswerOptions} from '../lib/answer-evidence-work-rules.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +27,7 @@ test('prompted, empty, incomplete and failed responses never count as neutral ab
  const s=answerSummary([valid,prompted,partial],[{error:'timeout'}]);assert.equal(s.neutralComplete,1);assert.equal(s.brandMentions,0);assert.equal(s.failed,1);assert.equal(s.prompted,1);assert.equal(s.incomplete,1);assert.equal(s.score,undefined);
 });
 const providerSource=(await readFile(new URL('../lib/answer-evidence-providers.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
-const {collectAnswerEvidence}=new Function('answerObservation','answerSummary','evidenceQueries','parsePerplexityAnswer','withRequestBudget',providerSource+';return {collectAnswerEvidence};')(answerObservation,answerSummary,evidenceQueries,parsePerplexityAnswer,async(ms,fn)=>fn());
+const {collectAnswerEvidence}=new Function('answerObservation','answerSummary','evidenceQueries','parsePerplexityAnswer','withRequestBudget','FREE_MODEL_FALLBACKS','freeMeasurementStatus','ZERA_ALTERNATE_FREE_MODEL',providerSource+';return {collectAnswerEvidence};')(answerObservation,answerSummary,evidenceQueries,parsePerplexityAnswer,async(ms,fn)=>fn(),FREE_MODEL_FALLBACKS,freeMeasurementStatus,ZERA_ALTERNATE_FREE_MODEL);
 test('collects actual query responses, records cost per success and preserves partial failure',async()=>{
  const calls=[],costs=[];const r=await collectAnswerEvidence(entity,{queries:['Suggest machining providers in Berlin.'],env:{OPENAI_API_KEY:'fixture',GEMINI_API_KEY:'fixture',PERPLEXITY_API_KEY:'fixture'},request:async(p,q)=>{calls.push({p,q});if(p==='Gemini')throw Error('timeout');return {text:p==='ChatGPT'?'Acme Precision.':'Other suppliers',model:'fixture',complete:true,citations:[],usage:p==='Perplexity'?{cost:{total_cost:.01,currency:'USD'}}:null}},recordCost:async c=>costs.push(c)});
  assert.equal(calls.length,3);assert.ok(calls.every(x=>x.q==='Suggest machining providers in Berlin.'));assert.equal(r.observations.length,2);assert.equal(r.summary.neutralComplete,2);assert.equal(r.summary.brandMentions,1);assert.equal(r.errors.length,1);assert.equal(costs.length,2);assert.equal(costs.find(x=>x.provider==='ChatGPT').metadata.pricingSource,'unconfigured-zero');assert.equal(costs.find(x=>x.provider==='Perplexity').estimated,false);
@@ -47,3 +48,12 @@ test('comparison provenance is saved in the same transaction as the new raw answ
 
 test('automatic repeat rechecks the 24-hour cooldown under the entity lock before spending',async()=>{const f=dbFixture({recent:true});const r=await measureAnswerEvidence(entity,{automaticRepeat:true},f.deps);assert.equal(r.skipped,'recent-run');assert.equal(f.state.collect,0);assert.equal(f.state.calls.find(x=>x.sql.startsWith('SELECT id FROM')).p[2],1440);const g=dbFixture({recent:true});await measureAnswerEvidence(entity,{},g.deps);assert.equal(g.state.calls.find(x=>x.sql.startsWith('SELECT id FROM')).p[2],15)});
 test('baseline candidate label persists without inventing work linkage or rewriting measurement date',async()=>{const f=dbFixture();await measureAnswerEvidence({...entity,entityType:'client'},{measurementPurpose:'implementation-baseline-candidate',measurementOrigin:'admin'},f.deps);const inserted=f.state.calls.find(x=>x.sql.startsWith('INSERT')),saved=JSON.parse(inserted.p[5]);assert.equal(saved.measurementPurpose,'implementation-baseline-candidate');assert.equal(saved.measurementOrigin,'admin');assert.equal(saved.implementationContext,undefined);assert.ok(!inserted.sql.includes('created_at)'));assert.equal(saved.summary.neutralComplete,0)});
+
+test('board measures eight distinct models while the existing standard collector stays at three',async()=>{
+ const env={OPENAI_API_KEY:'fixture',GEMINI_API_KEY:'fixture',PERPLEXITY_API_KEY:'fixture',OPENROUTER_API_KEY:'fixture',APPLICANT_FREE_MEASUREMENT_ENABLED:'true'};
+ const opts={env,queries:['Suggest machining providers in Berlin.'],recordCost:async()=>{},request:async provider=>({text:'Fixture',model:provider,complete:true,citations:[]})};
+ const report=await collectAnswerEvidence(entity,{...opts,includeBoardModels:true});
+ assert.equal(new Set(report.observations.map(x=>x.model)).size,8);
+ assert.equal(report.observations.filter(x=>x.model.endsWith(':free')).length,5);
+ assert.equal((await collectAnswerEvidence(entity,opts)).observations.length,3);
+});
