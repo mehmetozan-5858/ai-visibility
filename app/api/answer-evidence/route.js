@@ -22,6 +22,10 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
   const profile=body.entityType==='client'?await getClientProfile(body.entityId):null,entity={...row,...(profile?{sector:profile.sector,city:profile.city,country:profile.country}:{}),entityType:body.entityType};
   if(body.freeOnly!==undefined&&typeof body.freeOnly!=='boolean')return Response.json({error:'Geçersiz ücretsiz ölçüm seçimi.'},{status:400});
   if(body.freeOnly===true&&(body.baseline!==undefined||body.repeatRunId!==undefined))return Response.json({error:'Ücretsiz ölçüm yeni ve ayrı bir tur olmalıdır.'},{status:400});
+  const freeBoard=body.freeBoard===true;
+  if(body.freeBoard!==undefined&&(!freeBoard||body.freeOnly!==undefined||body.baseline!==undefined
+   ||body.repeatRunId!==undefined||body.zeraAlternateFreeModel!==undefined))
+   return Response.json({error:'Ücretsiz model karşılaştırması ayrı bir tur olarak başlatılır.'},{status:400});
   const alternate=body.zeraAlternateFreeModel===true;
   if(body.zeraAlternateFreeModel!==undefined&&(!alternate||body.freeOnly!==true||body.entityType!=='client'
    ||row.name!=='ZERA Clothing'||row.plan!=='Pilot'||row.status!=='active'
@@ -34,6 +38,14 @@ export async function POST(req){const denied=await requireAdmin(req);if(denied)r
   }
   const language=body.language==='en'?'en':'tr';let queries;try{queries=body.repeatRunId!==undefined?[]:evidenceQueries(entity,body.queries??[],language).map(x=>x.query)}catch{return Response.json({error:'En fazla 2 sorgu yazın (8–500 karakter). Otomatik sorgu için sektör ve konum gerekli.'},{status:400})}
   let options={queries,language};
+  if(freeBoard){
+   const samples=evidenceQueries(entity,queries,language);
+   if(samples.length!==1||samples[0].brandPrompted)
+    return Response.json({error:'Ücretsiz model karşılaştırması için marka ve alan adı içermeyen tek sorgu kullanın.'},{status:400});
+   const providers=boardAnswerProviders().filter(provider=>provider.endsWith(':free'));
+   if(!providers.length)return Response.json({error:'Ücretsiz model havuzu yapılandırılmamış.'},{status:503});
+   options.providers=providers;
+  }
   if(body.baseline===true){try{options=clientBaselineOptions(entity,queries,language,answerProviders())}catch{return Response.json({error:'Başlangıç ölçümü için markayı/alan adını içermeyen tek sorgu ve bağlı sağlayıcı gerekir.'},{status:400})}}
   if(body.repeatRunId!==undefined){
    if(!uuid(body.repeatRunId)||body.queries!==undefined)return Response.json({error:'Tekrar ölçüm için yalnız kayıt kimliği gönderin.'},{status:400});
