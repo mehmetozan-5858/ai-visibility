@@ -6,7 +6,7 @@ import {ZERA_ALTERNATE_FREE_MODEL} from '../lib/free-answer-evidence.mjs';
 import {evidenceQueries} from '../lib/answer-evidence-rules.js';
 const source=(await readFile(new URL('../app/api/answer-evidence/route.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/export /g,'');
 const id='01a11278-c210-7176-bc7f-0196dec182ec';
-function fixture({denied=false,origin=false,missing=false,statusFail=false,freeReady=false,customer={}}={}){let calls=0;const models=[];const row={id,name:'Acme Precision',domain:'acme.com',sector:'Machining',city:'Berlin',...customer};const deps={ZERA_ALTERNATE_FREE_MODEL,freeMeasurementStatus:()=>({ready:freeReady,priceVerified:false}),collectFreeAnswerEvidence:async(_entity,_options,config)=>models.push(config?.model),requireAdmin:async()=>denied?Response.json({error:'auth-required'},{status:401}):null,enforceSameOrigin:()=>origin?Response.json({error:'origin'},{status:403}):null,getClient:async()=>missing?null:row,getClientProfile:async()=>({sector:'Machining',city:'Berlin'}),repeatEvidenceOptions,getAnswerEvidenceRun:async()=>({id,entityId:id,entityType:'prospect',entityName:row.name,domain:row.domain,result:{queries:['Suggest machining providers in Berlin.'],observations:[{provider:'Gemini'}],errors:[]}}),getProspect:async()=>missing?null:row,answerProviders:()=>['Gemini'],boardAnswerProviders:()=>['Gemini'],evidenceQueries,answerEvidenceStatus:async()=>{if(statusFail)throw Error('database-unavailable');return {supported:true}},listAnswerEvidence:async()=>[],measureAnswerEvidence:async(entity,options,overrides)=>{calls++;if(overrides?.collect)await overrides.collect(entity,options);assert.equal(entity.name,row.name);assert.equal(options.queries.length,1);return {id:'run'}}};const api=new Function(...Object.keys(deps),source+';return {GET,POST};')(...Object.values(deps));return {api,calls:()=>calls,models}}
+function fixture({denied=false,origin=false,missing=false,statusFail=false,freeReady=false,customer={}}={}){let calls=0;const models=[],measurements=[];const row={id,name:'Acme Precision',domain:'acme.com',sector:'Machining',city:'Berlin',...customer};const deps={ZERA_ALTERNATE_FREE_MODEL,freeMeasurementStatus:()=>({ready:freeReady,priceVerified:false}),collectFreeAnswerEvidence:async(_entity,_options,config)=>models.push(config?.model),requireAdmin:async()=>denied?Response.json({error:'auth-required'},{status:401}):null,enforceSameOrigin:()=>origin?Response.json({error:'origin'},{status:403}):null,getClient:async()=>missing?null:row,getClientProfile:async()=>({sector:'Machining',city:'Berlin'}),repeatEvidenceOptions,getAnswerEvidenceRun:async()=>({id,entityId:id,entityType:'prospect',entityName:row.name,domain:row.domain,result:{queries:['Suggest machining providers in Berlin.'],observations:[{provider:'Gemini'}],errors:[]}}),getProspect:async()=>missing?null:row,answerProviders:()=>['Gemini'],boardAnswerProviders:()=>freeReady?['Gemini','google/gemma-4-31b-it:free','liquid/lfm-3-1.7b:free']:['Gemini'],evidenceQueries,answerEvidenceStatus:async()=>{if(statusFail)throw Error('database-unavailable');return {supported:true}},listAnswerEvidence:async()=>[],measureAnswerEvidence:async(entity,options,overrides)=>{calls++;measurements.push(options);if(overrides?.collect)await overrides.collect(entity,options);assert.equal(entity.name,row.name);assert.equal(options.queries.length,1);return {id:'run'}}};const api=new Function(...Object.keys(deps),source+';return {GET,POST};')(...Object.values(deps));return {api,calls:()=>calls,models,measurements}}
 const req=body=>new Request('https://example.com/api/answer-evidence',{method:'POST',body:JSON.stringify(body)});
 test('admin authentication and same-origin checks precede every evidence write',async()=>{for(const config of [{denied:true},{origin:true}]){const f=fixture(config);assert.ok([401,403].includes((await f.api.POST(req({entityType:'prospect',entityId:id}))).status));assert.equal(f.calls(),0)}const f=fixture({denied:true});assert.equal((await f.api.GET(new Request('https://example.com/api/answer-evidence'))).status,401)});
 test('invalid entity and excessive queries never spend provider requests',async()=>{const f=fixture();for(const body of [{entityType:'prospect',entityId:'bad'},{entityType:'unknown',entityId:id},{entityType:'prospect',entityId:id,queries:['One valid query?','Another valid query?','Third valid query?']}])assert.equal((await f.api.POST(req(body))).status,400);assert.equal(f.calls(),0);const missing=fixture({missing:true});assert.equal((await missing.api.POST(req({entityType:'prospect',entityId:id}))).status,404)});
@@ -37,4 +37,21 @@ test('alternate model is server-selected for one explicit active ZERA pilot quer
   assert.equal((await rejected.api.POST(req({...body,...change}))).status,400);
   assert.equal(rejected.calls(),0);
  }
+});
+
+test('board free comparison accepts one neutral query and only server-selected free models',async()=>{
+ const body={entityType:'client',entityId:id,freeBoard:true,queries:['Wo finde ich Damenmode in Wetzlar?']};
+ const ready=fixture({freeReady:true});
+ assert.equal((await ready.api.POST(req({...body,providers:['Gemini']}))).status,200);
+ assert.equal(ready.measurements[0].includeBoardModels,true);
+ assert.deepEqual(ready.measurements[0].providers,['google/gemma-4-31b-it:free','liquid/lfm-3-1.7b:free']);
+ for(const change of [{freeBoard:'true'},{freeOnly:true},{baseline:true},{repeatRunId:id},
+  {queries:['Acme Precision in Berlin?']},{queries:[...body.queries,'Which boutiques are nearby?']}]){
+  const rejected=fixture({freeReady:true});
+  assert.equal((await rejected.api.POST(req({...body,...change}))).status,400);
+  assert.equal(rejected.calls(),0);
+ }
+ const unconfigured=fixture();
+ assert.equal((await unconfigured.api.POST(req(body))).status,503);
+ assert.equal(unconfigured.calls(),0);
 });
