@@ -1,3 +1,4 @@
+import styles from './page.module.css';
 import ZeraFirstCustomerTrial from '../../../../components/ZeraFirstCustomerTrial';
 import {cookies} from 'next/headers';
 import {notFound} from 'next/navigation';
@@ -24,18 +25,18 @@ export default async function Page({searchParams}) {
   if (!allowed) notFound();
 
   const report = buildZeraChannelReport((await searchParams).profil);
-  return <main>
-    <a href="/musteri-panel">Müşteri paneli</a>
+  return <main className={styles.page}>
+    <a className={styles.back} href="/musteri-panel">Müşteri paneli</a>
     <h1>ZERA · Dijital kanal raporu</h1>
     <p>Test müşterisi. Bu ekran tarihli açık kanıt kayıtlarından rapor üretir. Kaynakların güncelliği ayrıca doğrulanır.</p>
-    <form method="get" action="/musteri-panel/rapor/zera">
+    <form className={styles.profile} method="get" action="/musteri-panel/rapor/zera">
       <label htmlFor="profil">ZERA Instagram profili</label>{' '}
       <input id="profil" name="profil" type="url" required defaultValue={report?.profileUrl || ''}/>{' '}
       <button type="submit">Raporu göster</button>
     </form>
     {!report && <p>Raporu açmak için ZERA’nın Instagram profil adresini girin.</p>}
     {report?.findings.map(item => <details key={item.id}>
-      <summary>{item.title} · {item.status}</summary>
+      <summary><strong>{item.title}</strong><span className={styles.evidence}>{item.status}</span></summary>
       <p>{item.observation}</p>
       <p><strong>Kaynak tarihi</strong> {item.date}</p>
       {item.source.type === 'instagram'
