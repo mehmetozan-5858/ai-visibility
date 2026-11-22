@@ -9,12 +9,13 @@ import {checkRateLimit} from "../../../lib/api-security";
 import {buildApplicantAssessmentPdf} from "../../../lib/applicant-assessment-pdf.mjs";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
-const headers={"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow","Vary":"Cookie, x-applicant-assessment-token","X-Content-Type-Options":"nosniff"};
+const previewHeaders={"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow","Vary":"x-applicant-assessment-token","X-Content-Type-Options":"nosniff"};
 export async function GET(req){
- const limited=checkRateLimit(req,{bucket:"applicant-assessment-preview",limit:20,windowMs:60000});if(limited){for(const [key,value] of Object.entries(headers))limited.headers.set(key,value);return limited;}
- if(!linkedApplicantAssessmentEnabled())return Response.json({error:"Preview not enabled"},{status:503,headers});
  const params=new URL(req.url).searchParams;
  const portal=params.get("source")==="customer-portal";
+ const headers=portal?{...previewHeaders,Vary:"Cookie"}:previewHeaders;
+ const limited=checkRateLimit(req,{bucket:"applicant-assessment-preview",limit:20,windowMs:60000});if(limited){for(const [key,value] of Object.entries(headers))limited.headers.set(key,value);return limited;}
+ if(!linkedApplicantAssessmentEnabled())return Response.json({error:"Preview not enabled"},{status:503,headers});
  const grant=verifyApplicantAssessmentGrant(req.headers.get("x-applicant-assessment-token"));
  if(!portal&&!grant)return Response.json({error:"Invalid or expired preview grant"},{status:401,headers});
  const format=params.get("format");
