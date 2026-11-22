@@ -1,3 +1,5 @@
+import {cookies} from "next/headers";
+import {verifyClientToken} from "../../../lib/admin-auth";
 import {verifyApplicantAssessmentGrant,linkedApplicantAssessmentEnabled} from "../../../lib/applicant-assessment-grant.mjs";
 import {normalizedBusinessDomain} from "../../../lib/customer-assessment-candidates.mjs";
 import {freeAssessmentEvidence} from "../../../lib/free-assessment-rules";
@@ -7,16 +9,37 @@ import {checkRateLimit} from "../../../lib/api-security";
 import {buildApplicantAssessmentPdf} from "../../../lib/applicant-assessment-pdf.mjs";
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
-const headers={"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow","Vary":"x-applicant-assessment-token","X-Content-Type-Options":"nosniff"};
+const previewHeaders={"Cache-Control":"private, no-store, max-age=0","Pragma":"no-cache","Referrer-Policy":"no-referrer","X-Robots-Tag":"noindex, nofollow","Vary":"x-applicant-assessment-token","X-Content-Type-Options":"nosniff"};
 export async function GET(req){
+ const params=new URL(req.url).searchParams;
+ const portal=params.get("source")==="customer-portal";
+ const headers=portal?{...previewHeaders,Vary:"Cookie"}:previewHeaders;
  const limited=checkRateLimit(req,{bucket:"applicant-assessment-preview",limit:20,windowMs:60000});if(limited){for(const [key,value] of Object.entries(headers))limited.headers.set(key,value);return limited;}
  if(!linkedApplicantAssessmentEnabled())return Response.json({error:"Preview not enabled"},{status:503,headers});
  const grant=verifyApplicantAssessmentGrant(req.headers.get("x-applicant-assessment-token"));
- if(!grant)return Response.json({error:"Invalid or expired preview grant"},{status:401,headers});
- const format=new URL(req.url).searchParams.get('format');
+ if(!portal&&!grant)return Response.json({error:"Invalid or expired preview grant"},{status:401,headers});
+ const format=params.get("format");
  if(format!==null&&format!=='pdf')return Response.json({error:"Unsupported assessment format"},{status:400,headers});
  try{
   const url=getDatabaseUrl();if(!url)throw Error("no-database");const pool=databasePool(url);
+  let scope=grant;
+  if(portal){
+   const expectedClient=process.env.CUSTOMER_ASSESSMENT_PILOT_CLIENT_ID;
+   const expectedLead=process.env.CUSTOMER_ASSESSMENT_PILOT_LEAD_ID;
+   const session=await verifyClientToken((await cookies()).get("ai_client")?.value||"");
+   if(!expectedClient||!expectedLead||!session||session.clientId!==expectedClient)
+    return Response.json({error:"Assessment is not available for this customer"}, {status:403,headers});
+   const link=(await pool.query(`SELECT a.prospect_id AS "prospectId"
+    FROM public.applicant_assessment_links a
+    JOIN public.customer_leads l ON l.id=a.lead_id
+    JOIN public.client_credentials c ON lower(c.email)=lower(l.email)
+    JOIN public.clients u ON u.id=c.client_id AND u.status='active'
+    JOIN public.client_pilot_access p ON p.client_id=c.client_id AND lower(p.email)=lower(c.email)
+    WHERE a.lead_id::text=$1 AND c.client_id::text=$2 AND a.revoked_at IS NULL
+      AND p.revoked_at IS NULL AND p.expires_at>now()`,[expectedLead,session.clientId])).rows;
+   if(link.length!==1)return Response.json({error:"Assessment is not available for this customer"}, {status:403,headers});
+   scope={leadId:expectedLead,prospectId:link[0].prospectId};
+  }
   const row=(await pool.query(`SELECT l.website,l.email,p.id,p.name,p.domain,p.country,p.city,p.sector,
     a.verified_domain AS "verifiedDomain",c.verified_at AS "emailVerifiedAt",c.consumed_at AS "emailConsumedAt"
     FROM public.applicant_assessment_links a
@@ -24,7 +47,7 @@ export async function GET(req){
     JOIN public.prospects p ON p.id=a.prospect_id
     JOIN public.lead_email_challenges c ON c.lead_id=l.id AND c.email=lower(l.email)
     WHERE a.lead_id=$1 AND a.prospect_id=$2 AND a.revoked_at IS NULL AND a.verified_at IS NOT NULL
-    LIMIT 1`,[grant.leadId,grant.prospectId])).rows[0];
+    LIMIT 1`,[scope.leadId,scope.prospectId])).rows[0];
   const domain=normalizedBusinessDomain(row?.website);
   if(!row||!row.emailVerifiedAt||!row.emailConsumedAt||!domain||
      domain!==normalizedBusinessDomain(row.domain)||domain!==row.verifiedDomain)
