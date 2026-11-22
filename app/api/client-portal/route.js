@@ -1,7 +1,7 @@
 import {readCustomerComparisonReport} from '../../../lib/customer-comparison-report.mjs';
 import {databasePool} from '../../../lib/database-runtime';
 import {getDatabaseUrl} from '../../../lib/db';
-import {customerAccess} from "../../../lib/pilot-access";
+import {customerAccess,getPilotAccess} from "../../../lib/pilot-access";
 import {cookies} from "next/headers";
 import {verifyClientToken} from "../../../lib/admin-auth";
 import {getClientAccount} from "../../../lib/repository";
@@ -26,10 +26,13 @@ export async function GET(req){
       const rows=await readCustomerComparisonReport(databasePool(getDatabaseUrl()),session.clientId);
       reportEvidence={available:true,comparisonCount:rows.length};
     }catch{} // Keep the existing portal usable; do not claim evidence is ready on a read failure.
+    const showPilotAssessment=Boolean(process.env.CUSTOMER_ASSESSMENT_PILOT_LEAD_ID&&
+      session.clientId===process.env.CUSTOMER_ASSESSMENT_PILOT_CLIENT_ID&&
+      (access.kind==="pilot"||await getPilotAccess(session.clientId).catch(()=>null)));
     const profile=await getClientProfile(session.clientId).catch(()=>null);
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;
     const locale=language==="en"?"en-US":"tr-TR";
-    return privateJson({account:{...account,access,profile,reportEvidence,showPilotAssessment:access.kind==="pilot"&&Boolean(process.env.CUSTOMER_ASSESSMENT_PILOT_LEAD_ID)&&session.clientId===process.env.CUSTOMER_ASSESSMENT_PILOT_CLIENT_ID,showZeraChannelReport:access.kind==="pilot"&&session.clientId===process.env.ZERA_CHANNEL_REPORT_CLIENT_ID&&account.client.name==="ZERA Clothing"&&account.client.plan==="Pilot",service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
+    return privateJson({account:{...account,access,profile,reportEvidence,showPilotAssessment,showZeraChannelReport:access.kind==="pilot"&&session.clientId===process.env.ZERA_CHANNEL_REPORT_CLIENT_ID&&account.client.name==="ZERA Clothing"&&account.client.plan==="Pilot",service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
   }catch{return privateJson({error:en?"The customer portal could not be loaded.":"Müşteri paneli yüklenemedi."},500)}
 }
