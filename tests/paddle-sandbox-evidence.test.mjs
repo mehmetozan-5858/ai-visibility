@@ -14,7 +14,9 @@ test('sandbox normalization accepts signed-provider-shaped evidence but not enti
     event({event_id:'bad'}), event({event_type:'unknown.event'}),
     event({data:{id:'sub_abc123'}}), event({occurred_at:'not-a-date'}),
     event({data:{id:'txn_abc123',customer_id:'ctm_other',status:'pending'}}),
-    event({data:{id:'txn_abc123',status:'completed'}})
+    event({data:{id:'txn_abc123',status:'completed'}}),
+    event({occurred_at:'Nov 23 2026 08:00:00 UTC'}),
+    event({occurred_at:'2026-11-23 08:00:00Z'})
   ]) assert.throws(()=>normalizeSandboxEvidence(bad),/invalid-sandbox-evidence/);
 });
 function mockPool(duplicate=false, linked=true) {
