@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeSandboxEvidence, recordSandboxEvidence} from '../lib/paddle-sandbox-evidence.js';
+import {normalizeSandboxEvidence, recordSandboxEvidence, auditSandboxCompletedEntities} from '../lib/paddle-sandbox-evidence.js';
 
 function event(overrides={}) {
   return {event_id:'evt_abc123',event_type:'transaction.completed',
@@ -70,4 +70,19 @@ test('checkout validation binds exact transaction and advertised catalog price',
   assert.match(check.sql,/c\.client_id=i\.client_id/);
   assert.match(check.sql,/i\.expires_at/);
   assert.match(check.sql,/i\.created_at <= \$3::timestamptz/);
+});
+
+test('aggregate historical sandbox ledger never claims provider authenticity or paid entitlement',async()=>{
+  const queries=[];
+  const pool={query:async sql=>{
+    queries.push(sql);
+    return {rows:[{completed_entities:9,linked_entities:4,unlinked_entities:5}]};
+  }};
+  const result=await auditSandboxCompletedEntities({databaseUrl:'isolated',pool});
+  assert.deepEqual(result,{completedEntities:9,linkedEntities:4,unlinkedEntities:5,
+    entitlementGranted:false,providerAuthenticated:false});
+  assert.match(queries[0],/paddle_sandbox_checkout_intents/);
+  assert.match(queries[0],/i\.created_at <= e\.occurred_at/);
+  assert.match(queries[0],/paddle_sandbox_customers/);
+  assert.doesNotMatch(queries[0],/\b(INSERT|UPDATE|DELETE)\b/i);
 });
