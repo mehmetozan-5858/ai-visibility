@@ -67,4 +67,5 @@ test('checkout validation binds exact transaction and advertised catalog price',
   assert.match(check.sql,/i\.paddle_customer_id=\$4/);
   assert.match(check.sql,/c\.client_id=i\.client_id/);
   assert.match(check.sql,/i\.expires_at/);
+  assert.match(check.sql,/i\.created_at <= \$3::timestamptz/);
 });
