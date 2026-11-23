@@ -62,9 +62,11 @@ export async function POST(req){
   // Without it a pilot could be granted with no usable signed link.
   if(!process.env.AUTH_SECRET)
    return Response.json({error:'Güvenli davet imzası yapılandırılmadı; pilot erişimi açılmadı.'},{status:503});
-  await grantPilot(b.clientId,email,Number(b.days),String(b.reason||'').trim(),{onlyIfInactive:b.action==='bootstrap'});
+  // Sign before writing the pilot grant: a signing error must not leave
+  // an entitlement without a usable invitation URL.
   const token=await createPaymentAccessToken(
    b.clientId,Math.min(Number(b.days)*86400,604800),'pilot-diagnosis');
+  await grantPilot(b.clientId,email,Number(b.days),String(b.reason||'').trim(),{onlyIfInactive:b.action==='bootstrap'});
   return Response.json({ok:true,pilotUrl:'/odeme?token='+encodeURIComponent(token),
    testOnly:b.action==='bootstrap'});
  }catch(error){
