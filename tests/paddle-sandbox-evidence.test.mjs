@@ -15,11 +15,12 @@ test('sandbox normalization accepts signed-provider-shaped evidence but not enti
     event({data:{id:'sub_abc123'}}), event({occurred_at:'not-a-date'})
   ]) assert.throws(()=>normalizeSandboxEvidence(bad),/invalid-sandbox-evidence/);
 });
-function mockPool(duplicate=false) {
+function mockPool(duplicate=false, linked=true) {
   const queries=[];
   let released=false;
   const client={query:async(sql,args)=>{
     queries.push({sql,args});
+    if(sql.startsWith('SELECT i.id FROM public.paddle_sandbox_checkout_intents')) return {rows:linked?[{id:'synthetic-intent'}]:[]};
     if(sql.startsWith('INSERT INTO public.paddle_sandbox_events'))
       return {rows:duplicate?[]:[{event_id:'evt_abc123'}]};
     return {rows:[]};
@@ -29,7 +30,7 @@ function mockPool(duplicate=false) {
 test('sandbox receipt writes only isolated ledgers and never entitles customer',async()=>{
   const m=mockPool();
   const result=await recordSandboxEvidence(event(),{databaseUrl:'isolated',pool:m.pool});
-  assert.deepEqual(result,{recorded:true,entitlementGranted:false});
+  assert.deepEqual(result,{recorded:true,checkoutLinked:true,entitlementGranted:false});
   assert.equal(m.released,true);
   const sql=m.queries.map(q=>q.sql).join('\n');
   assert.match(sql,/paddle_sandbox_events/);
@@ -42,4 +43,24 @@ test('replayed webhook id is idempotent and never writes entities',async()=>{
   assert.deepEqual(result,{duplicate:true,entitlementGranted:false});
   assert.equal(m.queries.filter(q=>q.sql.includes('paddle_sandbox_entities')).length,0);
   assert.equal(m.released,true);
+});
+
+test('completed provider event without matching intent, tenant or price fails closed',async()=>{
+  const m=mockPool(false,false);
+  await assert.rejects(
+    recordSandboxEvidence(event(),{databaseUrl:'isolated',pool:m.pool}),
+    /sandbox-checkout-link-unverified/
+  );
+  assert.ok(m.queries.some(q=>q.sql==='ROLLBACK'));
+  assert.equal(m.queries.some(q=>q.sql.includes('INSERT INTO public.paddle_sandbox_entities')),false);
+  assert.equal(m.released,true);
+});
+test('checkout validation binds exact transaction and advertised catalog price',async()=>{
+  const m=mockPool();
+  await recordSandboxEvidence(event(),{databaseUrl:'isolated',pool:m.pool});
+  const check=m.queries.find(q=>q.sql.startsWith('SELECT i.id FROM public.paddle_sandbox_checkout_intents'));
+  assert.deepEqual(check.args[0],'txn_abc123');
+  assert.deepEqual(check.args[1],['pri_abc123']);
+  assert.match(check.sql,/c\.client_id=i\.client_id/);
+  assert.match(check.sql,/i\.expires_at/);
 });
