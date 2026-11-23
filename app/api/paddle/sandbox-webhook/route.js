@@ -1,4 +1,5 @@
-import { verifyPaddleLiveSignature, recordPaddleLiveEvent } from '../../../../lib/paddle-live.js';
+import { verifyPaddleLiveSignature } from '../../../../lib/paddle-live.js';
+import { recordSandboxEvidence } from '../../../../lib/paddle-sandbox-evidence.js';
 import { getDatabaseUrl } from '../../../../lib/db.js';
 
 export const runtime = 'nodejs';
@@ -35,7 +36,7 @@ export async function POST(req) {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
   }
   try {
-    return Response.json(await recordPaddleLiveEvent(event, { databaseUrl }));
+    return Response.json(await recordSandboxEvidence(event, { databaseUrl }));
   } catch {
     return Response.json({ error: 'Sandbox event not recorded; retry required' }, { status: 503 });
   }
