@@ -1,6 +1,7 @@
 import PaymentManager from "../../components/PaymentManager";
 import PaddleLiveCheckout from "../../components/PaddleLiveCheckout";
 import Link from "next/link";
+import {verifyPaymentAccessToken} from "../../lib/admin-auth";
 
 export const metadata={
   title:"Güvenli Ödeme",
@@ -11,6 +12,8 @@ export const metadata={
 export default async function Page({searchParams}){
   const p=await searchParams;
   const token=p?.token||"";
+  const signed=await verifyPaymentAccessToken(token);
+  const pilotOnly=signed?.service==="pilot-diagnosis";
   return <main style={{minHeight:"100vh",background:"radial-gradient(circle at 75% 0%,rgba(70,234,215,.08),transparent 26%),linear-gradient(180deg,#03121c,#061722)",padding:"26px 20px 60px"}}>
     <div style={{maxWidth:980,margin:"0 auto"}}>
       <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:26,flexWrap:"wrap"}}>
@@ -19,10 +22,10 @@ export default async function Page({searchParams}){
       </header>
       <section style={{marginBottom:24}}>
         <div style={{fontSize:11,letterSpacing:".18em",fontWeight:900,color:"#54dfd0",textTransform:"uppercase",marginBottom:8}}>Güvenli ödeme alanı</div>
-        <h1 style={{fontSize:"clamp(32px,5vw,48px)",letterSpacing:"-.035em",margin:"0 0 8px"}}>Ödeme ve müşteri hesabı aktivasyonu</h1>
-        <p style={{color:"#9fb2b8",maxWidth:720,lineHeight:1.7}}>Paketinizi, tutarı ve ödeme yöntemini kontrol edin. Ödeme onayından sonra e-posta doğrulamasıyla müşteri hesabınızı güvenli şekilde oluşturabilirsiniz.</p>
+        <h1 style={{fontSize:"clamp(32px,5vw,48px)",letterSpacing:"-.035em",margin:"0 0 8px"}}>{pilotOnly?"Ücretsiz pilot hesabı aktivasyonu":"Ödeme ve müşteri hesabı aktivasyonu"}</h1>
+        <p style={{color:"#9fb2b8",maxWidth:720,lineHeight:1.7}}>{pilotOnly?"Bu pilot daveti ücretsizdir. E-postanızı doğrulayın ve müşteri paneli şifrenizi oluşturun. Ödeme yapmanız gerekmez.":"Paketinizi, tutarı ve ödeme yöntemini kontrol edin. Ödeme onayından sonra e-posta doğrulamasıyla müşteri hesabınızı güvenli şekilde oluşturabilirsiniz."}</p>
       </section>
-      {token?<><PaddleLiveCheckout token={token}/><PaymentManager token={token}/></>:<section className="panel"><div className="empty">Ödeme bağlantısı geçersiz veya eksik.</div></section>}
+      {token?<>{!pilotOnly&&<PaddleLiveCheckout token={token}/>}<PaymentManager token={token} pilotOnly={pilotOnly}/></>:<section className="panel"><div className="empty">Ödeme bağlantısı geçersiz veya eksik.</div></section>}
       <section className="panel" style={{marginTop:16}}>
         <small>Ödeme öncesi bilgilendirme:</small>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:8}}>
