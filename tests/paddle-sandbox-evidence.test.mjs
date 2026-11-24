@@ -7,7 +7,7 @@ import {normalizeSandboxEvidence, recordSandboxEvidence, auditSandboxCompletedEn
 function event(overrides={}) {
   return {event_id:'evt_abc123',event_type:'transaction.completed',
     occurred_at:'2026-11-23T08:00:00Z',
-    data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[{price:{id:'pri_abc123'}}]},
+    data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[{quantity:1,price:{id:'pri_abc123'}}]},
     ...overrides};
 }
 test('sandbox normalization accepts signed-provider-shaped evidence but not entitlement',()=>{
@@ -18,7 +18,10 @@ test('sandbox normalization accepts signed-provider-shaped evidence but not enti
     event({data:{id:'txn_abc123',customer_id:'ctm_other',status:'pending'}}),
     event({data:{id:'txn_abc123',status:'completed'}}),
     event({occurred_at:'Nov 23 2026 08:00:00 UTC'}),
-    event({occurred_at:'2026-11-23 08:00:00Z'})
+    event({occurred_at:'2026-11-23 08:00:00Z'}),
+    event({data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[]}}),
+    event({data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[{quantity:1,price:{id:'pri_abc123'}},{quantity:1,price:{id:'bad'}}]}}),
+    event({data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[{quantity:2,price:{id:'pri_abc123'}}]}})
   ]) assert.throws(()=>normalizeSandboxEvidence(bad),/invalid-sandbox-evidence/);
 });
 function mockPool(duplicate=false, linked=true) {
