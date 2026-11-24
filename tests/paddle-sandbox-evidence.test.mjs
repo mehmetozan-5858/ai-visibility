@@ -2,7 +2,7 @@ import {createHmac} from 'node:crypto';
 import {verifyPaddleLiveSignature} from '../lib/paddle-live.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeSandboxEvidence, recordSandboxEvidence, auditSandboxCompletedEntities, auditSandboxEventIdentityClasses} from '../lib/paddle-sandbox-evidence.js';
+import {normalizeSandboxEvidence, recordSandboxEvidence, auditSandboxCompletedEntities, auditSandboxEventIdentityClasses, acceptsPaddleSandboxProviderId} from '../lib/paddle-sandbox-evidence.js';
 
 function event(overrides={}) {
   return {event_id:'evt_abc123',event_type:'transaction.completed',
@@ -122,4 +122,11 @@ test('sandbox ID classes never assert provider signing from an evt_ prefix',asyn
   });
   assert.match(queries[0],/paddle_sandbox_events/);
   assert.doesNotMatch(queries[0],/\\b(?:INSERT|UPDATE|DELETE)\\b/i);
+});
+
+test('provider webhook ingress refuses historical synthetic event identifiers',()=>{
+  assert.equal(acceptsPaddleSandboxProviderId(event()),true);
+  assert.equal(acceptsPaddleSandboxProviderId(event({event_id:'ntfsimevt_12345'})),false);
+  assert.equal(acceptsPaddleSandboxProviderId(event({event_id:'evt_abc123;sql'})),false);
+  assert.equal(acceptsPaddleSandboxProviderId(event({event_id:''})),false);
 });
