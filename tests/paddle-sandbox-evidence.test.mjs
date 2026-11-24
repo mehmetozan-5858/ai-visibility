@@ -19,6 +19,7 @@ test('sandbox normalization accepts signed-provider-shaped evidence but not enti
     event({data:{id:'txn_abc123',status:'completed'}}),
     event({occurred_at:'Nov 23 2026 08:00:00 UTC'}),
     event({occurred_at:'2026-11-23 08:00:00Z'}),
+    event({occurred_at:'2099-01-01T00:00:00Z'}),
     event({data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[]}}),
     event({data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[{quantity:1,price:{id:'pri_abc123'}},{quantity:1,price:{id:'bad'}}]}}),
     event({data:{id:'txn_abc123',customer_id:'ctm_abc123',status:'completed',items:[{quantity:2,price:{id:'pri_abc123'}}]}})
