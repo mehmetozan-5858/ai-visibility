@@ -1,5 +1,5 @@
 import { verifyPaddleLiveSignature } from '../../../../lib/paddle-live.js';
-import { recordSandboxEvidence } from '../../../../lib/paddle-sandbox-evidence.js';
+import { recordSandboxEvidence, acceptsPaddleSandboxProviderId } from '../../../../lib/paddle-sandbox-evidence.js';
 import { getDatabaseUrl } from '../../../../lib/db.js';
 
 export const runtime = 'nodejs';
@@ -34,6 +34,9 @@ export async function POST(req) {
   let event;
   try { event = JSON.parse(raw); } catch {
     return Response.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+  if (!acceptsPaddleSandboxProviderId(event)) {
+    return Response.json({ error: 'Not a provider Sandbox event' }, { status: 400 });
   }
   try {
     return Response.json(await recordSandboxEvidence(event, { databaseUrl }));
