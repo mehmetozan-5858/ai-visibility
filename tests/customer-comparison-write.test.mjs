@@ -11,7 +11,7 @@ async function fixture(){
  const releases=[];
  return {db,releases,pool:{connect:async()=>({query:(sql,args)=>db.query(sql,args),release:discard=>releases.push(discard)})}};
 }
-const input=(taskId='brand-ai-de')=>({clientId:own,comparison:{clientId:own,query:'fixture',results:[{provider:'gemini',answer:'fixture',verified:false}]},attemptTaskId:taskId});
+const input=(taskId='brand-ai-de')=>({clientId:own,comparison:{clientId:own,query:'fixture',results:[{provider:'gemini',status:'answer-received-unverified',answer:'fixture',verified:false}]},attemptTaskId:taskId});
 test('answer and own attempt commit together; another tenant remains untouched',async()=>{
  const f=await fixture();try{
   const saved=await writeCustomerComparison(f.pool,input());
@@ -50,4 +50,20 @@ test('identity mismatch is rejected before acquiring a connection',async()=>{
  let connected=false;
  await assert.rejects(writeCustomerComparison({connect:()=>{connected=true}}, {...input(),clientId:other}),/identity mismatch/);
  assert.equal(connected,false);
+});
+
+test('outages and unverifiable placeholders never create customer comparison rows',async()=>{
+ const f=await fixture();try{
+  for(const result of [
+   {provider:'gemini',status:'failed',verified:false,reason:'provider-quota-or-rate-limit'},
+   {provider:'gemini',status:'answer-received-unverified',verified:false,answer:' '},
+   {provider:'gemini',status:'source-supported-answer',verified:false,answer:'unproven source'},
+  ]){
+   await assert.rejects(writeCustomerComparison(f.pool,{
+    ...input(),comparison:{...input().comparison,results:[result]}
+   }),/No provider answer evidence/);
+  }
+  assert.equal((await f.db.query('SELECT COUNT(*)::int AS n FROM ai_provider_comparisons')).rows[0].n,0);
+  assert.equal((await f.db.query('SELECT status FROM zera_ai_task_attempts WHERE client_id=$1',[own])).rows[0].status,'started');
+ }finally{await f.db.close()}
 });
