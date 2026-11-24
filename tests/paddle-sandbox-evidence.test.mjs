@@ -2,7 +2,7 @@ import {createHmac} from 'node:crypto';
 import {verifyPaddleLiveSignature} from '../lib/paddle-live.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {normalizeSandboxEvidence, recordSandboxEvidence, auditSandboxCompletedEntities} from '../lib/paddle-sandbox-evidence.js';
+import {normalizeSandboxEvidence, recordSandboxEvidence, auditSandboxCompletedEntities, auditSandboxEventIdentityClasses} from '../lib/paddle-sandbox-evidence.js';
 
 function event(overrides={}) {
   return {event_id:'evt_abc123',event_type:'transaction.completed',
@@ -101,4 +101,21 @@ test('sandbox HMAC acceptance rejects altered payloads, expired timestamps and w
   assert.equal(verifyPaddleLiveSignature(raw,sign(raw,'wrong-secret'),secret,{now}),false);
   assert.equal(verifyPaddleLiveSignature(raw,sign(raw),secret,{now:now+301000}),false);
   assert.equal(verifyPaddleLiveSignature(raw,sign(raw)+';ts='+ts,secret,{now}),false);
+});
+
+test('sandbox ID classes never assert provider signing from an evt_ prefix',async()=>{
+  const queries=[];
+  const pool={query:async sql=>{
+    queries.push(sql);
+    return {rows:[{total_events:39,explicitly_synthetic:15,
+      provider_shaped_unverified:24,synthetic_completions:4}]};
+  }};
+  const result=await auditSandboxEventIdentityClasses({databaseUrl:'isolated',pool});
+  assert.deepEqual(result,{
+    totalEvents:39,explicitlySynthetic:15,providerShapedUnverified:24,
+    syntheticCompletions:4,signedProviderDeliveryVerified:false,
+    entitlementsGranted:false
+  });
+  assert.match(queries[0],/paddle_sandbox_events/);
+  assert.doesNotMatch(queries[0],/\\b(?:INSERT|UPDATE|DELETE)\\b/i);
 });
