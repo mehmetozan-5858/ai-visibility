@@ -1,3 +1,5 @@
+import {createHmac} from 'node:crypto';
+import {verifyPaddleLiveSignature} from '../lib/paddle-live.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {normalizeSandboxEvidence, recordSandboxEvidence, auditSandboxCompletedEntities} from '../lib/paddle-sandbox-evidence.js';
@@ -85,4 +87,18 @@ test('aggregate historical sandbox ledger never claims provider authenticity or 
   assert.match(queries[0],/i\.created_at <= e\.occurred_at/);
   assert.match(queries[0],/paddle_sandbox_customers/);
   assert.doesNotMatch(queries[0],/\b(INSERT|UPDATE|DELETE)\b/i);
+});
+
+test('sandbox HMAC acceptance rejects altered payloads, expired timestamps and wrong secret',()=>{
+  const secret='sandbox-test-secret-not-live';
+  const raw=JSON.stringify(event());
+  const ts=1700000000;
+  const now=ts*1000;
+  const sign=(body,key=secret)=>
+    'ts='+ts+';h1='+createHmac('sha256',key).update(ts+':'+body).digest('hex');
+  assert.equal(verifyPaddleLiveSignature(raw,sign(raw),secret,{now}),true);
+  assert.equal(verifyPaddleLiveSignature(raw+' ',sign(raw),secret,{now}),false);
+  assert.equal(verifyPaddleLiveSignature(raw,sign(raw,'wrong-secret'),secret,{now}),false);
+  assert.equal(verifyPaddleLiveSignature(raw,sign(raw),secret,{now:now+301000}),false);
+  assert.equal(verifyPaddleLiveSignature(raw,sign(raw)+';ts='+ts,secret,{now}),false);
 });
