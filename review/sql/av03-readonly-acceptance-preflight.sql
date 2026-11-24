@@ -30,12 +30,21 @@ SELECT
   (SELECT count(*) FROM public.answer_evidence_runs r JOIN verified_pilot_matches m
      ON r.entity_id=m.prospect_id WHERE r.entity_type='prospect'
      AND r.created_at >= now()-interval '14 days') AS linked_recent_prospect_answer_runs,
+  (SELECT coalesce(sum(CASE WHEN jsonb_typeof(r.result->'observations')='array'
+     THEN jsonb_array_length(r.result->'observations') ELSE 0 END),0)
+   FROM public.answer_evidence_runs r JOIN verified_pilot_matches m ON r.entity_id=m.prospect_id
+   WHERE r.entity_type='prospect' AND r.created_at>=now()-interval '14 days') AS raw_observation_entries_not_verified,
+  (SELECT coalesce(sum(CASE WHEN jsonb_typeof(r.result->'errors')='array'
+     THEN jsonb_array_length(r.result->'errors') ELSE 0 END),0)
+   FROM public.answer_evidence_runs r JOIN verified_pilot_matches m ON r.entity_id=m.prospect_id
+   WHERE r.entity_type='prospect' AND r.created_at>=now()-interval '14 days') AS error_entries,
   (SELECT count(*) FROM public.applicant_assessment_deliveries d JOIN verified_pilot_matches m
      ON d.lead_id=m.lead_id AND d.prospect_id=m.prospect_id) AS linked_delivery_records,
   (SELECT count(*) FROM public.applicant_assessment_deliveries d JOIN verified_pilot_matches m
      ON d.lead_id=m.lead_id AND d.prospect_id=m.prospect_id
      WHERE d.status='completed') AS completed_linked_delivery_records,
   (SELECT count(*) FROM public.ai_provider_comparisons) AS customer_comparison_records;
+-- Raw observation entries are NOT verified provider responses; freeAssessmentEvidence applies stricter filters.
 -- A run is NOT automatically a successful provider response; inspect its outcome separately.
 -- Missing delivery records do not prove the PDF renderer or manual browser download failed.
 -- No database writes, migrations, passwords, provider calls or payment changes.
