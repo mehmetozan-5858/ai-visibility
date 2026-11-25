@@ -18,3 +18,12 @@ jobs:
       - run: npm run build
       - name: Verify read-only diagnostics HTTP boundaries with synthetic auth
         run: node scripts/smoke-zera-diagnostics.mjs
+      - name: Export synthetic German order guide PDF
+        run: node scripts/export-order-guide-preview.mjs
+      - name: Upload synthetic order guide preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: order-guide-preview
+          path: artifacts/order-guide/bestellanleitung-entwurf.pdf
+          if-no-files-found: error
+          retention-days: 7
