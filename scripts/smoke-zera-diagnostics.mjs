@@ -4,13 +4,13 @@ import {spawn} from 'node:child_process';
 import {randomBytes} from 'node:crypto';
 import {once} from 'node:events';
 import {createServer} from 'node:net';
-import {createAdminToken} from '../lib/admin-auth.js';
+import {createAdminToken,createClientToken} from '../lib/admin-auth.js';
 const previous={AUTH_SECRET:process.env.AUTH_SECRET,ADMIN_PASSWORD:process.env.ADMIN_PASSWORD};
 process.env.AUTH_SECRET=randomBytes(32).toString('hex');process.env.ADMIN_PASSWORD=randomBytes(24).toString('hex');
 const probe=createServer();probe.listen(0,'127.0.0.1');await once(probe,'listening');
 const port=probe.address().port;await new Promise(resolve=>probe.close(resolve));
 const server=spawn(process.execPath,['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port',String(port)],{
- stdio:'ignore',env:{PATH:process.env.PATH,NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',AUTH_SECRET:process.env.AUTH_SECRET,ADMIN_PASSWORD:process.env.ADMIN_PASSWORD}});
+ stdio:'ignore',env:{PATH:process.env.PATH,NODE_ENV:'production',NEXT_TELEMETRY_DISABLED:'1',AUTH_SECRET:process.env.AUTH_SECRET,ADMIN_PASSWORD:process.env.ADMIN_PASSWORD,ORDER_GUIDE_PREVIEW_ENABLED:'true',ORDER_GUIDE_PREVIEW_CLIENT_ID:'00000000-0000-4000-8000-000000000001'}});
 try{
  const origin='http://127.0.0.1:'+port;
  let ready=false;
@@ -19,6 +19,21 @@ try{
   try{await fetch(origin);ready=true;break}catch{await new Promise(resolve=>setTimeout(resolve,200))}
  }
  assert.equal(ready,true);
+ const guide=origin+'/api/client-portal/order-guide';
+ for(const format of ['pdf','post','story']){
+  const denied=await fetch(guide+'?format='+format);
+  assert.equal(denied.status,401);
+  assert.match(denied.headers.get('cache-control'),/no-store/);
+ }
+ const clientHeaders={cookie:'ai_client='+await createClientToken('00000000-0000-4000-8000-000000000001')};
+ for(const query of ['?format=svg','?format=pdf&format=post']){
+  assert.equal((await fetch(guide+query)).status,401);
+  assert.equal((await fetch(guide+query,{headers:clientHeaders})).status,400);
+ }
+ assert.equal((await fetch(guide,{method:'POST'})).status,401);
+ assert.equal((await fetch(guide,{method:'POST',headers:clientHeaders})).status,405);
+ for(const format of ['pdf','post','story'])assert.equal((await fetch(guide+'?format='+format,{headers:clientHeaders})).status,503);
+ console.log('Order guide HTTP denial checks passed (synthetic, no DB).');
  const url=origin+'/api/clients/zera-diagnostics',token=await createAdminToken(),headers={cookie:'ai_admin='+token};
  assert.equal((await fetch(url)).status,401);
  assert.equal((await fetch(url,{method:'POST',headers})).status,405);
