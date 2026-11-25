@@ -1,4 +1,5 @@
 import test from "node:test";
+import {orderGuideAllowed} from "../lib/order-guide-access.mjs";
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import {readFile} from "node:fs/promises";
@@ -68,9 +69,9 @@ async function isolated(){
  const cookies=async()=>({get:name=>name==="ai_client"&&activeToken?{value:activeToken}:undefined});
  const portal=compile(portalSource,"GET",
   ["readCustomerComparisonReport","databasePool","getDatabaseUrl","customerAccess","cookies","verifyClientToken",
-   "getClientAccount","resolveRequestLanguage","getClientProfile","servicePrice","formatMoney","SERVICE_CODES","Response"],
+   "getClientAccount","resolveRequestLanguage","getClientProfile","servicePrice","formatMoney","SERVICE_CODES","Response","orderGuideAllowed"],
   [readCustomerComparisonReport,()=>db,()=>"fixture",customerAccess,cookies,verifyClientToken,account,()=>"tr",
-   async()=>null,()=>null,()=>"",[],Response]);
+   async()=>null,()=>null,()=>"",[],Response,orderGuideAllowed]);
  return {db,login,portal,account,customerAccess,cookies,setSession:token=>{activeToken=token},password};
 }
 test("synthetic real login cookie and paid customer portal are denied before settlement, isolate reports after proof, revoked after cancellation",async()=>{
@@ -91,6 +92,7 @@ test("synthetic real login cookie and paid customer portal are denied before set
   assert.equal(permitted.status,200);
   const body=await permitted.json();
   assert.equal(body.account.access.kind,"paid");
+  assert.equal(body.account.orderGuidePreview,false);
   assert.equal(body.account.reportEvidence.comparisonCount,1);
   assert.equal(JSON.stringify(body).includes("PRIVATE: Customer B"),false);
   assert.equal(permitted.headers.get("cache-control").includes("no-store"),true);
