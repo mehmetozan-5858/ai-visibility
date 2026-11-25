@@ -30,6 +30,6 @@ export async function GET(req){
     const code=SERVICE_CODES.includes(profile?.requestedService)?profile.requestedService:"";
     const service=code?servicePrice({service:code,country:profile?.country||"",language}):null;
     const locale=language==="en"?"en-US":"tr-TR";
-    return privateJson({account:{...account,access,profile,reportEvidence,service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
+    return privateJson({account:{...account,access,profile,reportEvidence,orderGuidePreview:process.env.ORDER_GUIDE_PREVIEW_ENABLED==='true'&&access.kind==='pilot'&&account.client?.status==='active',service:service?{...service,formatted:formatMoney(service.amount,service.currency,locale)}:null},language});
   }catch{return privateJson({error:en?"The customer portal could not be loaded.":"Müşteri paneli yüklenemedi."},500)}
 }
