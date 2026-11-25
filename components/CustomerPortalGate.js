@@ -48,6 +48,10 @@ export default function CustomerPortalGate(){
       <h2>Bestellanleitung – Entwurf</h2>
       <p>Nur zur Prüfung. Fehlende Angaben müssen bestätigt werden. Nicht zur Veröffentlichung.</p>
       <a href="/api/client-portal/order-guide" download="bestellanleitung-entwurf.pdf" style={{display:"inline-block",padding:"12px 16px",borderRadius:12,background:"#225a80",color:"white"}}>PDF-Entwurf herunterladen</a>
+      <div style={{display:"flex",flexWrap:"wrap",gap:10,marginTop:10}}>
+        <a href="/api/client-portal/order-guide?format=post" download="instagram-post-entwurf.png" style={{display:"inline-block",padding:"12px 16px",borderRadius:12,background:"#225a80",color:"white"}}>Instagram-Beitrag (PNG)</a>
+        <a href="/api/client-portal/order-guide?format=story" download="instagram-story-entwurf.png" style={{display:"inline-block",padding:"12px 16px",borderRadius:12,background:"#225a80",color:"white"}}>Instagram-Story (PNG)</a>
+      </div>
     </section>}
     <CustomerPortal/>
   </>;
