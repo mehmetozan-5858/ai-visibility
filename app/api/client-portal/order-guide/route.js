@@ -10,8 +10,11 @@ const headers={'Cache-Control':'private, no-store, max-age=0','Vary':'Cookie','X
 const error=(status)=>Response.json({error:'Order guide unavailable'},{status,headers});
 
 // Draft preview only. Off by default; no legacy paid status grants this feature.
-export async function GET(){
+export async function GET(req){
  if(process.env.ORDER_GUIDE_PREVIEW_ENABLED!=='true')return error(404);
+ const formats=new URL(req.url).searchParams.getAll('format');
+ const format=formats[0]??'pdf';
+ if(formats.length>1||!['pdf','post','story'].includes(format))return error(400);
  try{
   const session=await verifyClientToken((await cookies()).get('ai_client')?.value||'');
   if(!session?.clientId)return error(401);
@@ -26,6 +29,11 @@ export async function GET(){
    await conn.query('COMMIT');
   }catch(e){await conn.query('ROLLBACK').catch(()=>{});throw e;}finally{conn.release();}
   if(!brand)return error(403);
+  if(format!=='pdf'){
+   const {exportOrderGuideSocialPng}=await import('../../../../lib/order-guide-social-png.mjs');
+   const png=await exportOrderGuideSocialPng({brand},{format});
+   return new Response(new Uint8Array(png),{headers:{...headers,'Content-Type':'image/png','Content-Disposition':`attachment; filename="instagram-${format}-entwurf.png"`}});
+  }
   const pdf=await exportOrderGuideDraftPdf({brand});
   return new Response(new Uint8Array(pdf),{headers:{...headers,'Content-Type':'application/pdf','Content-Disposition':'attachment; filename="bestellanleitung-entwurf.pdf"'}});
  }catch{return error(503);}
