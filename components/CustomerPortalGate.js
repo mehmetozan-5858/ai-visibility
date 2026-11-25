@@ -43,7 +43,14 @@ export default function CustomerPortalGate(){
 
   if(error)return <section style={card}><p className="client-message">{error}</p><Link href="/musteri-giris" style={{display:"inline-block",marginTop:10}}>{lang==="en"?"Sign in to customer portal →":"Müşteri girişine dön →"}</Link></section>;
   if(!account)return <section style={card}><p>{c.loading}</p></section>;
-  if(account?.access?.kind==="pilot"||unlocked)return <CustomerPortal/>;
+  if(account?.access?.kind==="pilot"||unlocked)return <>
+    {account.orderGuidePreview===true&&account.access?.kind==="pilot"&&<section style={{...card,marginBottom:14}} lang="de">
+      <h2>Bestellanleitung – Entwurf</h2>
+      <p>Nur zur Prüfung. Fehlende Angaben müssen bestätigt werden. Nicht zur Veröffentlichung.</p>
+      <a href="/api/client-portal/order-guide" download="bestellanleitung-entwurf.pdf" style={{display:"inline-block",padding:"12px 16px",borderRadius:12,background:"#225a80",color:"white"}}>PDF-Entwurf herunterladen</a>
+    </section>}
+    <CustomerPortal/>
+  </>;
 
   return <section style={{display:"grid",gap:14}}>
     <article style={card}>
