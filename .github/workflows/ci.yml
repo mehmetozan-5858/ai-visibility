@@ -14,7 +14,21 @@ jobs:
         with:
           node-version: "24"
       - run: npm install
+      - name: Verify public font lock metadata
+        run: node -e 'console.log(JSON.stringify(require("./package-lock.json").packages["node_modules/@fontsource/noto-sans"]))'
       - run: npm test
       - run: npm run build
       - name: Verify read-only diagnostics HTTP boundaries with synthetic auth
         run: node scripts/smoke-zera-diagnostics.mjs
+      - name: Export synthetic German order guide PDF and social PNGs
+        run: node scripts/export-order-guide-preview.mjs
+      - name: Upload synthetic order guide preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: order-guide-preview
+          path: |
+            artifacts/order-guide/bestellanleitung-entwurf.pdf
+            artifacts/order-guide/instagram-post.png
+            artifacts/order-guide/instagram-story.png
+          if-no-files-found: error
+          retention-days: 7
