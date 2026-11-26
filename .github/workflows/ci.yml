@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: "24"
       - run: npm install
+      - name: Verify public font lock metadata
+        run: node -e 'console.log(JSON.stringify(require("./package-lock.json").packages["node_modules/@fontsource/noto-sans"]))'
       - run: npm test
       - run: npm run build
       - name: Verify read-only diagnostics HTTP boundaries with synthetic auth
